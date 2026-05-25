@@ -126,15 +126,11 @@ public class CTFBuildService {
      */
     @Async("ctfBuildExecutor")
     public void rebuild(CTFChallengeBuild build, Path newZipPath) {
-        // Attempt to remove old image — swallow exceptions
-        if (dockerClient != null && build.getBuiltImageTag() != null) {
-            try {
-                dockerClient.removeImageCmd(build.getBuiltImageTag()).withForce(true).exec();
-                log.info("Removed old image: {}", build.getBuiltImageTag());
-            } catch (Exception e) {
-                log.warn("Could not remove old image {}: {}", build.getBuiltImageTag(), e.getMessage());
-            }
-        }
+        // Keep the old tag so we can delete it AFTER the new build succeeds.
+        // Deleting it upfront would cause every instance spawn during the build
+        // to fail with "image not found locally" because the challenge still
+        // references the old tag until the new build finishes.
+        String oldImageTag = build.getBuiltImageTag();
 
         // Increment version, reset status
         build.setVersion(build.getVersion() != null ? build.getVersion() + 1 : 2);
@@ -146,6 +142,17 @@ public class CTFBuildService {
 
         // Run the build pipeline directly (already on ctfBuildExecutor thread)
         doBuildFromZip(build, newZipPath);
+
+        // Only remove the old image after the new one is confirmed READY so that
+        // in-flight spawns keep working throughout the rebuild window.
+        if ("READY".equals(build.getBuildStatus()) && dockerClient != null && oldImageTag != null) {
+            try {
+                dockerClient.removeImageCmd(oldImageTag).withForce(true).exec();
+                log.info("Removed old image after successful rebuild: {}", oldImageTag);
+            } catch (Exception e) {
+                log.warn("Could not remove old image {}: {}", oldImageTag, e.getMessage());
+            }
+        }
     }
 
     /**
@@ -182,7 +189,7 @@ public class CTFBuildService {
                 File contextDir = dockerContext.toFile();
                 AtomicReference<StringBuilder> logBuilder = new AtomicReference<>(new StringBuilder());
 
-                dockerClient.buildImageCmd(contextDir)
+                boolean completed = dockerClient.buildImageCmd(contextDir)
                         .withTags(Set.of(imageTag))
                         .exec(new BuildImageResultCallback() {
                             @Override
@@ -194,6 +201,12 @@ public class CTFBuildService {
                             }
                         })
                         .awaitCompletion(buildTimeoutSeconds, TimeUnit.SECONDS);
+
+                if (!completed) {
+                    throw new IllegalStateException(
+                            "Docker build timed out after " + buildTimeoutSeconds + "s. " +
+                            "Increase ctf.build.timeout-seconds or simplify the Dockerfile.");
+                }
 
                 build.setBuildStatus("READY");
                 build.setBuildFinishedAt(LocalDateTime.now());

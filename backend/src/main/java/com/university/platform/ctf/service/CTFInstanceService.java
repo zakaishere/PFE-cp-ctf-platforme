@@ -436,7 +436,10 @@ public class CTFInstanceService {
                         .withPidsLimit((long) pidsLimit)
                         .withCapDrop(caps)
                         .withNetworkMode(networkName)
-                        .withReadonlyRootfs(false);
+                        .withReadonlyRootfs(false)
+                        // tini as PID 1: propagates SIGTERM/SIGKILL to xinetd/socat children
+                        // and reaps zombie processes — critical for PWN challenges that fork.
+                        .withInit(true);
 
                 String containerName = "ctf-" + instanceId.toString().replace("-", "").substring(0, 16);
 
@@ -468,6 +471,28 @@ public class CTFInstanceService {
                         "Container started but port " + port + " is not accepting connections " +
                         "after 15 s. Check that the challenge app listens on 0.0.0.0:" +
                         resolvedPort + " inside the container.");
+                }
+
+                // For TCP (PWN) challenges the health-check above opens a real connection,
+                // which causes xinetd/socat to fork a child for that connection. If the
+                // Dockerfile uses single-shot socat (no 'fork') or bare 'nc -l', it handles
+                // exactly one connection — the health check — and then stops accepting.
+                // Detect this by waiting for the forked child to finish and then verifying
+                // the port is STILL reachable. A second successful connection proves the
+                // wrapper is in multi-connection mode; failure means the instance would be
+                // dead on arrival for every student that follows.
+                if (TCP.equals(connectionType(challenge))) {
+                    try { Thread.sleep(1500); } catch (InterruptedException ie) {
+                        Thread.currentThread().interrupt();
+                    }
+                    if (!waitForPort(port, 4, 500)) {
+                        throw new IllegalStateException(
+                            "TCP port " + port + " stopped accepting connections after the " +
+                            "health-check. The challenge wrapper handles only one connection. " +
+                            "Fix the Dockerfile: use 'socat TCP-LISTEN:" + resolvedPort +
+                            ",reuseaddr,fork EXEC:./challenge' or 'xinetd' so multiple " +
+                            "players can connect simultaneously.");
+                    }
                 }
 
                 // Verify the container process is still alive — waitForPort only checks TCP,
@@ -600,29 +625,50 @@ public class CTFInstanceService {
 
     private void teardownContainer(CTFInstance instance) {
         if (dockerClient == null) return;
-        if (instance.getContainerId() != null) {
+        String containerId = instance.getContainerId();
+        String networkId   = instance.getNetworkId();
+
+        if (containerId != null) {
             // Graceful stop — separate try so a "permission denied" here does not
             // prevent the force-remove below from running.
             try {
-                dockerClient.stopContainerCmd(instance.getContainerId()).withTimeout(10).exec();
+                dockerClient.stopContainerCmd(containerId).withTimeout(10).exec();
             } catch (Exception e) {
                 log.warn("Could not stop container {} (will force-remove anyway): {}",
-                        instance.getContainerId(), e.getMessage());
+                        containerId, e.getMessage());
             }
             // Force-remove always runs regardless of whether stop succeeded.
             try {
-                dockerClient.removeContainerCmd(instance.getContainerId())
+                dockerClient.removeContainerCmd(containerId)
                         .withForce(true)
                         .withRemoveVolumes(true)
                         .exec();
-                log.info("Container removed: {}", instance.getContainerId());
+                log.info("Container removed: {}", containerId);
             } catch (Exception e) {
-                log.warn("Could not remove container {}: {}", instance.getContainerId(), e.getMessage());
+                log.warn("Could not remove container {}: {}", containerId, e.getMessage());
+                // PWN containers running xinetd/socat with setuid binaries can be
+                // unkillable via Docker API (AppArmor/userns EPERM on SIGKILL).
+                // Force-disconnect from the per-instance network so the subnet is
+                // freed and reusable even if the container itself stays alive.
+                if (networkId != null) {
+                    try {
+                        dockerClient.disconnectFromNetworkCmd()
+                                .withNetworkId(networkId)
+                                .withContainerId(containerId)
+                                .withForce(true)
+                                .exec();
+                        log.info("Force-disconnected stuck container {} from network {}",
+                                containerId, networkId);
+                    } catch (Exception de) {
+                        log.warn("Could not disconnect container {} from network {}: {}",
+                                containerId, networkId, de.getMessage());
+                    }
+                }
             }
         }
         // Remove the per-instance bridge network after the container has been removed.
-        if (instance.getNetworkId() != null) {
-            removeNetworkWithRetry(instance.getNetworkId());
+        if (networkId != null) {
+            removeNetworkWithRetry(networkId);
         }
     }
 
@@ -643,6 +689,25 @@ public class CTFInstanceService {
             } catch (Exception e) {
                 log.warn("Network removal attempt {}/4 failed for {}: {}",
                         attempt, networkId, e.getMessage());
+                // Before sleeping, force-disconnect any endpoints still attached.
+                // This handles the case where a container could not be killed
+                // (permission denied) but can still be detached from the network.
+                try {
+                    Network detail = dockerClient.inspectNetworkCmd().withNetworkId(networkId).exec();
+                    if (detail.getContainers() != null) {
+                        for (String cid : detail.getContainers().keySet()) {
+                            try {
+                                dockerClient.disconnectFromNetworkCmd()
+                                        .withNetworkId(networkId)
+                                        .withContainerId(cid)
+                                        .withForce(true)
+                                        .exec();
+                                log.info("Disconnected endpoint {} from network {} (retry cleanup)",
+                                        cid.substring(0, Math.min(12, cid.length())), networkId);
+                            } catch (Exception de) { /* ignore per-endpoint errors */ }
+                        }
+                    }
+                } catch (Exception ie) { /* network may already be gone */ }
                 try { Thread.sleep(1000L * attempt); }
                 catch (InterruptedException ie) { Thread.currentThread().interrupt(); return; }
             }

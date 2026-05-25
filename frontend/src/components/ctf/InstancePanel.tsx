@@ -303,9 +303,15 @@ export default function InstancePanel({
     setBusy(false);
   };
 
+  // connString for TCP is stored as "host:port" — split so nc gets separate args.
+  const [tcpHost, tcpPort] = (connType === "TCP" && connString?.includes(":"))
+    ? connString.split(":")
+    : [connString ?? "", ""];
+  const ncCommand = connType === "TCP" ? `nc ${tcpHost} ${tcpPort}` : connString ?? "";
+
   const copyConn = () => {
     if (!connString) return;
-    const toCopy = connType === "TCP" ? `nc ${connString}` : connString;
+    const toCopy = connType === "TCP" ? ncCommand : connString;
     navigator.clipboard.writeText(toCopy);
     toast.success("Copied", toCopy);
   };
@@ -420,7 +426,7 @@ export default function InstancePanel({
             }}>
               <Terminal size={12} color={c.purple} style={{ flexShrink: 0 }} />
               <code style={{ flex: 1, fontSize: 12, color: c.purple, fontFamily: "monospace", wordBreak: "break-all" }}>
-                nc {connString}
+                {ncCommand}
               </code>
               <button
                 onClick={copyConn}

@@ -336,7 +336,7 @@ public class CTFCompetitionTeacherController {
         Files.createDirectories(coversDir);
         Files.write(coversDir.resolve(filename), file.getBytes());
 
-        String url = "/api/ctf/covers/" + filename;
+        String url = "/api/ctf/competitions/covers/" + filename;
         comp.setCoverImageUrl(url);
         competitionRepo.save(comp);
 

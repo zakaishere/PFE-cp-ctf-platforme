@@ -1,14 +1,13 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import Link from "next/link";
 import { useParams } from "next/navigation";
-import Navbar from "@/components/Navbar";
 import { toast } from "@/components/ui/PSPToast";
+import CtfWorkspaceHeader from "@/features/teacher/components/CtfWorkspaceHeader";
 import {
   Settings, Puzzle, Gamepad2, BarChart3, Users, FileText,
-  AlertTriangle, Download, ArrowLeft, PlayCircle, Pause, Play,
-  StopCircle, X, Calendar,
+  AlertTriangle, Download, PlayCircle, Pause, Play, StopCircle,
+  X, Calendar,
 } from "lucide-react";
 import {
   getTeacherCtfCompetition, getTeacherCtfOverview,
@@ -210,8 +209,8 @@ export default function TeacherCtfManagePage() {
   if (!comp) {
     return (
       <>
-        <Navbar />
-        <div style={{ display: "flex", marginTop: 48, height: "calc(100vh - 48px)", overflow: "hidden" }}>
+        <CtfWorkspaceHeader comp={null} />
+        <div style={{ display: "flex", marginTop: 52, height: "calc(100vh - 52px)", overflow: "hidden" }}>
           <div style={{ width: 260, borderRight: "1px solid var(--border)", padding: 20 }}>
             <div className="skel" style={{ height: 24, borderRadius: 4, marginBottom: 10 }} />
             <div className="skel" style={{ height: 20, borderRadius: 4, width: "60%" }} />
@@ -247,8 +246,8 @@ export default function TeacherCtfManagePage() {
 
   return (
     <>
-      <Navbar />
-      <div style={{ display: "flex", height: "calc(100vh - 56px)", overflow: "hidden" }}>
+      <CtfWorkspaceHeader comp={comp} />
+      <div style={{ display: "flex", marginTop: 52, height: "calc(100vh - 52px)", overflow: "hidden" }}>
 
         {/* ── LEFT SIDEBAR ─────────────────────────────────────────────────── */}
         <aside style={{
@@ -415,21 +414,12 @@ export default function TeacherCtfManagePage() {
             padding: "12px 16px", borderTop: "1px solid var(--border)",
             fontSize: 11, color: "var(--text-muted)", lineHeight: 1.6,
           }}>
-            <div style={{ display: "flex", alignItems: "center", gap: 5, marginBottom: 8 }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 5 }}>
               <Calendar size={11} />
               <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
                 {fmtSchedule(comp)}
               </span>
             </div>
-            <Link
-              href="/teacher/ctf"
-              style={{
-                display: "inline-flex", alignItems: "center", gap: 5,
-                color: "var(--text-muted)", textDecoration: "none", fontSize: 12, fontWeight: 500,
-              }}
-            >
-              <ArrowLeft size={12} /> Back to CTF list
-            </Link>
           </div>
         </aside>
 
