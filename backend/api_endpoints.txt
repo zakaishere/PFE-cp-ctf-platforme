@@ -1,0 +1,58 @@
+=======================================================
+           COMPETITIVE SCORING API ENDPOINTS
+=======================================================
+
+--- 1. TEACHER REVIEW ENDPOINTS (New in Step 3) ---
+
+POST /api/teacher/exams/{examId}/close
+Headers: Authorization: Bearer <Teacher_JWT>
+Description: Officially closes the LiveExam.
+
+GET /api/teacher/exams/{examId}/submissions
+Headers: Authorization: Bearer <Teacher_JWT>
+QueryParams (optional): ?studentId=<uuid>&problemId=<uuid>
+Description: Fetches paginated submissions for a specific exam, displaying points awarded, status, and teacher penalties.
+
+POST /api/teacher/submissions/{submissionId}/penalty
+Headers: Authorization: Bearer <Teacher_JWT>
+Body:
+{
+  "penaltyValue": 5.0,
+  "reason": "Plagiarism or hardcoded solution"
+}
+Description: Allows teachers to manually review the submission and override the Codeforces logic with a specific penalty value.
+
+--- 2. STUDENT EXAM ENDPOINTS (New in Step 3) ---
+
+POST /api/assessments/{assessmentId}/access
+Headers: Authorization: Bearer <Student_JWT>
+Body:
+{
+  "accessCode": "FINAL2026"
+}
+Description: Validates the strict access code before granting the student permission to see/submit to the exam.
+
+GET /api/students/me/exams/{examId}/results
+Headers: Authorization: Bearer <Student_JWT>
+Description: Triggers the ScoringService on the fly to sum the problem scores minus the penalties and converts everything into the final /20 scale grade. Returns { "finalGrade": 18.25 }.
+
+--- 3. CREATION PROCESS (From previous steps) ---
+
+POST /api/problems
+Headers: Authorization: Bearer <Teacher_JWT>
+Body: { "title": "...", "description": "...", "testCases": [...] }
+Description: Creates a problem. Returns { "problemId": "..." }.
+
+POST /api/assessments/exams
+Headers: Authorization: Bearer <Teacher_JWT>
+Body: { "title": "Midterm", "moduleId": "...", "durationMinutes": 120, "strictAccessCode": "CODE" }
+Description: Creates a LiveExam. Returns { "assessmentId": "..." }.
+
+POST /api/assessments/{examId}/problems/{problemId}
+Headers: Authorization: Bearer <Teacher_JWT>
+Description: Links the problem into the exam budget.
+
+POST /api/submissions
+Headers: Authorization: Bearer <Student_JWT>
+Body: { "studentId": "...", "problemId": "...", "assessmentId": "...", "accessCode": "...", "sourceCode": "...", "language": "PYTHON" }
+Description: Submits the code asynchronously to the RabbitMQ worker queue. Returns { "submissionId": "..." }.

@@ -1,0 +1,14 @@
+# Dev profile — enables seeding and debug logging.
+# Activate with: -Dspring.profiles.active=dev   or   SPRING_PROFILES_ACTIVE=dev
+spring:
+  jpa:
+    hibernate:
+      # Local convenience: let Hibernate add new columns so dev doesn't need to
+      # hand-run migrations. Production keeps 'validate' (see application.yml).
+      ddl-auto: update
+    show-sql: true
+
+logging:
+  level:
+    com.university.platform.config: INFO
+    org.hibernate.SQL: DEBUG

@@ -1,0 +1,100 @@
+# ============================================================================
+# MAVEN BUILD ARTIFACTS
+# ============================================================================
+target/
+.mvn/wrapper/maven-wrapper.jar
+pom.xml.tag
+pom.xml.releaseBackup
+pom.xml.versionsBackup
+pom.xml.next
+release.properties
+dependency-reduced-pom.xml
+buildNumber.properties
+.mvn/timing.properties
+.mvn/timer.properties
+
+# ============================================================================
+# IDE / EDITOR
+# ============================================================================
+# IntelliJ IDEA
+.idea/
+*.iws
+*.iml
+*.ipr
+out/
+
+# VS Code
+.vscode/
+*.code-workspace
+
+# STS (Spring Tool Suite)
+.apt_generated
+.classpath
+.factorypath
+.project
+.settings/
+.springBeans
+.sts4-cache
+
+# NetBeans
+/nbproject/private/
+/nbbuild/
+/dist/
+/nbdist/
+/.nb-gradle/
+build/
+
+# Vim
+.swp
+.swo
+*~
+
+# ============================================================================
+# OS SPECIFIC
+# ============================================================================
+.DS_Store
+Thumbs.db
+
+# ============================================================================
+# DEVELOPMENT & TEST ARTIFACTS (Dev-only - NEVER COMMIT)
+# ============================================================================
+# Development test scripts
+test_*.py
+stress_test*.py
+student_script.py
+teacher_script.py
+load_test.js
+
+# Development utility scripts & utilities
+/scripts/
+scripts/venv/
+
+# Test configuration & artifacts
+test_config.json
+temp/
+logs/
+
+# Python cache
+__pycache__/
+*.pyc
+*.pyo
+.pytest_cache/
+.coverage
+
+# Development markers
+.exam_id
+
+# Documentation files (dev/internal)
+API_DOCUMENTATION.md
+BACKEND_REPORT.md
+ENGINEERING_GUIDE.md
+LOCAL_SETUP.md
+PROJECT_CONTEXT_PROMPT.md
+progress.md
+
+# ============================================================================
+# LOG FILES
+# ============================================================================
+*.log
+npm-debug.log*
+yarn-debug.log*

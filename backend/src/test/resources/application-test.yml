@@ -1,0 +1,38 @@
+spring:
+  application:
+    name: backend-psp-test
+  
+  datasource:
+    url: jdbc:h2:mem:testdb;DB_CLOSE_DELAY=-1;DB_CLOSE_ON_EXIT=FALSE
+    driverClassName: org.h2.Driver
+    username: sa
+    password:
+  
+  jpa:
+    database-platform: org.hibernate.dialect.H2Dialect
+    hibernate:
+      ddl-auto: create-drop
+    show-sql: true
+    properties:
+      hibernate:
+        format_sql: true
+
+  sql:
+    init:
+      mode: never
+
+  rabbitmq:
+    host: localhost
+    port: 5672
+
+app:
+  security:
+    disable-verification: false
+
+jwt:
+  secret: TEST_SECRET_KEY_MUST_BE_AT_LEAST_32_BYTES_LONG_FOR_HMAC_SHA256
+  expiration-ms: 86400000
+
+logging:
+  level:
+    com.university.platform: DEBUG
