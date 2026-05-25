@@ -1,0 +1,436 @@
+"use client";
+
+import { useEffect, useMemo, useState } from "react";
+import { useParams } from "next/navigation";
+import {
+  Sword, Link2, Copy, Check, Crown, UserX, LogOut, Loader2,
+} from "lucide-react";
+import { toast } from "@/components/ui/PSPToast";
+import {
+  createCtfTeam, joinCtfTeam, leaveCtfTeam, kickCtfTeamMember, transferCtfCaptaincy,
+  getCtfScoreboard, getCtfCompetitionChallenges,
+  type CTFScoreboardEntryDTO, type CTFCompetitionChallengeDTO,
+} from "@/lib/api";
+import { useCTFCompetition } from "@/features/ctf/context/CTFCompetitionContext";
+import { CAT_CONFIG } from "@/features/ctf/shared/categoryConfig";
+
+export default function TeamPage() {
+  const { id } = useParams<{ id: string }>();
+  const ctx = useCTFCompetition();
+
+  const [userId, setUserId] = useState<string | null>(null);
+  useEffect(() => {
+    setUserId(typeof window !== "undefined" ? localStorage.getItem("autograde_userId") : null);
+  }, []);
+
+  if (ctx.loading) {
+    return <PageSpinner />;
+  }
+
+  if (!ctx.competition) return null;
+
+  if (!ctx.myTeam) {
+    return <NoTeamPanels competitionId={id} onTeamCreated={ctx.refetchTeam} canRegister={ctx.status === "UPCOMING"} />;
+  }
+
+  return <InTeamView competitionId={id} userId={userId} />;
+}
+
+// ── No-team state ────────────────────────────────────────────────────────────
+
+function NoTeamPanels({ competitionId, onTeamCreated, canRegister }: {
+  competitionId: string;
+  onTeamCreated: () => Promise<void>;
+  canRegister: boolean;
+}) {
+  const ctx = useCTFCompetition();
+  const [createName, setCreateName] = useState("");
+  const [joinCode, setJoinCode] = useState("");
+  const [busy, setBusy] = useState<"create" | "join" | null>(null);
+
+  const handleCreate = async () => {
+    if (!createName.trim() || createName.trim().length < 3) {
+      toast.warning("Team name too short", "Please enter at least 3 characters.");
+      return;
+    }
+    setBusy("create");
+    try {
+      await createCtfTeam(competitionId, { name: createName.trim() });
+      await onTeamCreated();
+      toast.success("Team created", `Welcome to "${createName.trim()}".`);
+    } catch { /* toasted */ } finally { setBusy(null); }
+  };
+
+  const handleJoin = async () => {
+    const code = joinCode.replace(/\s/g, "").toUpperCase();
+    if (!code) {
+      toast.warning("Invite code required", "Ask your captain for the code.");
+      return;
+    }
+    setBusy("join");
+    try {
+      await joinCtfTeam(competitionId, code);
+      await onTeamCreated();
+      toast.success("Joined team", "You're in.");
+    } catch { /* toasted */ } finally { setBusy(null); }
+  };
+
+  // Auto-format join code: dash after 4 chars.
+  const formatCode = (raw: string) => {
+    const clean = raw.replace(/[^A-Za-z0-9]/g, "").toUpperCase().slice(0, 10);
+    return clean.length > 4 ? `${clean.slice(0, 4)}-${clean.slice(4)}` : clean;
+  };
+
+  return (
+    <div style={{ maxWidth: 880, margin: "20px auto" }}>
+      <div style={{ marginBottom: 18 }}>
+        <div style={{ fontSize: 22, fontWeight: 800, color: "#f8fafc" }}>Join the competition</div>
+        <div style={{ fontSize: 13, color: "#64748b", marginTop: 4 }}>
+          Create a new team or join an existing one with an invite code.
+        </div>
+      </div>
+
+      {!canRegister && (
+        <div style={{
+          background: "rgba(239,68,68,0.08)", border: "1px solid rgba(239,68,68,0.3)",
+          borderRadius: 8, padding: "12px 14px", marginBottom: 18,
+          fontSize: 13, color: "#fecaca",
+        }}>
+          Team registration is closed — the competition has already started.
+        </div>
+      )}
+
+      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14 }}>
+        <div className="psp-card" style={{ padding: 18, opacity: canRegister ? 1 : 0.5 }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 12 }}>
+            <Sword size={16} color="#a78bfa" />
+            <span style={{ fontSize: 14, fontWeight: 700 }}>Create a Team</span>
+          </div>
+          <Label>Team Name</Label>
+          <input
+            className="input"
+            value={createName}
+            onChange={(e) => setCreateName(e.target.value)}
+            placeholder="The Hackers"
+            maxLength={30}
+            disabled={!canRegister}
+          />
+          <div style={{ fontSize: 11, color: "#475569", marginTop: 4 }}>3–30 characters</div>
+          <button
+            type="button"
+            className="psp-btn psp-btn-primary"
+            style={{ marginTop: 12, width: "100%" }}
+            disabled={!canRegister || busy !== null}
+            onClick={handleCreate}
+          >
+            {busy === "create" ? "Creating…" : "Create Team"}
+          </button>
+        </div>
+
+        <div className="psp-card" style={{ padding: 18, opacity: canRegister ? 1 : 0.5 }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 12 }}>
+            <Link2 size={16} color="#60a5fa" />
+            <span style={{ fontSize: 14, fontWeight: 700 }}>Join a Team</span>
+          </div>
+          <Label>Invite Code</Label>
+          <input
+            className="input"
+            value={joinCode}
+            onChange={(e) => setJoinCode(formatCode(e.target.value))}
+            placeholder="WOLF-XKCD"
+            disabled={!canRegister}
+            style={{ fontFamily: "ui-monospace, monospace", letterSpacing: "0.06em" }}
+            onKeyDown={(e) => { if (e.key === "Enter" && canRegister) handleJoin(); }}
+          />
+          <div style={{ fontSize: 11, color: "#475569", marginTop: 4 }}>auto-formats: dash after 4 chars</div>
+          <button
+            type="button"
+            className="psp-btn psp-btn-primary"
+            style={{ marginTop: 12, width: "100%" }}
+            disabled={!canRegister || busy !== null}
+            onClick={handleJoin}
+          >
+            {busy === "join" ? "Joining…" : "Join Team"}
+          </button>
+        </div>
+      </div>
+
+      <div style={{
+        marginTop: 18, padding: "10px 14px",
+        background: "#0f172a", border: "1px solid #1e293b", borderRadius: 8,
+        fontSize: 12, color: "#94a3b8",
+      }}>
+        Max team size: {ctx.competition?.maxTeamSize} · You can only be in one team.
+      </div>
+    </div>
+  );
+}
+
+// ── In-team view ─────────────────────────────────────────────────────────────
+
+function InTeamView({ competitionId, userId }: { competitionId: string; userId: string | null }) {
+  const ctx = useCTFCompetition();
+  const team = ctx.myTeam!;
+  const [scoreboard, setScoreboard] = useState<CTFScoreboardEntryDTO[]>([]);
+  const [challenges, setChallenges] = useState<CTFCompetitionChallengeDTO[]>([]);
+  const [copied, setCopied] = useState(false);
+  const [busyId, setBusyId] = useState<string | null>(null);
+  const isCaptain = team.captainId === userId;
+  const status = ctx.status ?? ctx.competition?.status ?? "UPCOMING";
+  const competitionEnded = status === "ENDED";
+  const canManage = status === "UPCOMING";
+
+  useEffect(() => {
+    getCtfScoreboard(competitionId).then(setScoreboard).catch(() => {});
+    getCtfCompetitionChallenges(competitionId).then(w => setChallenges(w.challenges ?? [])).catch(() => {});
+  }, [competitionId]);
+
+  const myEntry = scoreboard.find(e => e.teamId === team.id);
+
+  const copyInvite = () => {
+    navigator.clipboard.writeText(team.inviteCode);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  };
+
+  const onLeave = async () => {
+    if (!confirm("Leave this team?")) return;
+    try {
+      await leaveCtfTeam(competitionId);
+      await ctx.refetchTeam();
+      toast.success("Left team", "");
+    } catch { /* toasted */ }
+  };
+
+  const onKick = async (uid: string) => {
+    if (!confirm("Remove this member?")) return;
+    setBusyId(uid);
+    try {
+      await kickCtfTeamMember(competitionId, uid);
+      await ctx.refetchTeam();
+      toast.success("Member removed", "");
+    } catch { /* toasted */ } finally { setBusyId(null); }
+  };
+
+  const onTransfer = async (uid: string) => {
+    if (!confirm("Transfer captaincy?")) return;
+    setBusyId(uid);
+    try {
+      await transferCtfCaptaincy(competitionId, uid);
+      await ctx.refetchTeam();
+      toast.success("Captaincy transferred", "");
+    } catch { /* toasted */ } finally { setBusyId(null); }
+  };
+
+  const solvesByCategory = useMemo(() => {
+    const stats: Record<string, { solved: number; total: number }> = {};
+    for (const c of challenges) {
+      stats[c.category] ??= { solved: 0, total: 0 };
+      stats[c.category].total += 1;
+      if (c.solvedByMe) stats[c.category].solved += 1;
+    }
+    return stats;
+  }, [challenges]);
+
+  return (
+    <div style={{ maxWidth: 1000, margin: "0 auto" }}>
+      <div style={{ marginBottom: 18 }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+          <span style={{ width: 14, height: 14, borderRadius: "50%", background: team.avatarColor }} />
+          <span style={{ fontSize: 22, fontWeight: 800, color: "#f8fafc" }}>{team.name}</span>
+          {competitionEnded && myEntry && (
+            <span style={{
+              marginLeft: 8, fontSize: 11, fontWeight: 700,
+              background: "rgba(245,158,11,0.12)", color: "#fbbf24",
+              border: "1px solid rgba(245,158,11,0.35)", borderRadius: 4,
+              padding: "2px 8px", letterSpacing: "0.05em",
+            }}>
+              FINAL RANK #{myEntry.rank}
+            </span>
+          )}
+        </div>
+        <div style={{ fontSize: 13, color: "#64748b", marginTop: 4 }}>
+          {myEntry
+            ? `Rank #${myEntry.rank} · ${myEntry.totalPoints} pts · ${myEntry.solveCount} solves`
+            : "0 pts · 0 solves"}
+        </div>
+      </div>
+
+      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14 }}>
+        {/* LEFT — identity */}
+        <div className="psp-card" style={{ padding: 18 }}>
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 14 }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+              <span style={{ width: 10, height: 10, borderRadius: "50%", background: team.avatarColor }} />
+              <span style={{ fontSize: 15, fontWeight: 700 }}>{team.name}</span>
+            </div>
+            {isCaptain && (
+              <span style={{
+                fontSize: 10, fontWeight: 700, color: "#f59e0b",
+                background: "rgba(245,158,11,0.12)", border: "1px solid rgba(245,158,11,0.35)",
+                borderRadius: 4, padding: "2px 8px", letterSpacing: "0.05em",
+              }}>
+                CAPTAIN
+              </span>
+            )}
+          </div>
+
+          {isCaptain && canManage && (
+            <>
+              <Label>Invite Code</Label>
+              <div style={{ display: "flex", gap: 6, alignItems: "center", marginBottom: 14 }}>
+                <div style={{
+                  flex: 1, background: "#020617", border: "1px solid #1e293b", borderRadius: 6,
+                  padding: "8px 12px",
+                  fontFamily: "ui-monospace, monospace", fontSize: 15, fontWeight: 700,
+                  color: "#a78bfa", letterSpacing: "0.08em",
+                }}>
+                  {team.inviteCode}
+                </div>
+                <button type="button" className="psp-btn psp-btn-secondary"
+                  style={{ gap: 4, color: copied ? "#22c55e" : undefined }}
+                  onClick={copyInvite}
+                >
+                  {copied ? <Check size={11} /> : <Copy size={11} />}
+                  {copied ? "Copied" : "Copy"}
+                </button>
+              </div>
+              <div style={{ fontSize: 11, color: "#64748b", marginTop: -4, marginBottom: 14 }}>
+                Share with teammates
+              </div>
+            </>
+          )}
+
+          <Label>Members ({team.members.length}/{ctx.competition?.maxTeamSize ?? 4})</Label>
+          <div style={{ border: "1px solid #1e293b", borderRadius: 6 }}>
+            {team.members.map((m, i) => (
+              <div key={m.userId} style={{
+                display: "flex", alignItems: "center", gap: 8,
+                padding: "8px 12px",
+                borderBottom: i < team.members.length - 1 ? "1px solid #0f172a" : "none",
+              }}>
+                <span style={{
+                  width: 22, height: 22, borderRadius: "50%", background: team.avatarColor,
+                  display: "inline-flex", alignItems: "center", justifyContent: "center",
+                  color: "#fff", fontSize: 10, fontWeight: 700,
+                }}>{m.displayName.charAt(0).toUpperCase()}</span>
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div style={{ fontSize: 13 }}>
+                    {m.displayName}
+                    {m.userId === userId && (
+                      <span style={{ fontSize: 10, color: "#64748b", marginLeft: 6 }}>(you)</span>
+                    )}
+                  </div>
+                  <div style={{ fontSize: 11, color: "#475569" }}>
+                    {m.solveCount ?? 0} solve{(m.solveCount ?? 0) !== 1 ? "s" : ""} · {m.pointsContributed ?? 0} pts
+                  </div>
+                </div>
+                {m.role === "CAPTAIN" ? (
+                  <Crown size={13} color="#f59e0b" />
+                ) : isCaptain && m.userId !== userId && canManage && (
+                  <div style={{ display: "flex", gap: 4 }}>
+                    <button type="button" title="Transfer captaincy"
+                      style={iconBtnStyle("#f59e0b")} disabled={busyId === m.userId}
+                      onClick={() => onTransfer(m.userId)}>
+                      <Crown size={12} />
+                    </button>
+                    <button type="button" title="Kick member"
+                      style={iconBtnStyle("#f87171")} disabled={busyId === m.userId}
+                      onClick={() => onKick(m.userId)}>
+                      <UserX size={12} />
+                    </button>
+                  </div>
+                )}
+              </div>
+            ))}
+          </div>
+
+          {canManage && (
+            <button
+              type="button"
+              className="psp-btn psp-btn-secondary"
+              style={{ marginTop: 14, width: "100%", gap: 6, color: "#f87171", borderColor: "rgba(239,68,68,0.3)" }}
+              onClick={onLeave}
+            >
+              <LogOut size={12} /> Leave Team
+            </button>
+          )}
+        </div>
+
+        {/* RIGHT — stats */}
+        <div className="psp-card" style={{ padding: 18 }}>
+          <div style={{ fontSize: 14, fontWeight: 700, marginBottom: 14 }}>Team Performance</div>
+
+          <Stat label="Score"  value={`${myEntry?.totalPoints ?? 0} pts`} />
+          <Stat label="Rank"   value={myEntry ? `#${myEntry.rank} of ${scoreboard.length} teams` : "Unranked"} />
+          <Stat label="Solves" value={`${myEntry?.solveCount ?? 0} / ${challenges.length} challenges`} last />
+
+          <div style={{ marginTop: 18 }}>
+            <Label>By Category</Label>
+            {Object.keys(CAT_CONFIG).filter(k => solvesByCategory[k] !== undefined).map(cat => {
+              const conf = CAT_CONFIG[cat];
+              const s = solvesByCategory[cat];
+              const pct = s.total ? Math.round((s.solved / s.total) * 100) : 0;
+              const done = s.total > 0 && s.solved === s.total;
+              return (
+                <div key={cat} style={{
+                  display: "grid", gridTemplateColumns: "auto 1fr auto auto",
+                  alignItems: "center", gap: 8, marginBottom: 8, fontSize: 12,
+                }}>
+                  <span style={{ color: conf.accent, display: "inline-flex" }}>{conf.icon}</span>
+                  <span style={{ color: "#cbd5e1" }}>{conf.label}</span>
+                  <div style={{ width: 80, height: 4, background: "#1e293b", borderRadius: 2 }}>
+                    <div style={{ width: `${pct}%`, height: "100%", background: conf.accent, borderRadius: 2 }} />
+                  </div>
+                  <span style={{ fontFamily: "ui-monospace, monospace", color: done ? "#22c55e" : "#64748b" }}>
+                    {s.solved}/{s.total} {done && <Check size={10} style={{ display: "inline" }} />}
+                  </span>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ── Small helpers ────────────────────────────────────────────────────────────
+
+function Label({ children }: { children: React.ReactNode }) {
+  return (
+    <div style={{ fontSize: 11, color: "#64748b", marginBottom: 5, textTransform: "uppercase", letterSpacing: "0.05em", fontWeight: 700 }}>
+      {children}
+    </div>
+  );
+}
+
+function Stat({ label, value, last }: { label: string; value: string; last?: boolean }) {
+  return (
+    <div style={{
+      display: "flex", justifyContent: "space-between",
+      padding: "6px 0", borderBottom: last ? "none" : "1px solid #1a2234",
+      fontSize: 13,
+    }}>
+      <span style={{ color: "#64748b" }}>{label}</span>
+      <span style={{ color: "#f8fafc", fontWeight: 700, fontFamily: "ui-monospace, monospace" }}>{value}</span>
+    </div>
+  );
+}
+
+function iconBtnStyle(color: string): React.CSSProperties {
+  return {
+    background: "transparent", border: "1px solid #334155",
+    borderRadius: 4, padding: "4px 6px",
+    color, cursor: "pointer",
+    display: "inline-flex", alignItems: "center",
+  };
+}
+
+function PageSpinner() {
+  return (
+    <div style={{ display: "flex", justifyContent: "center", padding: 60 }}>
+      <Loader2 size={28} style={{ animation: "spin 1s linear infinite", color: "#6366f1" }} />
+    </div>
+  );
+}

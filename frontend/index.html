@@ -1,0 +1,721 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>PSP Platform — Dashboard</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: #f4f5f7; color: #172b4d; font-size: 13px; }
+
+  /* ── NAVBAR ── */
+  .navbar {
+    background: #0052cc;
+    height: 48px;
+    display: flex;
+    align-items: center;
+    padding: 0 16px;
+    position: fixed;
+    top: 0; left: 0; right: 0;
+    z-index: 200;
+    box-shadow: 0 1px 0 rgba(0,0,0,0.25);
+  }
+  .nav-logo {
+    display: flex; align-items: center; gap: 8px;
+    color: white; font-weight: 700; font-size: 15px;
+    padding-right: 16px;
+    border-right: 1px solid rgba(255,255,255,0.2);
+    margin-right: 4px;
+    letter-spacing: -0.3px;
+    white-space: nowrap;
+  }
+  .nav-logo-box {
+    width: 24px; height: 24px; background: white; border-radius: 4px;
+    display: flex; align-items: center; justify-content: center;
+    color: #0052cc; font-weight: 900; font-size: 13px;
+  }
+  .nav-link {
+    color: rgba(255,255,255,0.85);
+    padding: 0 14px; height: 48px;
+    display: flex; align-items: center;
+    font-size: 13px; font-weight: 500;
+    cursor: pointer; gap: 5px;
+    transition: background 0.12s; white-space: nowrap;
+  }
+  .nav-link:hover { background: rgba(255,255,255,0.12); color: white; }
+  .nav-link.active { background: rgba(255,255,255,0.16); color: white; }
+  .nav-right { margin-left: auto; display: flex; align-items: center; gap: 4px; }
+  .nav-btn {
+    width: 32px; height: 32px; border-radius: 50%;
+    background: rgba(255,255,255,0.12);
+    display: flex; align-items: center; justify-content: center;
+    cursor: pointer; color: white; font-size: 14px;
+    transition: background 0.12s; border: none;
+  }
+  .nav-btn:hover { background: rgba(255,255,255,0.22); }
+  .avatar {
+    width: 30px; height: 30px; border-radius: 50%;
+    background: #ff5630;
+    display: flex; align-items: center; justify-content: center;
+    color: white; font-weight: 700; font-size: 11px;
+    cursor: pointer; margin-left: 6px;
+  }
+
+  /* ── BREADCRUMB ── */
+  .breadcrumb {
+    background: white; border-bottom: 1px solid #dfe1e6;
+    padding: 0 24px; height: 40px;
+    display: flex; align-items: center; gap: 6px;
+    margin-top: 48px; font-size: 12px; color: #5e6c84;
+  }
+  .breadcrumb a { color: #0052cc; cursor: pointer; text-decoration: none; }
+  .breadcrumb a:hover { text-decoration: underline; }
+
+  /* ── LAYOUT ── */
+  .main { padding: 24px; max-width: 1320px; margin: 0 auto; }
+
+  /* ── PAGE HEADER ── */
+  .page-header {
+    display: flex; align-items: flex-start;
+    justify-content: space-between; margin-bottom: 20px;
+  }
+  .page-title { font-size: 20px; font-weight: 600; color: #172b4d; }
+  .page-sub { font-size: 12px; color: #5e6c84; margin-top: 3px; }
+  .btn-row { display: flex; gap: 8px; }
+
+  .btn-primary {
+    background: #0052cc; color: white; border: none;
+    padding: 0 14px; height: 32px; border-radius: 3px;
+    font-size: 13px; font-weight: 500; cursor: pointer;
+    display: flex; align-items: center; gap: 5px;
+    transition: background 0.12s; white-space: nowrap;
+  }
+  .btn-primary:hover { background: #0065ff; }
+  .btn-secondary {
+    background: white; color: #172b4d;
+    border: 1px solid #dfe1e6;
+    padding: 0 14px; height: 32px; border-radius: 3px;
+    font-size: 13px; cursor: pointer;
+    display: flex; align-items: center; gap: 5px;
+    transition: background 0.12s; white-space: nowrap;
+  }
+  .btn-secondary:hover { background: #f4f5f7; }
+  .btn-danger {
+    background: white; color: #de350b;
+    border: 1px solid #de350b;
+    padding: 0 12px; height: 26px; border-radius: 3px;
+    font-size: 11px; cursor: pointer; font-weight: 500;
+    transition: background 0.12s;
+  }
+  .btn-danger:hover { background: #ffebe6; }
+  .btn-sm {
+    padding: 0 10px; height: 26px; font-size: 11px;
+  }
+
+  /* ── STAT CARDS ── */
+  .stats { display: grid; grid-template-columns: repeat(4,1fr); gap: 12px; margin-bottom: 20px; }
+  .stat-card {
+    background: white; border: 1px solid #dfe1e6;
+    border-radius: 3px; padding: 16px;
+    display: flex; align-items: center; gap: 14px;
+    transition: box-shadow 0.12s; cursor: default;
+  }
+  .stat-card:hover { box-shadow: 0 1px 4px rgba(9,30,66,0.12); }
+  .stat-icon {
+    width: 42px; height: 42px; border-radius: 3px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 20px; flex-shrink: 0;
+  }
+  .ic-blue   { background: #deebff; }
+  .ic-green  { background: #e3fcef; }
+  .ic-orange { background: #fffae6; }
+  .ic-purple { background: #eae6ff; }
+  .stat-val { font-size: 24px; font-weight: 700; color: #172b4d; line-height: 1; }
+  .stat-lbl { font-size: 11px; color: #5e6c84; margin-top: 3px; }
+
+  /* ── TABS ── */
+  .tabs { display: flex; border-bottom: 2px solid #dfe1e6; margin-bottom: 20px; }
+  .tab {
+    padding: 10px 16px; font-size: 13px; font-weight: 500;
+    color: #5e6c84; cursor: pointer;
+    border-bottom: 2px solid transparent; margin-bottom: -2px;
+    transition: color 0.12s;
+  }
+  .tab:hover { color: #172b4d; }
+  .tab.active { color: #0052cc; border-bottom-color: #0052cc; }
+
+  /* ── TWO COL ── */
+  .two-col { display: grid; grid-template-columns: 1fr 320px; gap: 16px; }
+
+  /* ── SECTION CARD ── */
+  .card {
+    background: white; border: 1px solid #dfe1e6;
+    border-radius: 3px; margin-bottom: 14px;
+    overflow: hidden;
+  }
+  .card-header {
+    padding: 11px 16px; border-bottom: 1px solid #dfe1e6;
+    display: flex; align-items: center; justify-content: space-between;
+    background: white;
+  }
+  .card-title { font-size: 13px; font-weight: 600; color: #172b4d; }
+
+  /* ── FILTER BAR ── */
+  .filter-bar {
+    padding: 8px 16px; background: #fafbfc;
+    border-bottom: 1px solid #dfe1e6;
+    display: flex; gap: 6px; align-items: center;
+  }
+  .ftab {
+    padding: 3px 10px; border-radius: 3px;
+    font-size: 12px; font-weight: 500; cursor: pointer;
+    color: #5e6c84; border: none; background: transparent;
+    transition: background 0.1s;
+  }
+  .ftab:hover { background: #dfe1e6; }
+  .ftab.on { background: #0052cc; color: white; }
+  .search-box {
+    margin-left: auto; border: 1px solid #dfe1e6; border-radius: 3px;
+    padding: 0 10px; height: 28px; font-size: 12px;
+    color: #172b4d; outline: none; width: 200px;
+    transition: border-color 0.12s;
+  }
+  .search-box:focus { border-color: #4c9aff; box-shadow: 0 0 0 2px #4c9aff33; }
+
+  /* ── TABLE ── */
+  table { width: 100%; border-collapse: collapse; }
+  thead th {
+    text-align: left; padding: 8px 16px;
+    font-size: 11px; font-weight: 600; color: #5e6c84;
+    text-transform: uppercase; letter-spacing: 0.5px;
+    background: #f4f5f7; border-bottom: 1px solid #dfe1e6;
+    white-space: nowrap;
+  }
+  tbody tr { border-bottom: 1px solid #f4f5f7; transition: background 0.1s; cursor: pointer; }
+  tbody tr:last-child { border-bottom: none; }
+  tbody tr:hover { background: #f4f5f7; }
+  td { padding: 10px 16px; vertical-align: middle; }
+  .td-link { font-weight: 500; color: #0052cc; }
+  .td-link:hover { text-decoration: underline; }
+  .td-muted { color: #5e6c84; font-size: 12px; }
+
+  /* ── BADGES ── */
+  .badge {
+    display: inline-flex; align-items: center;
+    padding: 2px 8px; border-radius: 3px;
+    font-size: 11px; font-weight: 600;
+    text-transform: uppercase; letter-spacing: 0.3px;
+    white-space: nowrap;
+  }
+  .b-live   { background: #ffebe6; color: #bf2600; }
+  .b-tp     { background: #e3fcef; color: #006644; }
+  .b-comp   { background: #eae6ff; color: #403294; }
+  .b-easy   { background: #e3fcef; color: #006644; }
+  .b-med    { background: #fffae6; color: #974f0c; }
+  .b-hard   { background: #ffebe6; color: #bf2600; }
+  .b-pub    { background: #deebff; color: #0747a6; }
+  .b-priv   { background: #f4f5f7; color: #5e6c84; }
+
+  /* ── STATUS ── */
+  .status { display: inline-flex; align-items: center; gap: 5px; font-size: 12px; }
+  .dot { width: 7px; height: 7px; border-radius: 50%; display: inline-block; flex-shrink: 0; }
+  .d-green  { background: #00875a; }
+  .d-orange { background: #ff8b00; }
+  .d-gray   { background: #97a0af; }
+  .d-blue   { background: #0052cc; }
+
+  /* ── PENDING LINK ── */
+  .pending-link { color: #0052cc; font-weight: 600; font-size: 12px; cursor: pointer; }
+  .pending-link:hover { text-decoration: underline; }
+
+  /* ── RIGHT COL ── */
+  .lb-row {
+    display: flex; align-items: center;
+    padding: 9px 14px; border-bottom: 1px solid #f4f5f7;
+    gap: 10px; cursor: pointer; transition: background 0.1s;
+  }
+  .lb-row:hover { background: #f4f5f7; }
+  .lb-row:last-child { border-bottom: none; }
+  .lb-rank { width: 22px; text-align: center; font-weight: 700; font-size: 12px; color: #5e6c84; }
+  .lb-av {
+    width: 26px; height: 26px; border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 10px; font-weight: 700; color: white; flex-shrink: 0;
+  }
+  .lb-name { flex: 1; font-size: 12px; font-weight: 500; }
+  .lb-pts { font-weight: 700; color: #0052cc; font-size: 12px; }
+
+  .act-item {
+    padding: 10px 14px; border-bottom: 1px solid #f4f5f7;
+    display: flex; gap: 10px; align-items: flex-start;
+  }
+  .act-item:last-child { border-bottom: none; }
+  .act-dot { width: 8px; height: 8px; border-radius: 50%; margin-top: 4px; flex-shrink: 0; }
+  .act-text { font-size: 12px; line-height: 1.5; color: #172b4d; }
+  .act-time { font-size: 11px; color: #97a0af; margin-top: 2px; }
+
+  .scroll { max-height: 280px; overflow-y: auto; }
+  .scroll::-webkit-scrollbar { width: 4px; }
+  .scroll::-webkit-scrollbar-thumb { background: #dfe1e6; border-radius: 2px; }
+
+  /* ── JOIN REQUEST PANEL ── */
+  .req-row {
+    padding: 10px 16px; border-bottom: 1px solid #f4f5f7;
+    display: flex; align-items: center; gap: 10px;
+    transition: background 0.1s;
+  }
+  .req-row:hover { background: #f4f5f7; }
+  .req-row:last-child { border-bottom: none; }
+  .req-av {
+    width: 28px; height: 28px; border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 10px; font-weight: 700; color: white; flex-shrink: 0;
+  }
+  .req-info { flex: 1; }
+  .req-name { font-size: 12px; font-weight: 600; }
+  .req-sub  { font-size: 11px; color: #5e6c84; }
+  .req-actions { display: flex; gap: 5px; }
+  .btn-approve {
+    background: #e3fcef; color: #006644; border: none;
+    padding: 3px 10px; border-radius: 3px; font-size: 11px;
+    font-weight: 600; cursor: pointer; transition: background 0.12s;
+  }
+  .btn-approve:hover { background: #abf5d1; }
+  .btn-reject {
+    background: #ffebe6; color: #bf2600; border: none;
+    padding: 3px 10px; border-radius: 3px; font-size: 11px;
+    font-weight: 600; cursor: pointer; transition: background 0.12s;
+  }
+  .btn-reject:hover { background: #ffbdad; }
+
+  /* ── ALERT BANNER ── */
+  .alert-banner {
+    background: #fffae6; border: 1px solid #ffe380;
+    border-radius: 3px; padding: 10px 16px;
+    display: flex; align-items: center; gap: 10px;
+    margin-bottom: 16px; font-size: 12px; color: #172b4d;
+  }
+  .alert-banner strong { color: #172b4d; }
+
+  /* ── PROGRESS BAR ── */
+  .prog-wrap { background: #dfe1e6; border-radius: 2px; height: 4px; width: 70px; }
+  .prog-fill { background: #0052cc; height: 4px; border-radius: 2px; }
+
+  /* ── DIVIDER ── */
+  .divider { border: none; border-top: 1px solid #dfe1e6; margin: 0; }
+</style>
+</head>
+<body>
+
+<!-- NAVBAR -->
+<nav class="navbar">
+  <div class="nav-logo">
+    <div class="nav-logo-box">P</div>
+    PSP Platform
+  </div>
+  <a class="nav-link active">🏠 Dashboard</a>
+  <a class="nav-link">📋 Assessments</a>
+  <a class="nav-link">🧩 Problems</a>
+  <a class="nav-link">🏆 Competitions</a>
+  <a class="nav-link">📊 Leaderboard</a>
+  <div class="nav-right">
+    <button class="nav-btn">🔔</button>
+    <button class="nav-btn">⚙️</button>
+    <button class="nav-btn">❓</button>
+    <div class="avatar">SI</div>
+  </div>
+</nav>
+
+<!-- BREADCRUMB -->
+<div class="breadcrumb">
+  <a>PSP</a> &rsaquo; <span style="color:#172b4d;">Dashboard</span>
+</div>
+
+<!-- MAIN -->
+<div class="main">
+
+  <!-- ALERT BANNER -->
+  <div class="alert-banner">
+    ⚠️ &nbsp;<strong>15 pending join requests</strong> across your assessments — <a style="color:#0052cc;cursor:pointer;">Review now</a>
+  </div>
+
+  <!-- PAGE HEADER -->
+  <div class="page-header">
+    <div>
+      <div class="page-title">Teacher Dashboard</div>
+      <div class="page-sub">Sara Idrissi &nbsp;·&nbsp; Algorithms Department &nbsp;·&nbsp; Wednesday, April 23 2026</div>
+    </div>
+    <div class="btn-row">
+      <button class="btn-secondary">+ New Problem</button>
+      <button class="btn-primary">+ Create Assessment</button>
+    </div>
+  </div>
+
+  <!-- STATS -->
+  <div class="stats">
+    <div class="stat-card">
+      <div class="stat-icon ic-blue">📋</div>
+      <div><div class="stat-val">4</div><div class="stat-lbl">Active Assessments</div></div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-icon ic-green">✅</div>
+      <div><div class="stat-val">127</div><div class="stat-lbl">Submissions Today</div></div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-icon ic-orange">⏳</div>
+      <div><div class="stat-val">15</div><div class="stat-lbl">Pending Requests</div></div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-icon ic-purple">🧩</div>
+      <div><div class="stat-val">23</div><div class="stat-lbl">Problems Created</div></div>
+    </div>
+  </div>
+
+  <!-- TABS -->
+  <div class="tabs">
+    <div class="tab active">Assessments</div>
+    <div class="tab">Competitions</div>
+    <div class="tab">Submissions</div>
+    <div class="tab">Join Requests <span style="background:#de350b;color:white;font-size:10px;font-weight:700;padding:1px 6px;border-radius:10px;margin-left:5px;">15</span></div>
+  </div>
+
+  <!-- TWO COL -->
+  <div class="two-col">
+
+    <!-- LEFT -->
+    <div>
+
+      <!-- ASSESSMENTS TABLE -->
+      <div class="card">
+        <div class="card-header">
+          <div class="card-title">Your Assessments</div>
+          <div style="display:flex;gap:8px;">
+            <input class="search-box" placeholder="🔍  Search..." />
+          </div>
+        </div>
+        <div class="filter-bar">
+          <button class="ftab on">All</button>
+          <button class="ftab">Live Exams</button>
+          <button class="ftab">Open TPs</button>
+          <button class="ftab">Competitions</button>
+          <button class="ftab">Closed</button>
+        </div>
+        <table>
+          <thead>
+            <tr>
+              <th>Title</th>
+              <th>Type</th>
+              <th>Module</th>
+              <th>Visibility</th>
+              <th>Date</th>
+              <th>Status</th>
+              <th>Requests</th>
+              <th></th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td class="td-link">Midterm — Algorithms S5</td>
+              <td><span class="badge b-live">Live Exam</span></td>
+              <td class="td-muted">Algorithms</td>
+              <td><span class="status"><span class="dot d-blue"></span>Request Based</span></td>
+              <td class="td-muted">May 1 · 09:00</td>
+              <td><span class="status"><span class="dot d-orange"></span>Upcoming</span></td>
+              <td><span class="pending-link">3 pending</span></td>
+              <td><button class="btn-primary btn-sm">Review</button></td>
+            </tr>
+            <tr>
+              <td class="td-link">TP2 — Sorting Algorithms</td>
+              <td><span class="badge b-tp">Open TP</span></td>
+              <td class="td-muted">Data Structures</td>
+              <td><span class="status"><span class="dot d-green"></span>Module Only</span></td>
+              <td class="td-muted">Jun 1 · 23:59</td>
+              <td><span class="status"><span class="dot d-green"></span>Open</span></td>
+              <td class="td-muted">—</td>
+              <td><button class="btn-secondary btn-sm">View</button></td>
+            </tr>
+            <tr>
+              <td class="td-link">Spring Competition 2026</td>
+              <td><span class="badge b-comp">Competition</span></td>
+              <td class="td-muted">Open</td>
+              <td><span class="status"><span class="dot d-blue"></span>Request Based</span></td>
+              <td class="td-muted">Apr 28 · 10:00</td>
+              <td><span class="status"><span class="dot d-orange"></span>Registration</span></td>
+              <td><span class="pending-link">12 pending</span></td>
+              <td><button class="btn-primary btn-sm">Review</button></td>
+            </tr>
+            <tr>
+              <td class="td-link">Quiz 1 — Complexity</td>
+              <td><span class="badge b-live">Live Exam</span></td>
+              <td class="td-muted">Algorithms</td>
+              <td><span class="status"><span class="dot d-gray"></span>Access Code</span></td>
+              <td class="td-muted">Apr 10 · 14:00</td>
+              <td><span class="status d-gray"><span class="dot d-gray"></span>Closed</span></td>
+              <td class="td-muted">—</td>
+              <td><button class="btn-secondary btn-sm">Results</button></td>
+            </tr>
+            <tr>
+              <td class="td-link">TP1 — Arrays &amp; Strings</td>
+              <td><span class="badge b-tp">Open TP</span></td>
+              <td class="td-muted">Programming</td>
+              <td><span class="status"><span class="dot d-green"></span>Module Only</span></td>
+              <td class="td-muted">Mar 20 · 23:59</td>
+              <td><span class="status"><span class="dot d-gray"></span>Closed</span></td>
+              <td class="td-muted">—</td>
+              <td><button class="btn-secondary btn-sm">Results</button></td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <!-- JOIN REQUESTS -->
+      <div class="card">
+        <div class="card-header">
+          <div class="card-title">Pending Join Requests</div>
+          <div style="display:flex;gap:8px;">
+            <button class="btn-primary btn-sm">Approve All</button>
+            <button class="btn-secondary btn-sm">By Division</button>
+          </div>
+        </div>
+        <div class="scroll">
+          <div class="req-row">
+            <div class="req-av" style="background:#0052cc;">AB</div>
+            <div class="req-info">
+              <div class="req-name">Ali Benali</div>
+              <div class="req-sub">GINF S5 · Midterm — Algorithms S5 &nbsp;·&nbsp; "I'm in section B"</div>
+            </div>
+            <div class="req-actions">
+              <button class="btn-approve">✓ Approve</button>
+              <button class="btn-reject">✗ Reject</button>
+            </div>
+          </div>
+          <div class="req-row">
+            <div class="req-av" style="background:#6554c0;">YM</div>
+            <div class="req-info">
+              <div class="req-name">Youssef Mansouri</div>
+              <div class="req-sub">GINF S5 · Spring Competition 2026</div>
+            </div>
+            <div class="req-actions">
+              <button class="btn-approve">✓ Approve</button>
+              <button class="btn-reject">✗ Reject</button>
+            </div>
+          </div>
+          <div class="req-row">
+            <div class="req-av" style="background:#00875a;">FZ</div>
+            <div class="req-info">
+              <div class="req-name">Fatima Zahra</div>
+              <div class="req-sub">GI S3 · Spring Competition 2026 &nbsp;·&nbsp; "Team AlgoBeasts"</div>
+            </div>
+            <div class="req-actions">
+              <button class="btn-approve">✓ Approve</button>
+              <button class="btn-reject">✗ Reject</button>
+            </div>
+          </div>
+          <div class="req-row">
+            <div class="req-av" style="background:#ff5630;">KE</div>
+            <div class="req-info">
+              <div class="req-name">Karim El Amrani</div>
+              <div class="req-sub">GINF S5 · Midterm — Algorithms S5</div>
+            </div>
+            <div class="req-actions">
+              <button class="btn-approve">✓ Approve</button>
+              <button class="btn-reject">✗ Reject</button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- PROBLEMS TABLE -->
+      <div class="card">
+        <div class="card-header">
+          <div class="card-title">Problems</div>
+          <button class="btn-secondary btn-sm">+ New Problem</button>
+        </div>
+        <table>
+          <thead>
+            <tr>
+              <th>Title</th>
+              <th>Difficulty</th>
+              <th>Test Cases</th>
+              <th>Visibility</th>
+              <th>Submissions</th>
+              <th>Pass Rate</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td class="td-link">Two Sum</td>
+              <td><span class="badge b-easy">Easy</span></td>
+              <td class="td-muted">10</td>
+              <td><span class="badge b-pub">Public</span></td>
+              <td class="td-muted">342</td>
+              <td>
+                <div style="display:flex;align-items:center;gap:6px;">
+                  <div class="prog-wrap"><div class="prog-fill" style="width:78%;"></div></div>
+                  <span class="td-muted">78%</span>
+                </div>
+              </td>
+            </tr>
+            <tr>
+              <td class="td-link">Binary Search Tree Validation</td>
+              <td><span class="badge b-med">Medium</span></td>
+              <td class="td-muted">15</td>
+              <td><span class="badge b-pub">Public</span></td>
+              <td class="td-muted">178</td>
+              <td>
+                <div style="display:flex;align-items:center;gap:6px;">
+                  <div class="prog-wrap"><div class="prog-fill" style="width:52%;background:#ff8b00;"></div></div>
+                  <span class="td-muted">52%</span>
+                </div>
+              </td>
+            </tr>
+            <tr>
+              <td class="td-link">Graph Shortest Path</td>
+              <td><span class="badge b-hard">Hard</span></td>
+              <td class="td-muted">20</td>
+              <td><span class="badge b-priv">Private</span></td>
+              <td class="td-muted">43</td>
+              <td>
+                <div style="display:flex;align-items:center;gap:6px;">
+                  <div class="prog-wrap"><div class="prog-fill" style="width:28%;background:#de350b;"></div></div>
+                  <span class="td-muted">28%</span>
+                </div>
+              </td>
+            </tr>
+            <tr>
+              <td class="td-link">Palindrome Check</td>
+              <td><span class="badge b-easy">Easy</span></td>
+              <td class="td-muted">15</td>
+              <td><span class="badge b-pub">Public</span></td>
+              <td class="td-muted">289</td>
+              <td>
+                <div style="display:flex;align-items:center;gap:6px;">
+                  <div class="prog-wrap"><div class="prog-fill" style="width:85%;"></div></div>
+                  <span class="td-muted">85%</span>
+                </div>
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- RIGHT COL -->
+    <div>
+
+      <!-- LEADERBOARD -->
+      <div class="card" style="margin-bottom:14px;">
+        <div class="card-header">
+          <div class="card-title">🏆 Leaderboard</div>
+          <a style="font-size:11px;color:#0052cc;cursor:pointer;">View All</a>
+        </div>
+        <div class="scroll">
+          <div class="lb-row">
+            <div class="lb-rank" style="color:#ff8b00;">🥇</div>
+            <div class="lb-av" style="background:#0052cc;">AB</div>
+            <div class="lb-name">Ali Benali</div>
+            <div class="lb-pts">340 pts</div>
+          </div>
+          <div class="lb-row">
+            <div class="lb-rank" style="color:#97a0af;">🥈</div>
+            <div class="lb-av" style="background:#6554c0;">YM</div>
+            <div class="lb-name">Youssef Mansouri</div>
+            <div class="lb-pts">290 pts</div>
+          </div>
+          <div class="lb-row">
+            <div class="lb-rank" style="color:#bf4600;">🥉</div>
+            <div class="lb-av" style="background:#00875a;">FZ</div>
+            <div class="lb-name">Fatima Zahra</div>
+            <div class="lb-pts">250 pts</div>
+          </div>
+          <div class="lb-row">
+            <div class="lb-rank">4</div>
+            <div class="lb-av" style="background:#ff5630;">KE</div>
+            <div class="lb-name">Karim El Amrani</div>
+            <div class="lb-pts">210 pts</div>
+          </div>
+          <div class="lb-row">
+            <div class="lb-rank">5</div>
+            <div class="lb-av" style="background:#ff8b00;">NA</div>
+            <div class="lb-name">Nadia Alaoui</div>
+            <div class="lb-pts">190 pts</div>
+          </div>
+          <div class="lb-row">
+            <div class="lb-rank">6</div>
+            <div class="lb-av" style="background:#36b37e;">OB</div>
+            <div class="lb-name">Omar Berrada</div>
+            <div class="lb-pts">160 pts</div>
+          </div>
+          <div class="lb-row">
+            <div class="lb-rank">7</div>
+            <div class="lb-av" style="background:#00b8d9;">RA</div>
+            <div class="lb-name">Rachid Amrani</div>
+            <div class="lb-pts">130 pts</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ACTIVITY FEED -->
+      <div class="card">
+        <div class="card-header">
+          <div class="card-title">Recent Activity</div>
+        </div>
+        <div class="scroll">
+          <div class="act-item">
+            <div class="act-dot" style="background:#00875a;"></div>
+            <div>
+              <div class="act-text"><strong>Ali Benali</strong> solved <strong>Two Sum</strong> — ACCEPTED</div>
+              <div class="act-time">2 minutes ago</div>
+            </div>
+          </div>
+          <div class="act-item">
+            <div class="act-dot" style="background:#0052cc;"></div>
+            <div>
+              <div class="act-text"><strong>12 students</strong> requested to join <strong>Spring Competition</strong></div>
+              <div class="act-time">8 minutes ago</div>
+            </div>
+          </div>
+          <div class="act-item">
+            <div class="act-dot" style="background:#ff8b00;"></div>
+            <div>
+              <div class="act-text"><strong>Youssef M.</strong> — BST Validation WRONG ANSWER</div>
+              <div class="act-time">14 minutes ago</div>
+            </div>
+          </div>
+          <div class="act-item">
+            <div class="act-dot" style="background:#00875a;"></div>
+            <div>
+              <div class="act-text"><strong>Fatima Z.</strong> solved <strong>Palindrome</strong> — ACCEPTED</div>
+              <div class="act-time">21 minutes ago</div>
+            </div>
+          </div>
+          <div class="act-item">
+            <div class="act-dot" style="background:#0052cc;"></div>
+            <div>
+              <div class="act-text"><strong>3 students</strong> requested to join <strong>Midterm S5</strong></div>
+              <div class="act-time">35 minutes ago</div>
+            </div>
+          </div>
+          <div class="act-item">
+            <div class="act-dot" style="background:#de350b;"></div>
+            <div>
+              <div class="act-text"><strong>Karim E.</strong> — Graph Shortest Path TIMEOUT</div>
+              <div class="act-time">1 hour ago</div>
+            </div>
+          </div>
+          <div class="act-item">
+            <div class="act-dot" style="background:#00875a;"></div>
+            <div>
+              <div class="act-text"><strong>Nadia A.</strong> solved <strong>Two Sum</strong> — ACCEPTED</div>
+              <div class="act-time">1 hour ago</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+</div>
+
+</body>
+</html>
