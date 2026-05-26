@@ -28,6 +28,9 @@ public class CTFHintUnlock {
     @Column(name = "user_id")
     private UUID userId;
 
+    @Column(name = "team_id")
+    private UUID teamId;
+
     @Column(name = "hint_id", length = 50, nullable = false)
     private String hintId;
 

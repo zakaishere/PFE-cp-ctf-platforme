@@ -785,6 +785,8 @@ function HintsTab({
   onUnlockHint: (id: string) => void;
   accent: string;
 }) {
+  const [confirming, setConfirming] = useState<string | null>(null);
+
   if (hints.length === 0) {
     return (
       <div style={{ textAlign: "center", paddingTop: 40, color: TEXT_FAINT }}>
@@ -801,27 +803,44 @@ function HintsTab({
         const revealedText = h.text ?? unlockedHints[h.id];
         const isUnlocking  = unlockingHint === h.id;
         const isLocked     = !revealedText;
+        const isConfirming = confirming === h.id;
+
+        const handleClick = () => {
+          if (!isLocked || isUnlocking) return;
+          if (isConfirming) return; // already in confirm state
+          setConfirming(h.id);
+        };
+        const handleConfirm = (e: React.MouseEvent) => {
+          e.stopPropagation();
+          setConfirming(null);
+          onUnlockHint(h.id);
+        };
+        const handleCancel = (e: React.MouseEvent) => {
+          e.stopPropagation();
+          setConfirming(null);
+        };
+
         return (
           <div
             key={h.id}
-            onClick={() => { if (isLocked && !isUnlocking) onUnlockHint(h.id); }}
+            onClick={handleClick}
             style={{
               background: isLocked ? "rgba(255,255,255,0.015)" : "rgba(251,191,36,0.04)",
-              border: `1px solid ${isLocked ? BORDER_FINE : "rgba(251,191,36,0.22)"}`,
+              border: `1px solid ${isConfirming ? "rgba(251,191,36,0.45)" : isLocked ? BORDER_FINE : "rgba(251,191,36,0.22)"}`,
               borderRadius: 7, padding: "11px 12px",
               display: "flex", gap: 11, alignItems: "flex-start",
-              cursor: isLocked ? "pointer" : "default",
+              cursor: isLocked && !isConfirming ? "pointer" : "default",
               opacity: isUnlocking ? 0.6 : 1,
               transition: "all 0.15s ease-in-out",
             }}
             onMouseEnter={e => {
-              if (isLocked) {
+              if (isLocked && !isConfirming) {
                 (e.currentTarget as HTMLElement).style.borderColor = "rgba(251,191,36,0.35)";
                 (e.currentTarget as HTMLElement).style.background = "rgba(251,191,36,0.04)";
               }
             }}
             onMouseLeave={e => {
-              if (isLocked) {
+              if (isLocked && !isConfirming) {
                 (e.currentTarget as HTMLElement).style.borderColor = BORDER_FINE;
                 (e.currentTarget as HTMLElement).style.background = "rgba(255,255,255,0.015)";
               }
@@ -857,13 +876,59 @@ function HintsTab({
                   </span>
                 )}
               </div>
-              <div style={{
-                fontSize: 12.5, lineHeight: 1.6,
-                color: revealedText ? "#dde6f0" : TEXT_DIM,
-                fontStyle: revealedText ? "normal" : "italic",
-              }}>
-                {isUnlocking ? "Unlocking…" : revealedText ?? "Click to spend points and reveal this hint"}
-              </div>
+
+              {/* Inline confirmation prompt — replaces content when pending */}
+              {isConfirming ? (
+                <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
+                  <span style={{ fontSize: 12, color: "#fbbf24", fontWeight: 600 }}>
+                    Spend {h.cost} pts to unlock?
+                  </span>
+                  <button
+                    type="button"
+                    onClick={handleConfirm}
+                    style={{
+                      background: "#fbbf24", border: "none", borderRadius: 4,
+                      color: "#000", fontSize: 11, fontWeight: 800,
+                      padding: "3px 10px", cursor: "pointer",
+                      transition: "opacity 0.15s",
+                    }}
+                    onMouseEnter={e => { (e.currentTarget as HTMLElement).style.opacity = "0.85"; }}
+                    onMouseLeave={e => { (e.currentTarget as HTMLElement).style.opacity = "1"; }}
+                  >
+                    Confirm
+                  </button>
+                  <button
+                    type="button"
+                    onClick={handleCancel}
+                    style={{
+                      background: "transparent", border: `1px solid ${BORDER_FINE}`,
+                      borderRadius: 4, color: TEXT_MUTED, fontSize: 11, fontWeight: 600,
+                      padding: "3px 10px", cursor: "pointer",
+                      transition: "all 0.15s",
+                    }}
+                    onMouseEnter={e => {
+                      const el = e.currentTarget as HTMLElement;
+                      el.style.background = "rgba(255,255,255,0.04)";
+                      el.style.color = TEXT_PRIMARY;
+                    }}
+                    onMouseLeave={e => {
+                      const el = e.currentTarget as HTMLElement;
+                      el.style.background = "transparent";
+                      el.style.color = TEXT_MUTED;
+                    }}
+                  >
+                    Cancel
+                  </button>
+                </div>
+              ) : (
+                <div style={{
+                  fontSize: 12.5, lineHeight: 1.6,
+                  color: revealedText ? "#dde6f0" : TEXT_DIM,
+                  fontStyle: revealedText ? "normal" : "italic",
+                }}>
+                  {isUnlocking ? "Unlocking…" : revealedText ?? "Click to spend points and reveal this hint"}
+                </div>
+              )}
             </div>
           </div>
         );

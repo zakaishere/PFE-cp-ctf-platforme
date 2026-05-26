@@ -52,21 +52,31 @@ public class CTFHintService {
                 .findFirst()
                 .orElseThrow(() -> new EntityNotFoundException("Hint not found: " + hintId));
 
-        // Already unlocked — return hint text (student already paid; no double-charge).
-        if (hintUnlockRepository.existsByChallengeIdAndUserIdAndHintId(challengeId, userId, hintId)) {
-            return hint;
-        }
-
         if (competitionId != null && teamId != null) {
-            // Competition mode: deduct from team score via ctf_awards.
+            // Competition mode: idempotency is per-team — any member re-unlocking returns
+            // the text without charging again.
+            if (hintUnlockRepository.existsByHintIdAndTeamId(hintId, teamId)) {
+                return hint;
+            }
+            // Deduct from team score via a negative ctf_award.
             awardRepository.save(CTFAward.builder()
                     .competitionId(competitionId)
                     .teamId(teamId)
                     .value(-hint.cost())
                     .reason("hint:" + hintId)
                     .build());
+            hintUnlockRepository.save(CTFHintUnlock.builder()
+                    .challengeId(challengeId)
+                    .userId(userId)
+                    .teamId(teamId)
+                    .hintId(hintId)
+                    .pointsSpent(hint.cost())
+                    .build());
         } else {
-            // Practice mode: deduct from student.totalPoints.
+            // Practice mode: idempotency is per-user.
+            if (hintUnlockRepository.existsByChallengeIdAndUserIdAndHintId(challengeId, userId, hintId)) {
+                return hint;
+            }
             Student student = studentRepository.findById(userId)
                     .orElseThrow(() -> new ResponseStatusException(HttpStatus.FORBIDDEN, "Student not found."));
             if (student.getTotalPoints() < hint.cost()) {
@@ -75,14 +85,13 @@ public class CTFHintService {
             }
             student.setTotalPoints(student.getTotalPoints() - hint.cost());
             studentRepository.save(student);
+            hintUnlockRepository.save(CTFHintUnlock.builder()
+                    .challengeId(challengeId)
+                    .userId(userId)
+                    .hintId(hintId)
+                    .pointsSpent(hint.cost())
+                    .build());
         }
-
-        hintUnlockRepository.save(CTFHintUnlock.builder()
-                .challengeId(challengeId)
-                .userId(userId)
-                .hintId(hintId)
-                .pointsSpent(hint.cost())
-                .build());
 
         return hint;
     }

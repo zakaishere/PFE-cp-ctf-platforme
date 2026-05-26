@@ -2,8 +2,10 @@ package com.university.platform.ctf.service;
 
 import com.university.platform.ctf.entity.CTFChallenge;
 import com.university.platform.ctf.entity.CTFCompetition;
+import com.university.platform.ctf.repository.CTFAwardRepository;
 import org.springframework.stereotype.Service;
 
+import java.time.LocalDateTime;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -24,10 +26,12 @@ import java.util.UUID;
 @Service
 public class CTFScoringEngine {
 
-    private final CTFScoringService scoringService;
+    private final CTFScoringService  scoringService;
+    private final CTFAwardRepository awardRepo;
 
-    public CTFScoringEngine(CTFScoringService scoringService) {
+    public CTFScoringEngine(CTFScoringService scoringService, CTFAwardRepository awardRepo) {
         this.scoringService = scoringService;
+        this.awardRepo      = awardRepo;
     }
 
     /**
@@ -54,6 +58,17 @@ public class CTFScoringEngine {
             case LINEAR      -> scoringService.calculateLinear(initial, minimum, decay, n);
             case LOGARITHMIC -> scoringService.calculateLogarithmic(initial, minimum, decay, n);
         };
+    }
+
+    /**
+     * Sum of hint costs paid by {@code teamId} in {@code competitionId}, up to {@code asOf}.
+     * Returns a positive number (the penalty to subtract from the raw solve sum).
+     * Pass {@code asOf = null} to include all hint unlocks (live / unfrozen view).
+     *
+     * teamScore(team, asOf) = sum(challengeValue(solved challenges)) - hintPenalty(team, asOf)
+     */
+    public int hintPenalty(UUID competitionId, UUID teamId, LocalDateTime asOf) {
+        return -awardRepo.sumHintAwardsByTeamId(competitionId, teamId, asOf);
     }
 
     /**

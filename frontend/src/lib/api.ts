@@ -1268,6 +1268,7 @@ export interface CTFCompetitionChallengeDTO {
   isHidden?:           boolean | null;
   solveCount:          number;
   solvedByMe:          boolean;
+  myHintPenalty?:      number;
 }
 
 export interface CTFCompetitionSubmitResponse {

@@ -44,6 +44,7 @@ public class CTFCompetitionService {
     private final CTFCheatEventRepository       cheatRepo;
     private final CTFSubmissionRepository       submissionRepo;
     private final CTFAwardRepository            awardRepo;
+    private final CTFHintUnlockRepository       hintUnlockRepo;
     private final CTFScoringEngine              scoringEngine;
     private final CTFTeamService                teamService;
     private final CTFInstanceService            instanceService;
@@ -58,6 +59,7 @@ public class CTFCompetitionService {
                                  CTFCheatEventRepository cheatRepo,
                                  CTFSubmissionRepository submissionRepo,
                                  CTFAwardRepository awardRepo,
+                                 CTFHintUnlockRepository hintUnlockRepo,
                                  CTFScoringEngine scoringEngine,
                                  CTFTeamService teamService,
                                  CTFInstanceService instanceService,
@@ -71,6 +73,7 @@ public class CTFCompetitionService {
         this.cheatRepo       = cheatRepo;
         this.submissionRepo  = submissionRepo;
         this.awardRepo       = awardRepo;
+        this.hintUnlockRepo  = hintUnlockRepo;
         this.scoringEngine   = scoringEngine;
         this.teamService     = teamService;
         this.instanceService = instanceService;
@@ -262,8 +265,15 @@ public class CTFCompetitionService {
         LocalDateTime asOf = (status == CTFCompetition.Status.FROZEN && comp.getFrozenAt() != null)
                 ? comp.getFrozenAt() : null;
 
+        // Load the set of hint IDs this team has already unlocked (single bulk query).
+        // Empty when the user isn't in a team — all hints will appear locked.
+        List<UUID> visibleIds = visible.stream().map(CTFChallenge::getId).collect(Collectors.toList());
+        Set<String> unlockedHintIds = (teamId != null && !visibleIds.isEmpty())
+                ? hintUnlockRepo.findHintIdsByTeamIdAndChallengeIdIn(teamId, visibleIds)
+                : Collections.emptySet();
+
         List<CTFChallengeDTO> dtos = visible.stream()
-                .map(c -> buildChallengeDTO(c, solvedChallengeIds.contains(c.getId()), comp, asOf))
+                .map(c -> buildChallengeDTO(c, solvedChallengeIds.contains(c.getId()), comp, asOf, unlockedHintIds))
                 .collect(Collectors.toList());
 
         String message = switch (status) {
@@ -679,6 +689,16 @@ public class CTFCompetitionService {
         }
     }
 
+    /** Pushes a live scoreboard update to all connected clients, unless the board is frozen. */
+    public void broadcastScoreboardIfUnfrozen(UUID competitionId) {
+        CTFCompetition comp = requireCompetition(competitionId);
+        if (!Boolean.TRUE.equals(comp.getIsFrozen())) {
+            ws.convertAndSend(
+                    "/topic/ctf/competitions/" + competitionId + "/scoreboard",
+                    getScoreboard(competitionId));
+        }
+    }
+
     public void broadcastControlEvent(UUID competitionId, String event) {
         CTFCompetition comp = requireCompetition(competitionId);
         CTFCompetitionStatusDTO status = getStatus(competitionId, null);
@@ -722,16 +742,34 @@ public class CTFCompetitionService {
     // ── Challenge DTO builder ──────────────────────────────────────────────────
 
     /**
-     * @param asOf when non-null (frozen), use solve count up to that timestamp so
-     *             challenge values match the frozen scoreboard.  {@code solved} flag
-     *             always reflects the team's real-time state regardless of freeze.
+     * @param asOf            when non-null (frozen), use solve count up to that timestamp.
+     * @param unlockedHintIds hint IDs this team has already unlocked — content is
+     *                        withheld for all other hints so the answer never leaks.
      */
     private CTFChallengeDTO buildChallengeDTO(CTFChallenge c, boolean solved,
-                                               CTFCompetition comp, LocalDateTime asOf) {
+                                               CTFCompetition comp, LocalDateTime asOf,
+                                               Set<String> unlockedHintIds) {
         int solveCount = (asOf != null)
                 ? solveRepo.countByCompetitionIdAndChallengeIdAndSolvedAtLessThanEqual(comp.getId(), c.getId(), asOf)
                 : solveRepo.countByCompetitionIdAndChallengeId(comp.getId(), c.getId());
         int currentPoints = scoringEngine.challengeValue(comp, c, solveCount);
+
+        List<CTFHintDTO> hints = null;
+        int myHintPenalty = 0;
+        if (c.getHints() != null) {
+            hints = c.getHints().stream()
+                    .map(h -> {
+                        boolean unlocked = unlockedHintIds.contains(h.id());
+                        // Send text only if the team has unlocked this hint.
+                        return new CTFHintDTO(h.id(), h.cost(), unlocked ? h.text() : null);
+                    })
+                    .collect(Collectors.toList());
+            myHintPenalty = c.getHints().stream()
+                    .filter(h -> unlockedHintIds.contains(h.id()))
+                    .mapToInt(com.university.platform.ctf.dto.CTFHint::cost)
+                    .sum();
+        }
+
         return CTFChallengeDTO.builder()
                 .id(c.getId())
                 .title(c.getTitle())
@@ -747,13 +785,12 @@ public class CTFCompetitionService {
                 .downloadableFileUrl(c.getDownloadableFileUrl())
                 .downloadableFileName(c.getDownloadableFileName())
                 .mediaUrl(c.getMediaUrl())
-                .hints(c.getHints() == null ? null : c.getHints().stream()
-                        .map(h -> new CTFHintDTO(h.id(), h.cost(), h.text()))
-                        .collect(Collectors.toList()))
+                .hints(hints)
                 .maxAttempts(c.getMaxAttempts())
                 .isActive(Boolean.TRUE.equals(c.getIsActive()))
                 .solveCount(solveCount)
                 .solvedByMe(solved)
+                .myHintPenalty(myHintPenalty)
                 .build();
     }
 

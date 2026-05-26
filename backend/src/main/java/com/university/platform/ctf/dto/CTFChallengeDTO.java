@@ -45,6 +45,8 @@ public class CTFChallengeDTO {
     private List<String> myUnlockedHints;
     private int myAttempts;
     private boolean hasActiveInstance;
+    /** Sum of hint costs this team has paid for this challenge (positive integer, 0 if none). */
+    private int myHintPenalty;
 
     // Teacher-only field — always null in student-facing responses
     private Boolean isHidden;
