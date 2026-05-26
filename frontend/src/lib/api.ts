@@ -979,6 +979,7 @@ export interface CTFChallengeCreateRequest {
   dockerPidsLimit?:   number;
   downloadableFileUrl?:  string;
   downloadableFileName?: string;
+  mediaUrl?:             string;
   maxAttempts?:       number;
   isActive?:          boolean;
   hints?:             CTFHintRequest[];
@@ -1005,6 +1006,7 @@ export interface CTFChallengeUpdateRequest {
   dockerPidsLimit?:   number;
   downloadableFileUrl?:  string;
   downloadableFileName?: string;
+  mediaUrl?:             string;
   maxAttempts?:       number;
   isActive?:          boolean;
   hints?:             CTFHintRequest[];
@@ -1259,6 +1261,7 @@ export interface CTFCompetitionChallengeDTO {
   dockerPidsLimit?:    number | null;
   downloadableFileUrl: string | null;
   downloadableFileName:string | null;
+  mediaUrl?:           string | null;
   hints:               CTFHintDTO[];
   maxAttempts:         number | null; // null = unlimited
   isActive:            boolean;
@@ -1519,6 +1522,7 @@ export interface TeacherCtfChallengeCreateRequest {
   dockerPidsLimit?:     number;
   downloadableFileUrl?: string;
   downloadableFileName?:string;
+  mediaUrl?:            string;
   maxAttempts?:         number | null; // null = unlimited; 0 also treated as unlimited by backend
   isActive?:            boolean;
   hints?:               { cost: number; text: string }[];

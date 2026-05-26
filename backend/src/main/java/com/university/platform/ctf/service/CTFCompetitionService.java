@@ -746,6 +746,7 @@ public class CTFCompetitionService {
                 .connectionType(c.getConnectionType())
                 .downloadableFileUrl(c.getDownloadableFileUrl())
                 .downloadableFileName(c.getDownloadableFileName())
+                .mediaUrl(c.getMediaUrl())
                 .hints(c.getHints() == null ? null : c.getHints().stream()
                         .map(h -> new CTFHintDTO(h.id(), h.cost(), h.text()))
                         .collect(Collectors.toList()))

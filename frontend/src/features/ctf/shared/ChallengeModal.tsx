@@ -4,7 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import {
   X, CheckCircle2, AlertCircle, Loader2, Download, Lightbulb, Pause, Infinity,
-  ChevronDown, Users, Trophy,
+  Users, Trophy,
 } from "lucide-react";
 import { toast } from "@/components/ui/PSPToast";
 import InstancePanel from "@/components/ctf/InstancePanel";
@@ -64,11 +64,11 @@ export default function ChallengeModal({
   const inputRef = useRef<HTMLInputElement>(null);
   const wrongTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  const [attempts,           setAttempts]           = useState<CTFAttemptDTO[]>([]);
-  const [attemptsUsed,       setAttemptsUsed]       = useState(0);
-  const [attemptsRemaining,  setAttemptsRemaining]  = useState<number | null>(null);
-  const [lockedOut,          setLockedOut]          = useState(false);
-  const [newRowIds,          setNewRowIds]          = useState<Set<string>>(new Set());
+  const [attempts,          setAttempts]          = useState<CTFAttemptDTO[]>([]);
+  const [attemptsUsed,      setAttemptsUsed]      = useState(0);
+  const [attemptsRemaining, setAttemptsRemaining] = useState<number | null>(null);
+  const [lockedOut,         setLockedOut]         = useState(false);
+  const [newRowIds,         setNewRowIds]         = useState<Set<string>>(new Set());
 
   useEffect(() => {
     setLoading(true);
@@ -102,7 +102,7 @@ export default function ChallengeModal({
 
   const doClose = () => {
     setClosing(true);
-    setTimeout(onClose, 220);
+    setTimeout(onClose, 200);
   };
 
   const submit = async () => {
@@ -161,31 +161,33 @@ export default function ChallengeModal({
         onClick={doClose}
         style={{
           position: "fixed", inset: 0, zIndex: 110,
-          background: closing ? "rgba(0,0,0,0)" : "rgba(2,6,18,0.75)",
-          backdropFilter: closing ? "blur(0px)" : "blur(6px)",
-          WebkitBackdropFilter: closing ? "blur(0px)" : "blur(6px)",
-          transition: "background 220ms ease, backdrop-filter 220ms ease",
-          display: "flex", justifyContent: "center", alignItems: "flex-end",
+          background: closing ? "rgba(0,0,0,0)" : "rgba(2,6,18,0.82)",
+          backdropFilter: closing ? "blur(0px)" : "blur(8px)",
+          WebkitBackdropFilter: closing ? "blur(0px)" : "blur(8px)",
+          transition: "background 200ms ease, backdrop-filter 200ms ease",
+          display: "flex", justifyContent: "center", alignItems: "center",
+          padding: "16px",
         }}
       >
-        {/* Modal sheet */}
+        {/* Centered modal */}
         <div
           role="dialog"
           aria-modal="true"
           onClick={(e) => e.stopPropagation()}
           style={{
-            width: "100%", maxWidth: 900,
-            maxHeight: "93vh", height: "93vh",
+            width: "min(96vw, 940px)",
+            height: "min(88vh, 700px)",
             background: "#080d1c",
-            border: "1px solid #1e293b",
-            borderTop: `2px solid ${accent}`,
-            borderRadius: "14px 14px 0 0",
+            border: `1px solid ${accent}28`,
+            borderRadius: 14,
             display: "flex", flexDirection: "column",
             overflow: "hidden",
-            boxShadow: "0 -8px 48px rgba(0,0,0,0.6), 0 0 0 1px rgba(255,255,255,0.04)",
+            boxShadow: `0 0 0 1px rgba(255,255,255,0.04),
+                        0 24px 80px rgba(0,0,0,0.75),
+                        0 0 60px ${accent}0e`,
             animation: closing
-              ? "ctfm-down 220ms cubic-bezier(0.4,0,1,1) forwards"
-              : "ctfm-up 320ms cubic-bezier(0.16,1,0.3,1)",
+              ? "ctfm-out 200ms cubic-bezier(0.4,0,1,1) forwards"
+              : "ctfm-in 280ms cubic-bezier(0.16,1,0.3,1)",
           }}
         >
           {loading ? (
@@ -220,13 +222,13 @@ export default function ChallengeModal({
       </div>
 
       <style jsx global>{`
-        @keyframes ctfm-up {
-          from { transform: translateY(72px) scale(0.98); opacity: 0; }
-          to   { transform: translateY(0)    scale(1);    opacity: 1; }
+        @keyframes ctfm-in {
+          from { opacity: 0; transform: scale(0.95) translateY(10px); }
+          to   { opacity: 1; transform: scale(1)    translateY(0); }
         }
-        @keyframes ctfm-down {
-          from { transform: translateY(0)    scale(1);    opacity: 1; }
-          to   { transform: translateY(72px) scale(0.98); opacity: 0; }
+        @keyframes ctfm-out {
+          from { opacity: 1; transform: scale(1)    translateY(0); }
+          to   { opacity: 0; transform: scale(0.95) translateY(10px); }
         }
         @keyframes ctf-shake {
           0%,100% { transform: translateX(0); }
@@ -241,9 +243,9 @@ export default function ChallengeModal({
           to   { opacity: 1; transform: translateY(0)   scale(1); }
         }
         @keyframes ctf-glow-pulse {
-          0%   { box-shadow: 0 0 0 0   rgba(34,197,94,0.5); }
+          0%   { box-shadow: 0 0 0 0      rgba(34,197,94,0.5); }
           50%  { box-shadow: 0 0 28px 6px rgba(34,197,94,0.25); }
-          100% { box-shadow: 0 0 0 0   rgba(34,197,94,0); }
+          100% { box-shadow: 0 0 0 0      rgba(34,197,94,0); }
         }
         @keyframes ctf-row-in {
           from { opacity: 0; transform: translateY(-4px); }
@@ -252,13 +254,12 @@ export default function ChallengeModal({
         @keyframes ctf-unlock-spin {
           to { transform: rotate(360deg); }
         }
+        @keyframes ctf-tab-in {
+          from { opacity: 0; transform: translateY(5px); }
+          to   { opacity: 1; transform: translateY(0); }
+        }
         @media (prefers-reduced-motion: reduce) {
-          [style*="ctfm-up"], [style*="ctfm-down"],
-          [style*="ctf-shake"], [style*="ctf-glow-pulse"],
-          [style*="ctf-row-in"] {
-            animation: none !important;
-            transition: none !important;
-          }
+          * { animation: none !important; transition: none !important; }
         }
       `}</style>
     </>
@@ -269,25 +270,24 @@ export default function ChallengeModal({
 
 function LoadingSkeleton() {
   return (
-    <div style={{ flex: 1, padding: "24px 24px", display: "flex", flexDirection: "column", gap: 16 }}>
-      {/* Header skeleton */}
-      <div style={{ display: "flex", gap: 10, alignItems: "flex-start", borderBottom: "1px solid #1e293b", paddingBottom: 16 }}>
+    <div style={{ flex: 1, display: "flex", flexDirection: "column", padding: "18px 20px", gap: 14 }}>
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", borderBottom: "1px solid #1e293b", paddingBottom: 14, gap: 16 }}>
         <div style={{ flex: 1 }}>
-          <div className="skel" style={{ height: 16, width: 120, borderRadius: 6, marginBottom: 10 }} />
-          <div className="skel" style={{ height: 26, width: "70%", borderRadius: 6, marginBottom: 8 }} />
-          <div className="skel" style={{ height: 14, width: 160, borderRadius: 6 }} />
+          <div className="skel" style={{ height: 15, width: 140, borderRadius: 6, marginBottom: 10 }} />
+          <div className="skel" style={{ height: 24, width: "65%", borderRadius: 6, marginBottom: 8 }} />
+          <div className="skel" style={{ height: 13, width: 180, borderRadius: 5 }} />
         </div>
-        <div className="skel" style={{ width: 28, height: 28, borderRadius: 6 }} />
+        <div className="skel" style={{ width: 28, height: 28, borderRadius: 6, flexShrink: 0 }} />
       </div>
-      {/* Body skeleton */}
-      <div style={{ display: "flex", gap: 20, flex: 1 }}>
-        <div style={{ flex: 1.4 }}>
-          <div className="skel" style={{ height: 14, width: "90%", borderRadius: 4, marginBottom: 8 }} />
-          <div className="skel" style={{ height: 14, width: "80%", borderRadius: 4, marginBottom: 8 }} />
-          <div className="skel" style={{ height: 14, width: "60%", borderRadius: 4 }} />
+      <div style={{ flex: 1, display: "grid", gridTemplateColumns: "1.6fr 1fr", gap: 20 }}>
+        <div>
+          {[90, 80, 70, 55, 60].map((w, i) => (
+            <div key={i} className="skel" style={{ height: 13, width: `${w}%`, borderRadius: 4, marginBottom: 8 }} />
+          ))}
         </div>
-        <div style={{ flex: 1 }}>
-          <div className="skel" style={{ height: 120, borderRadius: 8 }} />
+        <div>
+          <div className="skel" style={{ height: 100, borderRadius: 8, marginBottom: 10 }} />
+          <div className="skel" style={{ height: 40, borderRadius: 7 }} />
         </div>
       </div>
     </div>
@@ -346,80 +346,63 @@ function ChallengeBody({
   lockedOut: boolean;
   newRowIds: Set<string>;
 }) {
+  const [activeTab, setActiveTab] = useState<"submit" | "solvers">("submit");
+
   const alreadySolved = c.solvedByMe || attempts.some(a => a.correct);
   const inputDisabled = busy || isPaused || lockedOut || alreadySolved;
   const submitDisabled = inputDisabled || !flag.trim();
   const isUnlimited = c.maxAttempts == null;
   const progressPct = isUnlimited || !c.maxAttempts ? 0
     : Math.min(100, (attemptsUsed / c.maxAttempts) * 100);
-
   const diffColor = DIFF_COLORS[c.difficulty] ?? "#94a3b8";
   const pts = c.currentPoints ?? c.basePoints;
 
   return (
     <>
-      {/* ── Sticky header ────────────────────────────────────────────────────── */}
+      {/* ── Header ────────────────────────────────────────────────────────────── */}
       <div style={{
-        padding: "14px 20px 12px",
+        padding: "13px 20px 11px",
         borderBottom: "1px solid #1a2235",
         flexShrink: 0,
-        background: "linear-gradient(180deg, #0c1225 0%, #080d1c 100%)",
+        background: `linear-gradient(180deg, ${accent}0a 0%, #080d1c 100%)`,
       }}>
-        {/* Top row: category + difficulty + close */}
-        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8 }}>
-          <div style={{ display: "flex", gap: 7, alignItems: "center" }}>
-            {/* Category chip */}
+        {/* badges + close */}
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 7 }}>
+          <div style={{ display: "flex", gap: 6, alignItems: "center", flexWrap: "wrap" }}>
             <span style={{
               display: "inline-flex", alignItems: "center", gap: 5,
-              background: `${accent}18`,
-              border: `1px solid ${accent}30`,
-              color: accent,
-              borderRadius: 5, padding: "2px 9px",
-              fontSize: 11, fontWeight: 700,
-              letterSpacing: "0.05em", textTransform: "uppercase",
+              background: `${accent}18`, border: `1px solid ${accent}30`,
+              color: accent, borderRadius: 5, padding: "2px 9px",
+              fontSize: 11, fontWeight: 700, letterSpacing: "0.05em", textTransform: "uppercase",
             }}>
               {conf?.icon} {c.category}
             </span>
-
-            {/* Difficulty badge */}
             <span style={{
               display: "inline-flex", alignItems: "center",
-              background: `${diffColor}18`,
-              border: `1px solid ${diffColor}28`,
-              color: diffColor,
-              borderRadius: 5, padding: "2px 9px",
-              fontSize: 10, fontWeight: 700,
-              letterSpacing: "0.04em", textTransform: "uppercase",
+              background: `${diffColor}18`, border: `1px solid ${diffColor}28`,
+              color: diffColor, borderRadius: 5, padding: "2px 9px",
+              fontSize: 10, fontWeight: 700, letterSpacing: "0.04em", textTransform: "uppercase",
             }}>
               {c.difficulty}
             </span>
-
-            {/* Solved indicator */}
             {alreadySolved && (
               <span style={{
                 display: "inline-flex", alignItems: "center", gap: 4,
-                background: "rgba(34,197,94,0.1)",
-                border: "1px solid rgba(34,197,94,0.25)",
-                color: "#22c55e",
-                borderRadius: 5, padding: "2px 9px",
+                background: "rgba(34,197,94,0.1)", border: "1px solid rgba(34,197,94,0.25)",
+                color: "#22c55e", borderRadius: 5, padding: "2px 9px",
                 fontSize: 10, fontWeight: 700,
               }}>
                 <CheckCircle2 size={10} /> SOLVED
               </span>
             )}
           </div>
-
-          {/* Close button */}
           <button
             onClick={onClose}
             style={{
-              background: "rgba(255,255,255,0.04)",
-              border: "1px solid #1e293b",
-              borderRadius: 6,
-              color: "#64748b", cursor: "pointer",
-              padding: "5px 7px",
-              display: "inline-flex", alignItems: "center",
-              transition: "background 150ms, color 150ms",
+              background: "rgba(255,255,255,0.04)", border: "1px solid #1e293b",
+              borderRadius: 6, color: "#64748b", cursor: "pointer",
+              padding: "5px 7px", display: "inline-flex", alignItems: "center",
+              transition: "background 150ms, color 150ms", flexShrink: 0,
             }}
             onMouseEnter={e => {
               (e.currentTarget as HTMLElement).style.background = "rgba(255,255,255,0.08)";
@@ -437,41 +420,33 @@ function ChallengeBody({
 
         {/* Title */}
         <div style={{
-          fontSize: 22, fontWeight: 800,
-          color: "#f8fafc", lineHeight: 1.25,
-          letterSpacing: "-0.3px",
-          marginBottom: 8,
+          fontSize: 21, fontWeight: 800, color: "#f8fafc",
+          lineHeight: 1.25, letterSpacing: "-0.3px", marginBottom: 7,
         }}>
           {c.title}
         </div>
 
-        {/* Meta row: points + solve count */}
-        <div style={{ display: "flex", alignItems: "center", gap: 14, flexWrap: "wrap" }}>
+        {/* Meta */}
+        <div style={{ display: "flex", alignItems: "center", gap: 12, flexWrap: "wrap" }}>
           <div style={{ display: "flex", alignItems: "center", gap: 5 }}>
-            <Trophy size={13} color={accent} />
-            <span style={{ fontSize: 15, fontWeight: 800, color: accent, fontFamily: "ui-monospace, monospace" }}>
+            <Trophy size={12} color={accent} />
+            <span style={{ fontSize: 14, fontWeight: 800, color: accent, fontFamily: "ui-monospace, monospace" }}>
               {pts}
             </span>
-            <span style={{ fontSize: 12, color: "#475569" }}>pts</span>
+            <span style={{ fontSize: 11, color: "#475569" }}>pts</span>
           </div>
-
-          <div style={{ width: 1, height: 12, background: "#1e293b" }} />
-
+          <div style={{ width: 1, height: 11, background: "#1e293b" }} />
           <div style={{ display: "flex", alignItems: "center", gap: 5 }}>
-            <Users size={12} color="#475569" />
-            <span style={{ fontSize: 12, color: "#64748b" }}>
+            <Users size={11} color="#475569" />
+            <span style={{ fontSize: 11, color: "#64748b" }}>
               <span style={{ color: "#94a3b8", fontWeight: 600 }}>{c.solveCount}</span>
               {" "}team{c.solveCount !== 1 ? "s" : ""} solved
             </span>
           </div>
-
           {c.flagFormat && (
             <>
-              <div style={{ width: 1, height: 12, background: "#1e293b" }} />
-              <span style={{
-                fontFamily: "ui-monospace, monospace",
-                fontSize: 11, color: "#475569",
-              }}>
+              <div style={{ width: 1, height: 11, background: "#1e293b" }} />
+              <span style={{ fontFamily: "ui-monospace, monospace", fontSize: 11, color: "#475569" }}>
                 {c.flagFormat}
               </span>
             </>
@@ -479,63 +454,88 @@ function ChallengeBody({
         </div>
       </div>
 
-      {/* ── Body ─────────────────────────────────────────────────────────────── */}
+      {/* ── Body: two columns ─────────────────────────────────────────────────── */}
       <div style={{
-        flex: 1, overflowY: "auto", padding: "20px 20px",
+        flex: 1, overflow: "hidden",
         display: "grid",
-        gridTemplateColumns: "minmax(0, 1.5fr) minmax(280px, 1fr)",
-        gap: 24,
-        alignItems: "start",
+        gridTemplateColumns: "minmax(0, 1.6fr) minmax(260px, 1fr)",
       }}>
 
-        {/* ── LEFT COLUMN ──────────────────────────────────────────────────── */}
-        <div style={{ minWidth: 0 }}>
-
+        {/* LEFT column — description + media + hints */}
+        <div style={{
+          overflowY: "auto", padding: "18px 20px",
+          borderRight: "1px solid #0f172a",
+        }}>
           {/* Description */}
           <div style={{
-            fontSize: 13, color: "#cbd5e1", lineHeight: 1.75,
+            fontSize: 13, color: "#cbd5e1", lineHeight: 1.8,
             whiteSpace: "pre-wrap", wordBreak: "break-word",
-            marginBottom: 20,
           }}>
             {c.description}
           </div>
 
-          {/* Download card */}
+          {/* Media image/GIF */}
+          {c.mediaUrl && (
+            <div style={{
+              marginTop: 18, borderRadius: 9, overflow: "hidden",
+              border: "1px solid #1e293b",
+            }}>
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img
+                src={c.mediaUrl}
+                alt="challenge media"
+                style={{ maxWidth: "100%", display: "block" }}
+              />
+            </div>
+          )}
+
+          {/* Hints */}
+          {c.hints && c.hints.length > 0 && (
+            <div style={{ marginTop: 20 }}>
+              <HintsSection
+                hints={c.hints}
+                unlockedHints={unlockedHints}
+                unlockingHint={unlockingHint}
+                onUnlockHint={onUnlockHint}
+                accent={accent}
+              />
+            </div>
+          )}
+        </div>
+
+        {/* RIGHT column — download + instance + submit/solvers card */}
+        <div style={{
+          overflowY: "auto", padding: "14px 14px",
+          display: "flex", flexDirection: "column", gap: 10,
+        }}>
+
+          {/* Compact download */}
           {c.downloadableFileUrl && (
             <a
               href={c.downloadableFileUrl}
-              download={c.downloadableFileName ?? "challenge-file"}
               target="_blank"
               rel="noopener noreferrer"
               style={{
-                display: "flex", alignItems: "center", gap: 12,
-                background: "#0f172a",
-                border: "1px solid #1e293b",
-                borderRadius: 8,
-                padding: "11px 14px",
-                textDecoration: "none",
-                marginBottom: 16,
-                transition: "border-color 150ms, background 150ms",
-                cursor: "pointer",
+                display: "flex", alignItems: "center", gap: 10,
+                background: "#0d1527", border: "1px solid #1e293b",
+                borderRadius: 8, padding: "9px 12px", textDecoration: "none",
+                transition: "border-color 150ms, background 150ms", flexShrink: 0,
               }}
               onMouseEnter={e => {
-                const el = e.currentTarget as HTMLElement;
-                el.style.borderColor = `${accent}50`;
-                el.style.background = `${accent}0a`;
+                (e.currentTarget as HTMLElement).style.borderColor = `${accent}45`;
+                (e.currentTarget as HTMLElement).style.background = `${accent}09`;
               }}
               onMouseLeave={e => {
-                const el = e.currentTarget as HTMLElement;
-                el.style.borderColor = "#1e293b";
-                el.style.background = "#0f172a";
+                (e.currentTarget as HTMLElement).style.borderColor = "#1e293b";
+                (e.currentTarget as HTMLElement).style.background = "#0d1527";
               }}
             >
               <div style={{
-                width: 34, height: 34, borderRadius: 7,
+                width: 30, height: 30, borderRadius: 6,
                 background: `${accent}18`,
-                display: "flex", alignItems: "center", justifyContent: "center",
-                flexShrink: 0,
+                display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0,
               }}>
-                <Download size={15} color={accent} />
+                <Download size={13} color={accent} />
               </div>
               <div style={{ flex: 1, minWidth: 0 }}>
                 <div style={{
@@ -544,23 +544,21 @@ function ChallengeBody({
                 }}>
                   {c.downloadableFileName ?? "challenge-file"}
                 </div>
-                <div style={{ fontSize: 11, color: "#475569", marginTop: 1 }}>
-                  Opens in new tab
-                </div>
+                <div style={{ fontSize: 10, color: "#475569", marginTop: 1 }}>Opens in new tab</div>
               </div>
-              <div style={{
-                fontSize: 11, fontWeight: 700, color: accent,
-                background: `${accent}15`, border: `1px solid ${accent}28`,
-                borderRadius: 4, padding: "2px 8px", flexShrink: 0,
+              <span style={{
+                fontSize: 10, fontWeight: 700, color: accent,
+                background: `${accent}14`, border: `1px solid ${accent}25`,
+                borderRadius: 4, padding: "2px 7px", flexShrink: 0,
               }}>
                 Download
-              </div>
+              </span>
             </a>
           )}
 
           {/* Instance panel */}
           {c.requiresInstance && (
-            <div style={{ marginBottom: 16 }}>
+            <div style={{ flexShrink: 0 }}>
               <InstancePanel
                 challengeId={c.id}
                 challengeTitle={c.title}
@@ -573,238 +571,282 @@ function ChallengeBody({
             </div>
           )}
 
-          {/* Solvers section */}
-          {c.solveCount > 0 && (
-            <SolversSection
-              competitionId={competitionId}
-              challengeId={c.id}
-              solveCount={c.solveCount}
-              accent={accent}
-            />
-          )}
-
-          {/* Hints */}
-          {c.hints && c.hints.length > 0 && (
-            <HintsSection
-              hints={c.hints}
-              unlockedHints={unlockedHints}
-              unlockingHint={unlockingHint}
-              onUnlockHint={onUnlockHint}
-              accent={accent}
-            />
-          )}
-        </div>
-
-        {/* ── RIGHT COLUMN (sticky submit panel) ───────────────────────────── */}
-        <div style={{ position: "sticky", top: 0, minWidth: 0 }}>
-
-          {/* Solved banner */}
-          {alreadySolved ? (
+          {/* Submit / Solvers tab card */}
+          <div style={{
+            flex: 1, background: "#0c1225",
+            border: `1px solid ${glowing ? "rgba(34,197,94,0.45)" : "#1a2437"}`,
+            borderRadius: 10, overflow: "hidden",
+            display: "flex", flexDirection: "column",
+            transition: "border-color 300ms ease",
+            animation: shaking ? "ctf-shake 0.5s ease" : glowing ? "ctf-glow-pulse 1.1s ease" : undefined,
+            minHeight: 0,
+          }}>
+            {/* Tab bar */}
             <div style={{
-              background: "linear-gradient(135deg, rgba(34,197,94,0.1) 0%, rgba(34,197,94,0.05) 100%)",
-              border: "1px solid rgba(34,197,94,0.3)",
-              borderRadius: 10, padding: "14px 16px", marginBottom: 14,
-              display: "flex", alignItems: "center", gap: 10,
+              display: "flex", borderBottom: "1px solid #111c30",
+              flexShrink: 0, background: "#0a1020",
             }}>
-              <div style={{
-                width: 32, height: 32, borderRadius: 8,
-                background: "rgba(34,197,94,0.15)",
-                display: "flex", alignItems: "center", justifyContent: "center",
-                flexShrink: 0,
-              }}>
-                <CheckCircle2 size={16} color="#22c55e" />
-              </div>
-              <div>
-                <div style={{ fontSize: 13, fontWeight: 700, color: "#34d399" }}>
-                  Challenge Solved
-                </div>
-                <div style={{ fontSize: 11, color: "#64748b", marginTop: 1 }}>
-                  Your team has completed this challenge.
-                </div>
-              </div>
-            </div>
-
-          ) : isEnded ? (
-            <div style={{
-              background: "#0f172a", border: "1px solid #1e293b",
-              borderRadius: 10, padding: 16, marginBottom: 14, textAlign: "center",
-              color: "#64748b", fontSize: 13,
-            }}>
-              Submissions closed — competition ended.
-            </div>
-
-          ) : (
-            /* Submit panel */
-            <div style={{
-              background: "#0c1225",
-              border: `1px solid ${glowing ? "rgba(34,197,94,0.5)" : "#1e293b"}`,
-              borderRadius: 10,
-              padding: 16,
-              marginBottom: 14,
-              transition: "border-color 300ms ease",
-              animation: shaking
-                ? "ctf-shake 0.5s ease"
-                : glowing
-                ? "ctf-glow-pulse 1.1s ease"
-                : undefined,
-            }}>
-
-              <div style={{
-                fontSize: 10, fontWeight: 700, color: "#334155",
-                textTransform: "uppercase", letterSpacing: "0.1em",
-                marginBottom: 12,
-              }}>
-                Submit Flag
-              </div>
-
-              {/* Paused banner */}
-              {isPaused && (
-                <div style={{
-                  display: "flex", alignItems: "center", gap: 7,
-                  background: "rgba(245,158,11,0.08)",
-                  border: "1px solid rgba(245,158,11,0.25)",
-                  color: "#f59e0b", borderRadius: 7,
-                  padding: "8px 12px", fontSize: 12, fontWeight: 600,
-                  marginBottom: 12,
-                }}>
-                  <Pause size={13} /> Competition is paused.
-                </div>
-              )}
-
-              {/* Locked-out banner */}
-              {lockedOut && (
-                <div style={{
-                  display: "flex", alignItems: "center", gap: 7,
-                  background: "rgba(239,68,68,0.07)",
-                  border: "1px solid rgba(239,68,68,0.2)",
-                  color: "#ef4444", borderRadius: 7,
-                  padding: "8px 12px", fontSize: 12, fontWeight: 600,
-                  marginBottom: 12,
-                }}>
-                  <AlertCircle size={13} /> No attempts remaining.
-                </div>
-              )}
-
-              {/* Flag input */}
-              <input
-                ref={inputRef}
-                className="input"
-                value={flag}
-                onChange={(e) => setFlag(e.target.value)}
-                onKeyDown={(e) => { if (e.key === "Enter" && canSolve && !inputDisabled) onSubmit(); }}
-                placeholder={
-                  lockedOut ? "No attempts remaining" :
-                  isPaused  ? "Submissions paused" :
-                  "Enter flag…"
-                }
-                disabled={inputDisabled}
-                style={{
-                  fontFamily: "ui-monospace, monospace",
-                  background: "#060a16",
-                  borderColor: result
-                    ? result.correct ? "rgba(34,197,94,0.5)" : "rgba(239,68,68,0.4)"
-                    : undefined,
-                  boxShadow: result
-                    ? result.correct
-                      ? "0 0 0 3px rgba(34,197,94,0.1)"
-                      : "0 0 0 3px rgba(239,68,68,0.08)"
-                    : undefined,
-                  transition: "border-color 200ms, box-shadow 200ms",
-                }}
-              />
-
-              {/* Submit button */}
-              <button
-                type="button"
-                onClick={onSubmit}
-                disabled={submitDisabled}
-                style={{
-                  width: "100%", marginTop: 10, padding: "10px 0",
-                  background: submitDisabled
-                    ? "#0f172a"
-                    : "linear-gradient(135deg, #4f46e5 0%, #7c3aed 100%)",
-                  border: submitDisabled ? "1px solid #1e293b" : "none",
-                  borderRadius: 7,
-                  color: isPaused ? "#f59e0b" : submitDisabled ? "#334155" : "#fff",
-                  fontSize: 13, fontWeight: 700,
-                  cursor: submitDisabled ? "not-allowed" : "pointer",
-                  display: "flex", alignItems: "center", justifyContent: "center", gap: 7,
-                  boxShadow: !submitDisabled
-                    ? "0 2px 12px rgba(99,102,241,0.35)"
-                    : "none",
-                  transition: "all 150ms ease",
-                  transform: "translateY(0)",
-                }}
-                onMouseEnter={e => {
-                  if (!submitDisabled) {
-                    (e.currentTarget as HTMLElement).style.transform = "translateY(-1px)";
-                    (e.currentTarget as HTMLElement).style.boxShadow = "0 4px 18px rgba(99,102,241,0.45)";
-                  }
-                }}
-                onMouseLeave={e => {
-                  (e.currentTarget as HTMLElement).style.transform = "translateY(0)";
-                  (e.currentTarget as HTMLElement).style.boxShadow = !submitDisabled
-                    ? "0 2px 12px rgba(99,102,241,0.35)" : "none";
-                }}
-              >
-                {isPaused
-                  ? <><Pause size={14} /> Paused</>
-                  : busy
-                  ? <><Loader2 size={14} style={{ animation: "spin 1s linear infinite" }} /> Checking…</>
-                  : lockedOut
-                  ? "Locked Out"
-                  : "Submit Flag"}
-              </button>
-
-              {/* Attempt counter */}
-              <AttemptCounter
-                attemptsUsed={attemptsUsed}
-                attemptsRemaining={attemptsRemaining}
-                isUnlimited={isUnlimited}
-                maxAttempts={c.maxAttempts}
-                progressPct={progressPct}
-              />
-
-              {/* Inline result feedback */}
-              {result && (
-                <div
-                  key={resultKey}
+              {(["submit", "solvers"] as const).map(tab => (
+                <button
+                  key={tab}
+                  type="button"
+                  onClick={() => setActiveTab(tab)}
                   style={{
-                    marginTop: 10, padding: "9px 12px", borderRadius: 7,
-                    fontSize: 12, fontWeight: 600,
-                    background: result.correct
-                      ? "rgba(34,197,94,0.1)"
-                      : "rgba(239,68,68,0.08)",
-                    border: `1px solid ${result.correct
-                      ? "rgba(34,197,94,0.35)"
-                      : "rgba(239,68,68,0.25)"}`,
-                    color: result.correct ? "#22c55e" : "#f87171",
-                    display: "flex", alignItems: "center", gap: 7,
-                    animation: "ctf-result-in 0.22s cubic-bezier(0.16,1,0.3,1)",
+                    flex: 1, padding: "9px 0",
+                    background: "transparent",
+                    border: "none",
+                    borderBottom: activeTab === tab ? `2px solid ${accent}` : "2px solid transparent",
+                    color: activeTab === tab ? accent : "#475569",
+                    fontSize: 11, fontWeight: 700,
+                    textTransform: "uppercase", letterSpacing: "0.06em",
+                    cursor: "pointer",
+                    transition: "color 150ms, border-color 150ms",
+                  }}
+                  onMouseEnter={e => {
+                    if (activeTab !== tab)
+                      (e.currentTarget as HTMLElement).style.color = "#94a3b8";
+                  }}
+                  onMouseLeave={e => {
+                    if (activeTab !== tab)
+                      (e.currentTarget as HTMLElement).style.color = "#475569";
                   }}
                 >
-                  {result.correct
-                    ? <CheckCircle2 size={13} />
-                    : <AlertCircle size={13} />}
-                  {result.message}
+                  {tab === "submit" ? "Submit Flag" : `Solvers (${c.solveCount})`}
+                </button>
+              ))}
+            </div>
+
+            {/* Tab content */}
+            <div style={{ flex: 1, overflowY: "auto", padding: "14px 14px" }}>
+              {activeTab === "submit" ? (
+                <div key="submit" style={{ animation: "ctf-tab-in 0.18s ease" }}>
+                  <SubmitTabContent
+                    c={c}
+                    accent={accent}
+                    canSolve={canSolve} isPaused={isPaused} isEnded={isEnded}
+                    alreadySolved={alreadySolved}
+                    flag={flag} setFlag={setFlag}
+                    busy={busy} result={result} resultKey={resultKey}
+                    inputDisabled={inputDisabled} submitDisabled={submitDisabled}
+                    inputRef={inputRef} onSubmit={onSubmit}
+                    attemptsUsed={attemptsUsed} attemptsRemaining={attemptsRemaining}
+                    isUnlimited={isUnlimited} progressPct={progressPct}
+                    lockedOut={lockedOut}
+                    attempts={attempts} newRowIds={newRowIds}
+                  />
+                </div>
+              ) : (
+                <div key="solvers" style={{ animation: "ctf-tab-in 0.18s ease" }}>
+                  <SolversTabContent
+                    competitionId={competitionId}
+                    challengeId={c.id}
+                    solveCount={c.solveCount}
+                    accent={accent}
+                  />
                 </div>
               )}
             </div>
-          )}
-
-          {/* Attempt history */}
-          {attempts.length > 0 && (
-            <AttemptHistory attempts={attempts} newRowIds={newRowIds} />
-          )}
+          </div>
         </div>
       </div>
     </>
   );
 }
 
-// ── Solvers section ────────────────────────────────────────────────────────────
+// ── Submit tab content ─────────────────────────────────────────────────────────
 
-function SolversSection({
+function SubmitTabContent({
+  c, accent, canSolve, isPaused, isEnded, alreadySolved,
+  flag, setFlag, busy, result, resultKey,
+  inputDisabled, submitDisabled,
+  inputRef, onSubmit,
+  attemptsUsed, attemptsRemaining, isUnlimited, progressPct,
+  lockedOut, attempts, newRowIds,
+}: {
+  c: CTFCompetitionChallengeDTO;
+  accent: string;
+  canSolve: boolean; isPaused: boolean; isEnded: boolean;
+  alreadySolved: boolean;
+  flag: string; setFlag: (v: string) => void;
+  busy: boolean;
+  result: { correct: boolean; message: string } | null;
+  resultKey: number;
+  inputDisabled: boolean; submitDisabled: boolean;
+  inputRef: React.RefObject<HTMLInputElement | null>;
+  onSubmit: () => void;
+  attemptsUsed: number; attemptsRemaining: number | null;
+  isUnlimited: boolean; progressPct: number;
+  lockedOut: boolean;
+  attempts: CTFAttemptDTO[];
+  newRowIds: Set<string>;
+}) {
+  if (alreadySolved) {
+    return (
+      <div style={{
+        background: "linear-gradient(135deg, rgba(34,197,94,0.08) 0%, rgba(34,197,94,0.04) 100%)",
+        border: "1px solid rgba(34,197,94,0.25)",
+        borderRadius: 9, padding: "13px 14px",
+        display: "flex", alignItems: "center", gap: 10, marginBottom: 12,
+      }}>
+        <div style={{
+          width: 30, height: 30, borderRadius: 7,
+          background: "rgba(34,197,94,0.14)",
+          display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0,
+        }}>
+          <CheckCircle2 size={15} color="#22c55e" />
+        </div>
+        <div>
+          <div style={{ fontSize: 12, fontWeight: 700, color: "#34d399" }}>Challenge Solved</div>
+          <div style={{ fontSize: 11, color: "#64748b", marginTop: 1 }}>Your team completed this challenge.</div>
+        </div>
+      </div>
+    );
+  }
+
+  if (isEnded) {
+    return (
+      <div style={{
+        background: "#0f172a", border: "1px solid #1e293b",
+        borderRadius: 9, padding: 14, textAlign: "center",
+        color: "#64748b", fontSize: 12, marginBottom: 12,
+      }}>
+        Submissions closed — competition ended.
+      </div>
+    );
+  }
+
+  return (
+    <>
+      {/* Paused banner */}
+      {isPaused && (
+        <div style={{
+          display: "flex", alignItems: "center", gap: 7,
+          background: "rgba(245,158,11,0.08)", border: "1px solid rgba(245,158,11,0.22)",
+          color: "#f59e0b", borderRadius: 7, padding: "8px 11px",
+          fontSize: 11, fontWeight: 600, marginBottom: 10,
+        }}>
+          <Pause size={12} /> Competition is paused.
+        </div>
+      )}
+
+      {/* Locked-out banner */}
+      {lockedOut && (
+        <div style={{
+          display: "flex", alignItems: "center", gap: 7,
+          background: "rgba(239,68,68,0.07)", border: "1px solid rgba(239,68,68,0.18)",
+          color: "#ef4444", borderRadius: 7, padding: "8px 11px",
+          fontSize: 11, fontWeight: 600, marginBottom: 10,
+        }}>
+          <AlertCircle size={12} /> No attempts remaining.
+        </div>
+      )}
+
+      {/* Flag input */}
+      <input
+        ref={inputRef}
+        className="input"
+        value={flag}
+        onChange={(e) => setFlag(e.target.value)}
+        onKeyDown={(e) => { if (e.key === "Enter" && canSolve && !inputDisabled) onSubmit(); }}
+        placeholder={lockedOut ? "No attempts remaining" : isPaused ? "Submissions paused" : "Enter flag…"}
+        disabled={inputDisabled}
+        style={{
+          fontFamily: "ui-monospace, monospace",
+          background: "#060a16",
+          borderColor: result
+            ? result.correct ? "rgba(34,197,94,0.5)" : "rgba(239,68,68,0.4)"
+            : undefined,
+          boxShadow: result
+            ? result.correct
+              ? "0 0 0 3px rgba(34,197,94,0.1)"
+              : "0 0 0 3px rgba(239,68,68,0.08)"
+            : undefined,
+          transition: "border-color 200ms, box-shadow 200ms",
+        }}
+      />
+
+      {/* Submit button */}
+      <button
+        type="button"
+        onClick={onSubmit}
+        disabled={submitDisabled}
+        style={{
+          width: "100%", marginTop: 9, padding: "10px 0",
+          background: submitDisabled
+            ? "#0f172a"
+            : "linear-gradient(135deg, #4f46e5 0%, #7c3aed 100%)",
+          border: submitDisabled ? "1px solid #1e293b" : "none",
+          borderRadius: 7,
+          color: isPaused ? "#f59e0b" : submitDisabled ? "#334155" : "#fff",
+          fontSize: 13, fontWeight: 700,
+          cursor: submitDisabled ? "not-allowed" : "pointer",
+          display: "flex", alignItems: "center", justifyContent: "center", gap: 7,
+          boxShadow: !submitDisabled ? "0 2px 12px rgba(99,102,241,0.35)" : "none",
+          transition: "all 150ms ease",
+          transform: "translateY(0)",
+        }}
+        onMouseEnter={e => {
+          if (!submitDisabled) {
+            (e.currentTarget as HTMLElement).style.transform = "translateY(-1px)";
+            (e.currentTarget as HTMLElement).style.boxShadow = "0 4px 18px rgba(99,102,241,0.45)";
+          }
+        }}
+        onMouseLeave={e => {
+          (e.currentTarget as HTMLElement).style.transform = "translateY(0)";
+          (e.currentTarget as HTMLElement).style.boxShadow = !submitDisabled
+            ? "0 2px 12px rgba(99,102,241,0.35)" : "none";
+        }}
+      >
+        {isPaused
+          ? <><Pause size={14} /> Paused</>
+          : busy
+          ? <><Loader2 size={14} style={{ animation: "spin 1s linear infinite" }} /> Checking…</>
+          : lockedOut
+          ? "Locked Out"
+          : "Submit Flag"}
+      </button>
+
+      {/* Attempt counter */}
+      <AttemptCounter
+        attemptsUsed={attemptsUsed}
+        attemptsRemaining={attemptsRemaining}
+        isUnlimited={isUnlimited}
+        maxAttempts={c.maxAttempts}
+        progressPct={progressPct}
+      />
+
+      {/* Result feedback */}
+      {result && (
+        <div
+          key={resultKey}
+          style={{
+            marginTop: 10, padding: "9px 12px", borderRadius: 7,
+            fontSize: 12, fontWeight: 600,
+            background: result.correct ? "rgba(34,197,94,0.1)" : "rgba(239,68,68,0.08)",
+            border: `1px solid ${result.correct ? "rgba(34,197,94,0.35)" : "rgba(239,68,68,0.25)"}`,
+            color: result.correct ? "#22c55e" : "#f87171",
+            display: "flex", alignItems: "center", gap: 7,
+            animation: "ctf-result-in 0.22s cubic-bezier(0.16,1,0.3,1)",
+          }}
+        >
+          {result.correct ? <CheckCircle2 size={13} /> : <AlertCircle size={13} />}
+          {result.message}
+        </div>
+      )}
+
+      {/* Attempt history */}
+      {attempts.length > 0 && (
+        <div style={{ marginTop: 12 }}>
+          <AttemptHistory attempts={attempts} newRowIds={newRowIds} />
+        </div>
+      )}
+    </>
+  );
+}
+
+// ── Solvers tab content ────────────────────────────────────────────────────────
+
+function SolversTabContent({
   competitionId, challengeId, solveCount, accent,
 }: {
   competitionId: string;
@@ -812,168 +854,111 @@ function SolversSection({
   solveCount: number;
   accent: string;
 }) {
-  const [open,    setOpen]    = useState(false);
   const [solvers, setSolvers] = useState<CTFChallengeSolverDTO[]>([]);
   const [loading, setLoading] = useState(false);
   const [fetched, setFetched] = useState(false);
 
-  const toggle = () => {
-    if (!open && !fetched) {
-      setLoading(true);
-      getChallengeSolvers(competitionId, challengeId)
-        .then(setSolvers)
-        .catch(() => {})
-        .finally(() => { setLoading(false); setFetched(true); });
-    }
-    setOpen(o => !o);
-  };
+  useEffect(() => {
+    if (fetched) return;
+    setLoading(true);
+    getChallengeSolvers(competitionId, challengeId)
+      .then(setSolvers)
+      .catch(() => {})
+      .finally(() => { setLoading(false); setFetched(true); });
+  }, [competitionId, challengeId, fetched]);
 
-  // Up to 5 stacked avatar initials in the summary
-  const previewCount = Math.min(solveCount, 5);
+  if (loading) {
+    return (
+      <div style={{ display: "flex", justifyContent: "center", padding: 20 }}>
+        <Loader2 size={16} color="#6366f1" style={{ animation: "spin 1s linear infinite" }} />
+      </div>
+    );
+  }
+
+  if (solveCount === 0) {
+    return (
+      <div style={{ textAlign: "center", padding: 20, color: "#475569", fontSize: 12 }}>
+        No solves yet. Be the first!
+      </div>
+    );
+  }
+
+  if (solvers.length === 0) {
+    return (
+      <div style={{ textAlign: "center", padding: 20, color: "#475569", fontSize: 12 }}>
+        No solver data available.
+      </div>
+    );
+  }
 
   return (
-    <div style={{ marginBottom: 16 }}>
-      {/* Summary toggle row */}
-      <button
-        type="button"
-        onClick={toggle}
-        style={{
-          width: "100%", display: "flex", alignItems: "center",
-          justifyContent: "space-between",
-          background: "#0f172a",
-          border: "1px solid #1e293b",
-          borderRadius: open ? "8px 8px 0 0" : 8,
-          padding: "10px 14px",
-          cursor: "pointer",
-          transition: "border-color 150ms, background 150ms",
+    <div style={{ display: "flex", flexDirection: "column", gap: 2 }}>
+      {solvers.map((s, i) => (
+        <div key={s.teamId} style={{
+          display: "flex", alignItems: "center", gap: 9,
+          padding: "8px 10px",
+          borderRadius: 7,
+          background: i === 0 ? "rgba(239,68,68,0.04)" : "transparent",
+          transition: "background 150ms",
         }}
-        onMouseEnter={e => {
-          (e.currentTarget as HTMLElement).style.borderColor = `${accent}35`;
-        }}
-        onMouseLeave={e => {
-          (e.currentTarget as HTMLElement).style.borderColor = "#1e293b";
-        }}
-      >
-        <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-          {/* Stacked avatar previews */}
-          <div style={{ display: "flex" }}>
-            {Array.from({ length: previewCount }).map((_, i) => (
-              <div key={i} style={{
-                width: 22, height: 22, borderRadius: "50%",
-                background: `hsl(${(i * 67 + 210) % 360}, 55%, 45%)`,
-                border: "2px solid #0f172a",
-                marginLeft: i > 0 ? -7 : 0,
-                display: "inline-flex", alignItems: "center", justifyContent: "center",
-                fontSize: 9, fontWeight: 700, color: "#fff",
-                flexShrink: 0,
-              }}>
-                {String.fromCharCode(65 + i)}
-              </div>
-            ))}
+          onMouseEnter={e => { (e.currentTarget as HTMLElement).style.background = "rgba(255,255,255,0.025)"; }}
+          onMouseLeave={e => { (e.currentTarget as HTMLElement).style.background = i === 0 ? "rgba(239,68,68,0.04)" : "transparent"; }}
+        >
+          {/* Rank */}
+          <div style={{
+            width: 20, flexShrink: 0, textAlign: "right",
+            fontFamily: "ui-monospace, monospace",
+            fontSize: 11, fontWeight: 700,
+            color: i === 0 ? "#ef4444" : i === 1 ? "#94a3b8" : i === 2 ? "#fb923c" : "#334155",
+          }}>
+            #{i + 1}
           </div>
 
-          <div style={{ textAlign: "left" }}>
-            <div style={{ fontSize: 12, fontWeight: 700, color: "#cbd5e1" }}>
-              {solveCount} team{solveCount !== 1 ? "s" : ""} solved
-            </div>
+          {/* Avatar */}
+          <div style={{
+            width: 24, height: 24, borderRadius: "50%",
+            background: s.avatarColor,
+            display: "inline-flex", alignItems: "center", justifyContent: "center",
+            fontSize: 10, fontWeight: 700, color: "#fff", flexShrink: 0,
+          }}>
+            {s.teamName.charAt(0).toUpperCase()}
+          </div>
+
+          {/* Name + First Blood */}
+          <div style={{ flex: 1, display: "flex", alignItems: "center", gap: 6, minWidth: 0 }}>
+            <Link
+              href={`/ctf/competitions/${competitionId}/teams/${s.teamId}`}
+              style={{
+                fontWeight: 600, color: "#cbd5e1", fontSize: 12,
+                textDecoration: "none",
+                overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
+              }}
+              onMouseEnter={e => { (e.target as HTMLElement).style.color = accent; }}
+              onMouseLeave={e => { (e.target as HTMLElement).style.color = "#cbd5e1"; }}
+            >
+              {s.teamName}
+            </Link>
+            {i === 0 && (
+              <span style={{
+                fontSize: 9, fontWeight: 800, color: "#ef4444",
+                background: "rgba(239,68,68,0.1)", border: "1px solid rgba(239,68,68,0.22)",
+                borderRadius: 4, padding: "1px 5px",
+                letterSpacing: "0.04em", textTransform: "uppercase", flexShrink: 0,
+              }}>
+                🩸 First Blood
+              </span>
+            )}
+          </div>
+
+          {/* Time */}
+          <div style={{ fontSize: 10, color: "#334155", whiteSpace: "nowrap", flexShrink: 0 }}>
+            {new Date(s.solvedAt).toLocaleString("en-GB", {
+              day: "2-digit", month: "short",
+              hour: "2-digit", minute: "2-digit",
+            })}
           </div>
         </div>
-
-        <ChevronDown
-          size={14}
-          color="#475569"
-          style={{
-            transition: "transform 200ms ease",
-            transform: open ? "rotate(180deg)" : "rotate(0deg)",
-          }}
-        />
-      </button>
-
-      {/* Expanded list */}
-      {open && (
-        <div style={{
-          border: "1px solid #1e293b", borderTop: "none",
-          borderRadius: "0 0 8px 8px",
-          maxHeight: 240, overflowY: "auto",
-          background: "#080d1c",
-        }}>
-          {loading ? (
-            <div style={{ padding: 16, display: "flex", justifyContent: "center" }}>
-              <Loader2 size={16} color="#6366f1" style={{ animation: "spin 1s linear infinite" }} />
-            </div>
-          ) : solvers.length === 0 ? (
-            <div style={{ padding: "12px 16px", fontSize: 12, color: "#475569", textAlign: "center" }}>
-              No solver data yet.
-            </div>
-          ) : (
-            solvers.map((s, i) => (
-              <div key={s.teamId} style={{
-                display: "flex", alignItems: "center", gap: 10,
-                padding: "9px 14px",
-                borderTop: i > 0 ? "1px solid #0f172a" : undefined,
-                background: i === 0 ? "rgba(239,68,68,0.04)" : "transparent",
-              }}>
-                {/* Rank */}
-                <div style={{
-                  width: 22, flexShrink: 0, textAlign: "right",
-                  fontFamily: "ui-monospace, monospace",
-                  fontSize: 11, fontWeight: 700,
-                  color: i === 0 ? "#ef4444" : i === 1 ? "#94a3b8" : i === 2 ? "#fb923c" : "#334155",
-                }}>
-                  #{i + 1}
-                </div>
-
-                {/* Avatar */}
-                <div style={{
-                  width: 24, height: 24, borderRadius: "50%",
-                  background: s.avatarColor,
-                  display: "inline-flex", alignItems: "center", justifyContent: "center",
-                  fontSize: 10, fontWeight: 700, color: "#fff", flexShrink: 0,
-                }}>
-                  {s.teamName.charAt(0).toUpperCase()}
-                </div>
-
-                {/* Name + First Blood badge */}
-                <div style={{ flex: 1, display: "flex", alignItems: "center", gap: 7, minWidth: 0 }}>
-                  <Link
-                    href={`/ctf/competitions/${competitionId}/teams/${s.teamId}`}
-                    style={{
-                      fontWeight: 600, color: "#cbd5e1", fontSize: 12,
-                      textDecoration: "none",
-                      overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
-                    }}
-                    onMouseEnter={e => { (e.target as HTMLElement).style.color = accent; }}
-                    onMouseLeave={e => { (e.target as HTMLElement).style.color = "#cbd5e1"; }}
-                  >
-                    {s.teamName}
-                  </Link>
-                  {i === 0 && (
-                    <span style={{
-                      fontSize: 9, fontWeight: 800,
-                      color: "#ef4444",
-                      background: "rgba(239,68,68,0.1)",
-                      border: "1px solid rgba(239,68,68,0.25)",
-                      borderRadius: 4, padding: "1px 6px",
-                      letterSpacing: "0.04em", textTransform: "uppercase",
-                      flexShrink: 0,
-                    }}>
-                      🩸 First Blood
-                    </span>
-                  )}
-                </div>
-
-                {/* Time */}
-                <div style={{ fontSize: 10, color: "#334155", whiteSpace: "nowrap", flexShrink: 0 }}>
-                  {new Date(s.solvedAt).toLocaleString("en-GB", {
-                    day: "2-digit", month: "short",
-                    hour: "2-digit", minute: "2-digit",
-                  })}
-                </div>
-              </div>
-            ))
-          )}
-        </div>
-      )}
+      ))}
     </div>
   );
 }
@@ -993,8 +978,7 @@ function HintsSection({
     <div>
       <div style={{
         fontSize: 10, fontWeight: 700, color: "#334155",
-        textTransform: "uppercase", letterSpacing: "0.1em",
-        marginBottom: 8,
+        textTransform: "uppercase", letterSpacing: "0.1em", marginBottom: 8,
       }}>
         Hints ({hints.length})
       </div>
@@ -1031,9 +1015,7 @@ function HintsSection({
           >
             <div style={{
               width: 28, height: 28, borderRadius: 6,
-              background: revealedText
-                ? "rgba(251,191,36,0.12)"
-                : "rgba(71,85,105,0.3)",
+              background: revealedText ? "rgba(251,191,36,0.12)" : "rgba(71,85,105,0.3)",
               display: "flex", alignItems: "center", justifyContent: "center",
               flexShrink: 0, marginTop: 1,
             }}>
@@ -1061,11 +1043,7 @@ function HintsSection({
                 color: revealedText ? "#e2e8f0" : "#475569",
                 fontStyle: revealedText ? "normal" : "italic",
               }}>
-                {isUnlocking
-                  ? "Unlocking…"
-                  : revealedText
-                  ? revealedText
-                  : "Click to unlock this hint"}
+                {isUnlocking ? "Unlocking…" : revealedText ?? "Click to unlock this hint"}
               </div>
             </div>
           </div>
@@ -1097,8 +1075,7 @@ function AttemptCounter({
   return (
     <div style={{ marginTop: 10 }}>
       <div style={{
-        display: "flex", alignItems: "center",
-        justifyContent: "space-between", marginBottom: 5,
+        display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 5,
       }}>
         <span style={{ fontSize: 11, color: "#475569" }}>
           {isUnlimited
@@ -1110,17 +1087,13 @@ function AttemptCounter({
           <span style={{
             display: "inline-flex", alignItems: "center", gap: 3,
             fontSize: 10, fontWeight: 700, color: "#6366f1",
-            background: "rgba(99,102,241,0.1)",
-            border: "1px solid rgba(99,102,241,0.2)",
+            background: "rgba(99,102,241,0.1)", border: "1px solid rgba(99,102,241,0.2)",
             borderRadius: 4, padding: "1px 6px",
           }}>
             <Infinity size={10} /> Unlimited
           </span>
         ) : (
-          <span style={{
-            fontSize: 11, fontWeight: 600,
-            color: attemptsRemaining === 0 ? "#ef4444" : "#64748b",
-          }}>
+          <span style={{ fontSize: 11, fontWeight: 600, color: attemptsRemaining === 0 ? "#ef4444" : "#64748b" }}>
             {attemptsRemaining} left
           </span>
         )}
@@ -1143,65 +1116,50 @@ function AttemptCounter({
 function AttemptHistory({ attempts, newRowIds }: { attempts: CTFAttemptDTO[]; newRowIds: Set<string> }) {
   return (
     <div style={{
-      background: "#0c1225",
-      border: "1px solid #1e293b",
-      borderRadius: 10,
-      overflow: "hidden",
+      background: "#080d1c", border: "1px solid #1a2437",
+      borderRadius: 8, overflow: "hidden",
     }}>
       <div style={{
-        padding: "9px 14px",
-        borderBottom: "1px solid #0f172a",
+        padding: "8px 12px", borderBottom: "1px solid #0f172a",
         display: "flex", alignItems: "center", justifyContent: "space-between",
       }}>
-        <span style={{
-          fontSize: 10, fontWeight: 700, color: "#334155",
-          textTransform: "uppercase", letterSpacing: "0.1em",
-        }}>
+        <span style={{ fontSize: 10, fontWeight: 700, color: "#334155", textTransform: "uppercase", letterSpacing: "0.1em" }}>
           Attempt history
         </span>
         <span style={{
-          fontSize: 10, color: "#475569",
-          background: "#0f172a",
-          border: "1px solid #1e293b",
-          borderRadius: 4, padding: "1px 7px",
+          fontSize: 10, color: "#475569", background: "#0f172a",
+          border: "1px solid #1e293b", borderRadius: 4, padding: "1px 7px",
         }}>
           {attempts.length}
         </span>
       </div>
-      <div style={{ maxHeight: 200, overflowY: "auto" }}>
+      <div style={{ maxHeight: 160, overflowY: "auto" }}>
         {attempts.map((a, i) => (
           <div
             key={a.id}
             style={{
-              display: "flex", alignItems: "center", gap: 10,
-              padding: "8px 14px",
+              display: "flex", alignItems: "center", gap: 8,
+              padding: "7px 12px",
               borderBottom: i < attempts.length - 1 ? "1px solid #080d1c" : "none",
-              animation: newRowIds.has(a.id)
-                ? "ctf-row-in 0.28s cubic-bezier(0.16,1,0.3,1)"
-                : undefined,
+              animation: newRowIds.has(a.id) ? "ctf-row-in 0.28s cubic-bezier(0.16,1,0.3,1)" : undefined,
               background: a.correct ? "rgba(34,197,94,0.03)" : "transparent",
             }}
           >
             <div style={{
-              width: 18, height: 18, borderRadius: "50%", flexShrink: 0,
+              width: 16, height: 16, borderRadius: "50%", flexShrink: 0,
               background: a.correct ? "rgba(34,197,94,0.15)" : "rgba(239,68,68,0.12)",
               display: "inline-flex", alignItems: "center", justifyContent: "center",
             }}>
-              <span style={{ fontSize: 10, color: a.correct ? "#22c55e" : "#ef4444" }}>
+              <span style={{ fontSize: 9, color: a.correct ? "#22c55e" : "#ef4444" }}>
                 {a.correct ? "✓" : "✗"}
               </span>
             </div>
-
             <span style={{
-              flex: 1,
-              fontFamily: "ui-monospace, monospace",
-              fontSize: 11,
-              color: "#334155",
-              overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
+              flex: 1, fontFamily: "ui-monospace, monospace", fontSize: 11,
+              color: "#334155", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
             }}>
               {a.flagMasked}
             </span>
-
             <span style={{ color: "#1e293b", fontSize: 10, whiteSpace: "nowrap", flexShrink: 0 }}>
               {relativeTime(a.submittedAt)}
             </span>

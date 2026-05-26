@@ -109,6 +109,10 @@ public class CTFChallenge {
     @Column(name = "downloadable_file_name", length = 255)
     private String downloadableFileName;
 
+    /** Optional image or GIF URL shown inside the challenge modal. */
+    @Column(name = "media_url", length = 500)
+    private String mediaUrl;
+
     @Builder.Default
     @JdbcTypeCode(SqlTypes.JSON)
     @Column(name = "hints", columnDefinition = "jsonb")

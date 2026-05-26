@@ -105,6 +105,7 @@ public class CTFCompetitionChallengeTeacherService {
         c.setDockerPidsLimit(dto.getDockerPidsLimit());
         c.setDownloadableFileUrl(dto.getDownloadableFileUrl());
         c.setDownloadableFileName(dto.getDownloadableFileName());
+        c.setMediaUrl(dto.getMediaUrl());
         // null or 0 = unlimited (stored as null); positive = hard limit per team
         Integer ma = dto.getMaxAttempts();
         c.setMaxAttempts(ma != null && ma > 0 ? ma : null);
@@ -165,6 +166,7 @@ public class CTFCompetitionChallengeTeacherService {
         if (dto.getDockerPidsLimit() != null)      c.setDockerPidsLimit(dto.getDockerPidsLimit());
         if (dto.getDownloadableFileUrl() != null)  c.setDownloadableFileUrl(dto.getDownloadableFileUrl());
         if (dto.getDownloadableFileName() != null) c.setDownloadableFileName(dto.getDownloadableFileName());
+        if (dto.getMediaUrl() != null)             c.setMediaUrl(dto.getMediaUrl());
         if (dto.getMaxAttempts() != null) {
             c.setMaxAttempts(dto.getMaxAttempts() <= 0 ? null : dto.getMaxAttempts());
         }
@@ -445,6 +447,7 @@ public class CTFCompetitionChallengeTeacherService {
                 .dockerPidsLimit(c.getDockerPidsLimit())
                 .downloadableFileUrl(c.getDownloadableFileUrl())
                 .downloadableFileName(c.getDownloadableFileName())
+                .mediaUrl(c.getMediaUrl())
                 .hints(c.getHints() == null ? List.of() :
                         c.getHints().stream()
                                 .map(h -> new CTFHintDTO(h.id(), h.cost(), h.text()))

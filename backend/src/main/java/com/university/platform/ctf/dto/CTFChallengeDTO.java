@@ -33,6 +33,7 @@ public class CTFChallengeDTO {
     private Integer dockerPidsLimit;
     private String downloadableFileUrl;
     private String downloadableFileName;
+    private String mediaUrl;
     private List<CTFHintDTO> hints;
     private Integer maxAttempts;
     private Boolean isActive;

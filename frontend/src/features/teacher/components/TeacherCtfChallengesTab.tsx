@@ -1057,6 +1057,7 @@ function ChallengePanel({
     plainFlag: "",
     flagFormat: existing?.flagFormat ?? "FLAG{?}",
     downloadableFileUrl: existing?.downloadableFileUrl ?? "",
+    mediaUrl: existing?.mediaUrl ?? "",
     maxAttempts: existing?.maxAttempts != null ? String(existing.maxAttempts) : "10",
     attemptsMode: (existing?.maxAttempts == null ? "unlimited" : "limited") as "limited" | "unlimited",
 
@@ -1187,6 +1188,7 @@ function ChallengePanel({
           plainFlag: form.flagType === "STATIC" ? form.plainFlag.trim() : undefined,
           flagFormat: form.flagType === "DYNAMIC" ? form.flagFormat.trim() : undefined,
           downloadableFileUrl: form.downloadableFileUrl || undefined,
+          mediaUrl: form.mediaUrl || undefined,
           requiresInstance: form.requiresInstance,
           ...dockerFields,
           maxAttempts: form.attemptsMode === "unlimited" ? 0 : parseInt(form.maxAttempts) || 10,
@@ -1223,6 +1225,7 @@ function ChallengePanel({
           flagType: form.flagType,
           flagFormat: form.flagType === "DYNAMIC" ? form.flagFormat.trim() : undefined,
           downloadableFileUrl: form.downloadableFileUrl || undefined,
+          mediaUrl: form.mediaUrl || undefined,
           requiresInstance: form.requiresInstance,
           ...dockerFields,
           maxAttempts: form.attemptsMode === "unlimited" ? 0 : parseInt(form.maxAttempts) || 10,
@@ -1570,6 +1573,15 @@ function BasicsTab({
           <input className="input" value={form.downloadableFileUrl}
             onChange={(e) => setForm({ ...form, downloadableFileUrl: e.target.value })}
             placeholder="https://…/challenge.zip"
+          />
+        </Field>
+      </Section>
+
+      <Section icon={Globe} title="Media (optional)" desc="Image or GIF displayed inside the challenge modal.">
+        <Field label="Media URL">
+          <input className="input" value={form.mediaUrl}
+            onChange={(e) => setForm({ ...form, mediaUrl: e.target.value })}
+            placeholder="https://…/image.png"
           />
         </Field>
       </Section>

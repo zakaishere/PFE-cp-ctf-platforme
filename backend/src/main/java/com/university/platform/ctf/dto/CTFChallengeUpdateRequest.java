@@ -33,6 +33,7 @@ public class CTFChallengeUpdateRequest {
     private Integer dockerPidsLimit;
     private String  downloadableFileUrl;
     private String  downloadableFileName;
+    private String  mediaUrl;
     private Integer maxAttempts;
     private Boolean isActive;
 

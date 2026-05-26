@@ -163,6 +163,8 @@ export default function InstancePanel({
   const [instance, setInstance] = useState<CTFInstanceResponse | null>(null);
   const [busy, setBusy]       = useState(false);
   const [msgIdx, setMsgIdx]   = useState(0);
+  const [copied, setCopied]   = useState(false);
+  const copyTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const stompRef   = useRef<StompClient | null>(null);
   const instanceId = useRef<string | null>(null);
@@ -313,7 +315,10 @@ export default function InstancePanel({
     if (!connString) return;
     const toCopy = connType === "TCP" ? ncCommand : connString;
     navigator.clipboard.writeText(toCopy);
+    setCopied(true);
     toast.success("Copied", toCopy);
+    if (copyTimerRef.current) clearTimeout(copyTimerRef.current);
+    copyTimerRef.current = setTimeout(() => setCopied(false), 2000);
   };
 
   // ── Render ────────────────────────────────────────────────────────────────
@@ -377,10 +382,20 @@ export default function InstancePanel({
         </span>
       </div>
       <IndeterminateBar c={c} />
-      <div style={{ fontSize: 12, color: c.secondary, marginBottom: 6 }}>
-        {STARTING_MESSAGES[msgIdx]}
+      {/* URL skeleton shimmer */}
+      <div style={{
+        height: 32, borderRadius: 5, marginBottom: 10,
+        background: `linear-gradient(90deg, ${c.cardBorder} 25%, rgba(255,255,255,0.06) 50%, ${c.cardBorder} 75%)`,
+        backgroundSize: "800px 100%",
+        animation: "ctf-shimmer 1.6s ease-in-out infinite",
+      }} />
+      <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+        <div style={{ width: 6, height: 6, borderRadius: "50%", background: c.blue, animation: "ctf-pulse-dot 1.2s ease infinite" }} />
+        <div style={{ fontSize: 12, color: c.secondary }}>
+          {STARTING_MESSAGES[msgIdx]}
+        </div>
       </div>
-      <div style={{ fontSize: 11, color: c.muted }}>
+      <div style={{ fontSize: 11, color: c.muted, marginTop: 4 }}>
         Usually ready in 5–10 seconds
       </div>
     </div>
@@ -397,7 +412,7 @@ export default function InstancePanel({
         ...cardStyle,
         border: `1px solid ${urgentBorder ? c.red : c.cardBorder}`,
         boxShadow: urgentBorder ? `0 0 0 1px ${c.red}40` : undefined,
-        animation: urgentBorder ? "ctf-timer-blink 2s infinite" : undefined,
+        animation: urgentBorder ? "ctf-timer-blink 2s infinite" : "ctf-running-in 0.3s cubic-bezier(0.16,1,0.3,1)",
       }}>
         <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 12 }}>
           <div style={{
@@ -431,9 +446,15 @@ export default function InstancePanel({
               <button
                 onClick={copyConn}
                 title="Copy command"
-                style={{ background: "none", border: "none", cursor: "pointer", color: c.muted, flexShrink: 0, display: "flex", alignItems: "center" }}
+                style={{
+                  background: "none", border: "none", cursor: "pointer",
+                  color: copied ? c.green : c.muted, flexShrink: 0,
+                  display: "flex", alignItems: "center", gap: 4,
+                  fontSize: 11, fontWeight: copied ? 700 : 400,
+                  transition: "color 150ms",
+                }}
               >
-                <Copy size={13} />
+                {copied ? "Copied!" : <Copy size={13} />}
               </button>
             </div>
           </div>
@@ -458,9 +479,15 @@ export default function InstancePanel({
             <button
               onClick={copyConn}
               title="Copy URL"
-              style={{ background: "none", border: "none", cursor: "pointer", color: c.muted, flexShrink: 0, display: "flex", alignItems: "center" }}
+              style={{
+                background: "none", border: "none", cursor: "pointer",
+                color: copied ? c.green : c.muted, flexShrink: 0,
+                display: "flex", alignItems: "center", gap: 4,
+                fontSize: 11, fontWeight: copied ? 700 : 400,
+                transition: "color 150ms",
+              }}
             >
-              <Copy size={13} />
+              {copied ? "Copied!" : <Copy size={13} />}
             </button>
           </div>
         )}
