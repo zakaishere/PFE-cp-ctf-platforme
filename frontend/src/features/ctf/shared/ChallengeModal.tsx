@@ -4,7 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import {
   X, CheckCircle2, AlertCircle, Loader2, Download, Lightbulb,
-  Pause, Infinity, Trophy, Flag, Copy,
+  Pause, Infinity, Trophy, Flag,
 } from "lucide-react";
 import { toast } from "@/components/ui/PSPToast";
 import InstancePanel from "@/components/ctf/InstancePanel";
@@ -29,17 +29,17 @@ interface Props {
 }
 
 // ── Color tokens ──────────────────────────────────────────────────────────────
-const BORDER_FINE   = "rgba(255,255,255,0.08)";
-const BORDER_MED    = "rgba(255,255,255,0.12)";
-const BORDER_INPUT  = "rgba(255,255,255,0.15)";
-const BG_CARD       = "#070c1b";
-const BG_PANEL      = "#0a1124";
-const BG_RECESSED   = "#050912";
-const BG_SUBMIT     = "#04070f";
+const BORDER_FINE   = "rgba(255,255,255,0.07)";
+const BORDER_MED    = "rgba(255,255,255,0.11)";
+const BORDER_INPUT  = "rgba(255,255,255,0.12)";
+const BG_CARD       = "#0f111a";
+const BG_PANEL      = "#0c0e17";
+const BG_RECESSED   = "#0a0c14";
+const BG_SUBMIT     = "#080a12";
 const TEXT_PRIMARY  = "#f1f5f9";
-const TEXT_MUTED    = "#94a3b8";
-const TEXT_DIM      = "#475569";
-const TEXT_FAINT    = "#334155";
+const TEXT_MUTED    = "#8b9ab5";
+const TEXT_DIM      = "#4a5568";
+const TEXT_FAINT    = "#2d3a4f";
 
 export default function ChallengeModal({
   competitionId, challengeId, teamId, canSolve, isPaused, isEnded, onClose, onSolved,
@@ -380,6 +380,8 @@ function ChallengeBody({
   const pts = c.currentPoints ?? c.basePoints;
   const hintCount = c.hints?.length ?? 0;
 
+  const hasAssets = c.requiresInstance || !!c.downloadableFileUrl;
+
   const TABS: { key: TabKey; label: string }[] = [
     { key: "description", label: "Description" },
     { key: "solvers",     label: `Solvers (${c.solveCount})` },
@@ -530,16 +532,16 @@ function ChallengeBody({
         </div>
       </div>
 
-      {/* ── ZONE 2: Content (60%) + Sidepanel (40%) ─────────────────────────── */}
+      {/* ── ZONE 2: Content + optional Sidepanel ────────────────────────────── */}
       <div style={{
         flex: 1, minHeight: 0,
         display: "grid",
-        gridTemplateColumns: "60fr 40fr",
+        gridTemplateColumns: hasAssets ? "60fr 40fr" : "1fr",
       }}>
-        {/* Left: tab content */}
+        {/* Left: tab content — expands to full width when no assets */}
         <div style={{
           overflowY: "auto",
-          borderRight: `1px solid ${BORDER_FINE}`,
+          borderRight: hasAssets ? `1px solid ${BORDER_FINE}` : "none",
           background: BG_RECESSED,
         }}>
           <div
@@ -556,48 +558,36 @@ function ChallengeBody({
           </div>
         </div>
 
-        {/* Right: operational sidepanel */}
-        <div style={{
-          background: BG_PANEL,
-          overflowY: "auto",
-          padding: "14px 14px",
-          display: "flex", flexDirection: "column", gap: 10,
-        }}>
-          {c.requiresInstance && (
-            <div style={{ flexShrink: 0 }}>
-              <InstancePanel
-                challengeId={c.id}
-                challengeTitle={c.title}
-                requiresInstance
-                connectionType={c.connectionType ?? "HTTP"}
-                competitionId={competitionId}
-                teamId={teamId}
-                dark
+        {/* Right: operational sidepanel — only rendered when assets exist */}
+        {hasAssets && (
+          <div style={{
+            background: BG_PANEL,
+            overflowY: "auto",
+            padding: "14px",
+            display: "flex", flexDirection: "column", gap: 10,
+          }}>
+            {c.requiresInstance && (
+              <div style={{ flexShrink: 0 }}>
+                <InstancePanel
+                  challengeId={c.id}
+                  challengeTitle={c.title}
+                  requiresInstance
+                  connectionType={c.connectionType ?? "HTTP"}
+                  competitionId={competitionId}
+                  teamId={teamId}
+                  dark
+                />
+              </div>
+            )}
+            {c.downloadableFileUrl && (
+              <CompactFileRow
+                fileName={c.downloadableFileName ?? "challenge-file"}
+                fileUrl={c.downloadableFileUrl}
+                accent={accent}
               />
-            </div>
-          )}
-
-          {c.downloadableFileUrl && (
-            <CompactFileRow
-              fileName={c.downloadableFileName ?? "challenge-file"}
-              fileUrl={c.downloadableFileUrl}
-              accent={accent}
-            />
-          )}
-
-          {!c.requiresInstance && !c.downloadableFileUrl && (
-            <div style={{
-              flex: 1, display: "flex", alignItems: "center", justifyContent: "center",
-              flexDirection: "column", gap: 7, color: TEXT_FAINT,
-              padding: 14,
-            }}>
-              <Trophy size={22} strokeWidth={1} opacity={0.5} />
-              <span style={{ fontSize: 10.5, letterSpacing: "0.04em", textTransform: "uppercase" }}>
-                No assets
-              </span>
-            </div>
-          )}
-        </div>
+            )}
+          </div>
+        )}
       </div>
 
       {/* ── ZONE 3: Full-width submit bar ─────────────────────────────────────── */}
@@ -958,88 +948,48 @@ function AttemptLogTab({
 function CompactFileRow({
   fileName, fileUrl, accent,
 }: { fileName: string; fileUrl: string; accent: string }) {
-  const [copied, setCopied] = useState(false);
-  const copyTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-
-  const copyUrl = (e: React.MouseEvent) => {
-    e.preventDefault();
-    e.stopPropagation();
-    navigator.clipboard.writeText(fileUrl);
-    setCopied(true);
-    toast.success("Link copied", fileUrl);
-    if (copyTimerRef.current) clearTimeout(copyTimerRef.current);
-    copyTimerRef.current = setTimeout(() => setCopied(false), 2000);
-  };
-
   return (
     <div style={{
       display: "flex", alignItems: "center", gap: 8,
       background: BG_RECESSED, border: `1px solid ${BORDER_FINE}`,
-      borderRadius: 6, padding: "8px 10px",
-      transition: "all 0.15s ease-in-out",
+      borderRadius: 6, padding: "7px 10px",
     }}>
-      <div style={{
+      <Download size={12} color={TEXT_DIM} style={{ flexShrink: 0 }} />
+      <span style={{
         flex: 1, minWidth: 0,
         fontSize: 11.5, color: "#dde6f0",
         fontFamily: "ui-monospace, monospace",
         overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
       }}>
         {fileName}
-      </div>
+      </span>
       <a
         href={fileUrl}
         target="_blank"
         rel="noopener noreferrer"
-        title="Download"
+        title="Download file"
         style={{
           flexShrink: 0, display: "inline-flex", alignItems: "center", justifyContent: "center",
-          width: 26, height: 26, borderRadius: 5,
-          background: "transparent", border: `1px solid ${BORDER_FINE}`,
-          color: accent, transition: "all 0.15s ease-in-out",
-        }}
-        onMouseEnter={e => {
-          const el = e.currentTarget as HTMLElement;
-          el.style.background = `${accent}14`;
-          el.style.borderColor = `${accent}45`;
-        }}
-        onMouseLeave={e => {
-          const el = e.currentTarget as HTMLElement;
-          el.style.background = "transparent";
-          el.style.borderColor = BORDER_FINE;
-        }}
-      >
-        <Download size={12} />
-      </a>
-      <button
-        type="button"
-        onClick={copyUrl}
-        title="Copy link"
-        style={{
-          flexShrink: 0, display: "inline-flex", alignItems: "center", justifyContent: "center",
-          width: 26, height: 26, borderRadius: 5,
-          background: "transparent", border: `1px solid ${BORDER_FINE}`,
-          color: copied ? "#22c55e" : TEXT_MUTED, cursor: "pointer",
+          height: 26, padding: "0 10px", borderRadius: 5,
+          background: `${accent}15`, border: `1px solid ${accent}35`,
+          color: accent, fontSize: 10.5, fontWeight: 700,
+          textDecoration: "none", letterSpacing: "0.04em", textTransform: "uppercase",
           transition: "all 0.15s ease-in-out",
+          whiteSpace: "nowrap",
         }}
         onMouseEnter={e => {
-          if (!copied) {
-            const el = e.currentTarget as HTMLElement;
-            el.style.background = "rgba(255,255,255,0.04)";
-            el.style.borderColor = BORDER_MED;
-            el.style.color = TEXT_PRIMARY;
-          }
+          const el = e.currentTarget as HTMLElement;
+          el.style.background = `${accent}25`;
+          el.style.borderColor = `${accent}55`;
         }}
         onMouseLeave={e => {
-          if (!copied) {
-            const el = e.currentTarget as HTMLElement;
-            el.style.background = "transparent";
-            el.style.borderColor = BORDER_FINE;
-            el.style.color = TEXT_MUTED;
-          }
+          const el = e.currentTarget as HTMLElement;
+          el.style.background = `${accent}15`;
+          el.style.borderColor = `${accent}35`;
         }}
       >
-        {copied ? <CheckCircle2 size={12} /> : <Copy size={12} />}
-      </button>
+        Download
+      </a>
     </div>
   );
 }
@@ -1078,12 +1028,13 @@ function SubmitBar({
         </div>
       )}
 
+      {/* Input row — fixed height, never shifts layout */}
       <div style={{
         display: "flex", gap: 8, alignItems: "stretch",
-        // Pass CSS vars to children for input :focus state
         ["--accent-focus" as string]: accent,
         ["--accent-glow"  as string]: `${accent}26`,
       } as React.CSSProperties}>
+        {/* Input wrapper — position:relative anchors the floating result tooltip */}
         <div style={{ flex: 1, position: "relative" }}>
           <div style={{
             position: "absolute", left: 12, top: "50%", transform: "translateY(-50%)",
@@ -1111,8 +1062,8 @@ function SubmitBar({
               borderRadius: 7,
               boxShadow: result
                 ? result.correct
-                  ? "0 0 0 3px rgba(34,197,94,0.12)"
-                  : "0 0 0 3px rgba(239,68,68,0.1)"
+                  ? "0 0 0 3px rgba(34,197,94,0.1)"
+                  : "0 0 0 3px rgba(239,68,68,0.08)"
                 : undefined,
               transition: "border-color 0.15s ease, box-shadow 0.15s ease",
               color: inputDisabled ? TEXT_FAINT : TEXT_PRIMARY,
@@ -1120,6 +1071,34 @@ function SubmitBar({
               outline: "none",
             }}
           />
+
+          {/* Floating result tooltip — absolute, zero layout shift */}
+          {result && (
+            <div
+              key={resultKey}
+              style={{
+                position: "absolute",
+                top: "calc(100% + 6px)",
+                left: 0, right: 0,
+                zIndex: 20,
+                padding: "7px 11px", borderRadius: 6,
+                fontSize: 11.5, fontWeight: 600,
+                background: result.correct
+                  ? "rgba(10,18,12,0.97)"
+                  : "rgba(18,10,12,0.97)",
+                border: `1px solid ${result.correct ? "rgba(34,197,94,0.3)" : "rgba(239,68,68,0.25)"}`,
+                boxShadow: result.correct
+                  ? "0 8px 24px rgba(0,0,0,0.6), 0 0 12px rgba(34,197,94,0.15)"
+                  : "0 8px 24px rgba(0,0,0,0.6), 0 0 12px rgba(239,68,68,0.12)",
+                color: result.correct ? "#4ade80" : "#f87171",
+                display: "flex", alignItems: "center", gap: 7,
+                animation: "ctf-result-in 0.18s cubic-bezier(0.16,1,0.3,1)",
+              }}
+            >
+              {result.correct ? <CheckCircle2 size={13} /> : <AlertCircle size={13} />}
+              {result.message}
+            </div>
+          )}
         </div>
 
         <button
@@ -1177,24 +1156,6 @@ function SubmitBar({
           </div>
         )}
       </div>
-
-      {result && (
-        <div
-          key={resultKey}
-          style={{
-            padding: "8px 12px", borderRadius: 6,
-            fontSize: 12, fontWeight: 600,
-            background: result.correct ? "rgba(34,197,94,0.08)" : "rgba(239,68,68,0.07)",
-            border: `1px solid ${result.correct ? "rgba(34,197,94,0.28)" : "rgba(239,68,68,0.22)"}`,
-            color: result.correct ? "#22c55e" : "#f87171",
-            display: "flex", alignItems: "center", gap: 8,
-            animation: "ctf-result-in 0.18s cubic-bezier(0.16,1,0.3,1)",
-          }}
-        >
-          {result.correct ? <CheckCircle2 size={14} /> : <AlertCircle size={14} />}
-          {result.message}
-        </div>
-      )}
     </div>
   );
 }
