@@ -44,7 +44,7 @@ public class CTFCompetitionUpdateRequest {
 
     private Boolean isActive;
 
-    @Pattern(regexp = "SCHEDULED|DURATION|MANUAL")
+    @Pattern(regexp = "SCHEDULED|DURATION|MANUAL|REGISTRATION")
     private String timingMode;
 
     @Min(1)
