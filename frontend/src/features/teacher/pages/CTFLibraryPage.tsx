@@ -423,6 +423,8 @@ function LibraryPanel({ mode, existing, onClose, onSaved, onJustCreated }: Libra
     dockerCpuPercent:   existing?.dockerCpuPercent ? String(existing.dockerCpuPercent) : "",
     dockerPidsLimit:    existing?.dockerPidsLimit ? String(existing.dockerPidsLimit) : "",
     downloadableFileUrl: existing?.downloadableFileUrl ?? "",
+    maxAttempts:         existing?.maxAttempts != null ? String(existing.maxAttempts) : "10",
+    attemptsMode:        (existing?.maxAttempts == null ? "unlimited" : "limited") as "limited" | "unlimited",
   });
 
   const [hints, setHints] = useState<{ cost: number; text: string }[]>(
@@ -480,6 +482,7 @@ function LibraryPanel({ mode, existing, onClose, onSaved, onJustCreated }: Libra
       plainFlag:          form.flagType === "STATIC" ? form.plainFlag.trim() : undefined,
       flagFormat:         form.flagType === "DYNAMIC" ? form.flagFormat.trim() : undefined,
       downloadableFileUrl: form.downloadableFileUrl || undefined,
+      maxAttempts:        form.attemptsMode === "unlimited" ? 0 : parseInt(form.maxAttempts) || 10,
       requiresInstance:   form.requiresInstance,
       ...dockerFields,
       hints: hints.length > 0 ? hints : undefined,
@@ -688,6 +691,22 @@ function BasicsSection({ form, setForm, errors }: { form: any; setForm: (f: any)
             <input className="input" type="number" min={50} max={5000} value={form.basePoints} onChange={e => setForm({ ...form, basePoints: Number(e.target.value) })} />
           </PanelField>
         </div>
+        <PanelField label="Attempts per team">
+          <div style={{ display: "flex", gap: 6, marginBottom: 6 }}>
+            {(["limited", "unlimited"] as const).map(mode => (
+              <button key={mode} type="button"
+                onClick={() => setForm({ ...form, attemptsMode: mode })}
+                style={{ padding: "5px 14px", borderRadius: 6, fontSize: 12, fontWeight: 600, cursor: "pointer", border: `1px solid ${form.attemptsMode === mode ? "var(--blue)" : "var(--border)"}`, background: form.attemptsMode === mode ? "rgba(96,165,250,0.12)" : "transparent", color: form.attemptsMode === mode ? "var(--blue)" : "var(--text-muted)" }}>
+                {mode === "unlimited" ? "Unlimited ∞" : "Limited"}
+              </button>
+            ))}
+          </div>
+          {form.attemptsMode === "limited" && (
+            <input className="input" type="number" min={1} value={form.maxAttempts}
+              onChange={e => setForm({ ...form, maxAttempts: e.target.value })}
+              placeholder="Max attempts per team" />
+          )}
+        </PanelField>
       </PanelSection>
       <PanelSection icon={Box} title="Downloadable file (optional)">
         <PanelField label="File URL">

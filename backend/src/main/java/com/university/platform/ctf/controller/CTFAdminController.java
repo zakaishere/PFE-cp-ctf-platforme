@@ -2,6 +2,7 @@ package com.university.platform.ctf.controller;
 
 import com.university.platform.ctf.dto.CTFGraphPointDTO;
 import com.university.platform.ctf.dto.CTFResourceConfigRequest;
+import com.university.platform.ctf.dto.CTFScoreboardEntryDTO;
 import com.university.platform.ctf.entity.CTFChallenge;
 import com.university.platform.ctf.entity.CTFDockerImage;
 import com.university.platform.ctf.entity.CTFInstance;
@@ -124,6 +125,20 @@ public class CTFAdminController {
                   .add(new CTFGraphPointDTO(awardedAt, cumulativeScore));
         }
         return ResponseEntity.ok(result);
+    }
+
+    // ── Admin: live scoreboard (ignores freeze) ──────────────────────────────
+
+    /**
+     * Returns the real-time scoreboard regardless of freeze state.
+     * Use this in the teacher/admin control panel so organizers always see live data.
+     */
+    @GetMapping("/competitions/{competitionId}/scoreboard/live")
+    public ResponseEntity<List<CTFScoreboardEntryDTO>> getScoreboardLive(
+            @PathVariable UUID competitionId,
+            @RequestHeader("Authorization") String authHeader) {
+        requireTeacherOrAdmin(authHeader);
+        return ResponseEntity.ok(competitionService.getScoreboardLive(competitionId));
     }
 
     // ── Admin: instances ─────────────────────────────────────────────────────

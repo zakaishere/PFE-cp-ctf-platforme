@@ -154,9 +154,16 @@ public class CTFInstanceService {
 
         int port = reservePort();
 
-        String flagValue = flagGenerator.plainFlag(
-                challenge.getFlagFormat(), competitionId, challengeId,
-                teamId != null ? teamId : userId);
+        // STATIC challenges inject the teacher's exact flag; DYNAMIC challenges get
+        // a per-team derived value so cross-team copy-paste can be detected.
+        String flagValue;
+        if (challenge.getFlagType() == CTFChallenge.FlagType.STATIC) {
+            flagValue = challenge.getFlagValue(); // plaintext stored at challenge-creation time
+        } else {
+            flagValue = flagGenerator.plainFlag(
+                    challenge.getFlagFormat(), competitionId, challengeId,
+                    teamId != null ? teamId : userId);
+        }
 
         CTFInstance instance = instanceRepo.save(CTFInstance.builder()
                 .challengeId(challengeId)
@@ -358,6 +365,34 @@ public class CTFInstanceService {
         instance.setStoppedAt(LocalDateTime.now());
         USED_PORTS.remove(instance.getAssignedPort());
         instanceRepo.save(instance);
+    }
+
+    /**
+     * Stops and destroys the active Docker instance for the given team + challenge,
+     * if one exists. Called after a correct flag submission so the container is
+     * reclaimed immediately. Never throws — teardown failures are logged only and
+     * must never block the solve being recorded.
+     *
+     * @return true if an instance was found and stopped, false if none existed
+     */
+    public boolean stopInstanceOnSolve(UUID challengeId, UUID teamId) {
+        try {
+            Optional<CTFInstance> found = instanceRepo.findActiveByTeamAndChallenge(teamId, challengeId);
+            if (found.isEmpty()) return false;
+            CTFInstance instance = found.get();
+            instance.setStatus("STOPPED");
+            instance.setStoppedAt(LocalDateTime.now());
+            USED_PORTS.remove(instance.getAssignedPort());
+            instanceRepo.save(instance);
+            exec.execute(() -> teardownContainer(instance));
+            log.info("Stopped instance {} for team {} after correct solve of challenge {}",
+                    instance.getId(), teamId, challengeId);
+            return true;
+        } catch (Exception e) {
+            log.error("Failed to stop instance for team {} challenge {} on solve: {}",
+                    teamId, challengeId, e.getMessage());
+            return false;
+        }
     }
 
     public List<CTFDockerImage> getAllImages() {

@@ -48,6 +48,7 @@ interface FormState {
   downloadableFileUrl: string;
   downloadableFileName: string;
   maxAttempts:         string;
+  attemptsMode:        "limited" | "unlimited";
   isActive:            boolean;
 }
 
@@ -72,6 +73,7 @@ const emptyForm = (): FormState => ({
   downloadableFileUrl: "",
   downloadableFileName: "",
   maxAttempts:         "10",
+  attemptsMode:        "limited",
   isActive:            false,
 });
 
@@ -294,7 +296,8 @@ const TeacherCTFForm = ({ editId }: Props) => {
           dockerPidsLimit:     c.dockerPidsLimit ? String(c.dockerPidsLimit) : "",
           downloadableFileUrl: c.downloadableFileUrl ?? "",
           downloadableFileName: c.downloadableFileName ?? "",
-          maxAttempts:         String(c.maxAttempts),
+          maxAttempts:         c.maxAttempts != null ? String(c.maxAttempts) : "10",
+          attemptsMode:        c.maxAttempts == null ? "unlimited" : "limited",
           isActive:            c.isActive,
         });
         const existingEnvVars = c.dockerEnvVars;
@@ -343,8 +346,10 @@ const TeacherCTFForm = ({ editId }: Props) => {
       }
     }
 
-    const maxAt = parseInt(form.maxAttempts);
-    if (isNaN(maxAt) || maxAt < 1) e.maxAttempts = "Max attempts must be at least 1";
+    if (form.attemptsMode === "limited") {
+      const maxAt = parseInt(form.maxAttempts);
+      if (isNaN(maxAt) || maxAt < 1) e.maxAttempts = "Max attempts must be at least 1";
+    }
 
     if (form.requiresInstance) {
       if (!form.dockerImage.trim()) e.dockerImage = "Docker image is required for instance challenges";
@@ -382,8 +387,10 @@ const TeacherCTFForm = ({ editId }: Props) => {
     if (!withActive.difficulty)         prevErrors.difficulty  = "Difficulty is required";
     const pts = parseInt(withActive.basePoints);
     if (isNaN(pts) || pts < 1)          prevErrors.basePoints  = "Points must be a positive number";
-    const maxAt = parseInt(withActive.maxAttempts);
-    if (isNaN(maxAt) || maxAt < 1)      prevErrors.maxAttempts = "Max attempts must be at least 1";
+    if (withActive.attemptsMode === "limited") {
+      const maxAt = parseInt(withActive.maxAttempts);
+      if (isNaN(maxAt) || maxAt < 1) prevErrors.maxAttempts = "Max attempts must be at least 1";
+    }
     if (withActive.requiresInstance) {
       if (!withActive.dockerImage.trim()) prevErrors.dockerImage = "Docker image is required";
       const port = parseInt(withActive.dockerExposedPort);
@@ -431,7 +438,7 @@ const TeacherCTFForm = ({ editId }: Props) => {
           ...dockerPayload,
           downloadableFileUrl: withActive.downloadableFileUrl || undefined,
           downloadableFileName: withActive.downloadableFileName || undefined,
-          maxAttempts:         parseInt(withActive.maxAttempts),
+          maxAttempts:         withActive.attemptsMode === "unlimited" ? 0 : parseInt(withActive.maxAttempts),
           isActive:            publish,
           hints:               hintPayload,
         });
@@ -450,7 +457,7 @@ const TeacherCTFForm = ({ editId }: Props) => {
           ...dockerPayload,
           downloadableFileUrl: withActive.downloadableFileUrl || undefined,
           downloadableFileName: withActive.downloadableFileName || undefined,
-          maxAttempts:         parseInt(withActive.maxAttempts),
+          maxAttempts:         withActive.attemptsMode === "unlimited" ? 0 : parseInt(withActive.maxAttempts),
           isActive:            publish,
           hints:               hintPayload,
         });
@@ -582,15 +589,38 @@ const TeacherCTFForm = ({ editId }: Props) => {
                 <FieldError errors={errors} fieldName="basePoints" />
               </div>
               <div>
-                <label className="psp-form-label">Max Attempts</label>
-                <input
-                  className="psp-form-input"
-                  type="number"
-                  min={1}
-                  value={form.maxAttempts}
-                  onChange={e => set("maxAttempts", e.target.value)}
-                />
-                <FieldError errors={errors} fieldName="maxAttempts" />
+                <label className="psp-form-label">Attempts per team</label>
+                <div style={{ display: "flex", gap: 8, marginBottom: 6 }}>
+                  {(["limited", "unlimited"] as const).map(mode => (
+                    <button
+                      key={mode}
+                      type="button"
+                      onClick={() => set("attemptsMode", mode)}
+                      style={{
+                        flex: 1, padding: "7px 0", borderRadius: 6, cursor: "pointer",
+                        border: form.attemptsMode === mode ? "1px solid #6366f1" : "1px solid #334155",
+                        background: form.attemptsMode === mode ? "rgba(99,102,241,0.15)" : "transparent",
+                        color: form.attemptsMode === mode ? "#a5b4fc" : "#64748b",
+                        fontSize: 12, fontWeight: 600, textTransform: "capitalize",
+                      }}
+                    >
+                      {mode === "unlimited" ? "Unlimited ∞" : "Limited"}
+                    </button>
+                  ))}
+                </div>
+                {form.attemptsMode === "limited" && (
+                  <>
+                    <input
+                      className="psp-form-input"
+                      type="number"
+                      min={1}
+                      placeholder="e.g. 10"
+                      value={form.maxAttempts}
+                      onChange={e => set("maxAttempts", e.target.value)}
+                    />
+                    <FieldError errors={errors} fieldName="maxAttempts" />
+                  </>
+                )}
               </div>
             </div>
           </div>

@@ -809,6 +809,7 @@ export interface CTFChallengeDTO {
   category: string;
   difficulty: "EASY" | "MEDIUM" | "HARD";
   basePoints: number;
+  currentPoints: number;
   flagFormat: string;
   requiresInstance: boolean;
   dockerImage: string | null;
@@ -817,7 +818,7 @@ export interface CTFChallengeDTO {
   downloadableFileUrl: string | null;
   downloadableFileName: string | null;
   hints: CTFHintDTO[];
-  maxAttempts: number;
+  maxAttempts: number | null; // null = unlimited
   isActive: boolean;
   createdAt: string;
   solvedByMe: boolean;
@@ -832,7 +833,7 @@ export interface CTFSubmitResponse {
   message: string;
   pointsAwarded: number | null;
   attemptsUsed: number;
-  maxAttempts: number;
+  maxAttempts: number | null; // null = unlimited
 }
 
 export interface CTFSubmission {
@@ -1031,7 +1032,7 @@ export interface CTFChallengeResponse {
   downloadableFileUrl: string | null;
   downloadableFileName: string | null;
   hints:               { id: string; cost: number; text: string }[];
-  maxAttempts:         number;
+  maxAttempts:         number | null; // null = unlimited
   isActive:            boolean;
   authorId:            string;
   createdAt:           string;
@@ -1176,6 +1177,34 @@ export interface CTFTeamResponse {
   totalPoints:   number;
 }
 
+export interface CTFChallengeSolverDTO {
+  teamId:    string;
+  teamName:  string;
+  avatarColor: string;
+  solvedAt:  string;
+}
+
+export interface CTFTeamSolveEntryDTO {
+  challengeId:    string;
+  challengeTitle: string;
+  category:       string;
+  currentPoints:  number;
+  solvedAt:       string;
+}
+
+export interface CTFTeamProfileDTO {
+  id:           string;
+  competitionId: string;
+  name:         string;
+  avatarColor:  string;
+  captainId:    string;
+  rank:         number;
+  totalPoints:  number;
+  solveCount:   number;
+  members:      CTFTeamMemberDTO[];
+  solves:       CTFTeamSolveEntryDTO[];
+}
+
 export interface CTFScoreboardEntryDTO {
   rank:         number;
   teamId:       string;
@@ -1216,6 +1245,7 @@ export interface CTFCompetitionChallengeDTO {
   category:            string;
   difficulty:          "EASY" | "MEDIUM" | "HARD";
   basePoints:          number;
+  currentPoints?:      number;
   flagFormat:          string;
   flagType?:           "STATIC" | "DYNAMIC";
   requiresInstance:    boolean;
@@ -1230,7 +1260,7 @@ export interface CTFCompetitionChallengeDTO {
   downloadableFileUrl: string | null;
   downloadableFileName:string | null;
   hints:               CTFHintDTO[];
-  maxAttempts:         number;
+  maxAttempts:         number | null; // null = unlimited
   isActive:            boolean;
   isHidden?:           boolean | null;
   solveCount:          number;
@@ -1238,11 +1268,29 @@ export interface CTFCompetitionChallengeDTO {
 }
 
 export interface CTFCompetitionSubmitResponse {
-  correct:       boolean;
-  message:       string;
-  pointsAwarded: number | null;
-  newRank:       number | null;
+  correct:          boolean;
+  message:          string;
+  pointsAwarded:    number | null;
+  newRank:          number | null;
+  attemptsUsed:     number;
+  attemptsRemaining: number | null; // null = unlimited
+  lockedOut:        boolean;
 }
+
+export interface CTFAttemptDTO {
+  id:            string;
+  submittedAt:   string; // ISO-8601
+  correct:       boolean;
+  flagMasked:    string;
+  attemptNumber: number;
+}
+
+export const getMyCtfAttempts = (competitionId: string, challengeId: string) =>
+  apiClient<CTFAttemptDTO[]>(
+    `/api/ctf/competitions/${competitionId}/challenges/${challengeId}/my-attempts`,
+    { method: "GET" },
+    { silentErrors: true },
+  );
 
 export const getCtfCompetitions = () =>
   apiClient<CTFCompetitionDTO[]>("/api/ctf/competitions", { method: "GET" });
@@ -1302,8 +1350,24 @@ export const broadcastTeacherCtfMessage = (competitionId: string, title: string,
     { method: "POST", body: JSON.stringify({ title, body }) },
   );
 
+export const getChallengeSolvers = (competitionId: string, challengeId: string) =>
+  apiClient<CTFChallengeSolverDTO[]>(
+    `/api/ctf/competitions/${competitionId}/challenges/${challengeId}/solvers`,
+    { method: "GET" },
+  );
+
+export const getCtfTeamProfile = (competitionId: string, teamId: string) =>
+  apiClient<CTFTeamProfileDTO>(
+    `/api/ctf/competitions/${competitionId}/teams/${teamId}/profile`,
+    { method: "GET" },
+  );
+
 export const getCtfScoreboard = (competitionId: string) =>
   apiClient<CTFScoreboardEntryDTO[]>(`/api/ctf/competitions/${competitionId}/scoreboard`, { method: "GET" });
+
+/** Admin/teacher only — always returns live data, ignores freeze timestamp. */
+export const getCtfScoreboardLive = (competitionId: string) =>
+  apiClient<CTFScoreboardEntryDTO[]>(`/api/ctf/admin/competitions/${competitionId}/scoreboard/live`, { method: "GET" });
 
 export const getCtfScoreboardGraph = (competitionId: string, topN = 10) =>
   apiClient<CTFScoreTimelineDTO>(
@@ -1455,7 +1519,7 @@ export interface TeacherCtfChallengeCreateRequest {
   dockerPidsLimit?:     number;
   downloadableFileUrl?: string;
   downloadableFileName?:string;
-  maxAttempts?:         number;
+  maxAttempts?:         number | null; // null = unlimited; 0 also treated as unlimited by backend
   isActive?:            boolean;
   hints?:               { cost: number; text: string }[];
 }
@@ -1540,7 +1604,7 @@ export interface CTFLibraryChallengeDTO {
   dockerPidsLimit?:    number | null;
   downloadableFileUrl: string | null;
   hints:               CTFHintDTO[];
-  maxAttempts:         number;
+  maxAttempts:         number | null; // null = unlimited
   buildStatus?:        string | null;
   builtImageTag?:      string | null;
   useCount:            number;
@@ -1627,6 +1691,8 @@ export interface CTFTeacherSubmissionDTO {
   solvedByName: string;
   pointsAwarded: number;
   correct: boolean;
+  cheatFlagged: boolean;
+  submittedValue: string | null;
   at: string;
 }
 

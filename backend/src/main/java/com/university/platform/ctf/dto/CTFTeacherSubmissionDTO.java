@@ -7,9 +7,8 @@ import java.time.LocalDateTime;
 import java.util.UUID;
 
 /**
- * One row in the teacher Submissions tab. Built from {@code CTFCompetitionSolve}
- * — note the competition flow doesn't persist incorrect attempts, so this log
- * effectively shows correct solves; cheat events surface separately.
+ * One row in the teacher Submissions tab. Built from {@code CTFSubmission}
+ * which persists every flag attempt — correct, incorrect, and cheat-flagged.
  */
 @Data
 @Builder
@@ -25,5 +24,8 @@ public class CTFTeacherSubmissionDTO {
     private String solvedByName;
     private int pointsAwarded;
     private boolean correct;
+    private boolean cheatFlagged;
+    /** The raw flag string the player submitted — shown truncated in the UI for anti-cheat review. */
+    private String submittedValue;
     private LocalDateTime at;
 }

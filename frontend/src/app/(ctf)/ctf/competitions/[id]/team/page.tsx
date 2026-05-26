@@ -30,7 +30,9 @@ export default function TeamPage() {
   if (!ctx.competition) return null;
 
   if (!ctx.myTeam) {
-    return <NoTeamPanels competitionId={id} onTeamCreated={ctx.refetchTeam} canRegister={ctx.status === "UPCOMING"} />;
+    const regOpen = Boolean(ctx.competition?.registrationOpen);
+    const notEnded = ctx.status !== "ENDED";
+    return <NoTeamPanels competitionId={id} onTeamCreated={ctx.refetchTeam} canRegister={notEnded && (ctx.status === "UPCOMING" || regOpen)} />;
   }
 
   return <InTeamView competitionId={id} userId={userId} />;
@@ -96,7 +98,9 @@ function NoTeamPanels({ competitionId, onTeamCreated, canRegister }: {
           borderRadius: 8, padding: "12px 14px", marginBottom: 18,
           fontSize: 13, color: "#fecaca",
         }}>
-          Team registration is closed — the competition has already started.
+          {ctx.status === "ENDED"
+            ? "This competition has ended — team registration is closed."
+            : "Team registration is closed — the teacher has not enabled late registration."}
         </div>
       )}
 
@@ -178,7 +182,8 @@ function InTeamView({ competitionId, userId }: { competitionId: string; userId: 
   const isCaptain = team.captainId === userId;
   const status = ctx.status ?? ctx.competition?.status ?? "UPCOMING";
   const competitionEnded = status === "ENDED";
-  const canManage = status === "UPCOMING";
+  const regOpen = Boolean(ctx.competition?.registrationOpen);
+  const canManage = status === "UPCOMING" || (regOpen && status !== "ENDED");
 
   useEffect(() => {
     getCtfScoreboard(competitionId).then(setScoreboard).catch(() => {});

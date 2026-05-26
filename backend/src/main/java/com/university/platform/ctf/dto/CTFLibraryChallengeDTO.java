@@ -30,7 +30,7 @@ public class CTFLibraryChallengeDTO {
     private Integer dockerPidsLimit;
     private String  downloadableFileUrl;
     private List<CTFHintDTO> hints;
-    private int     maxAttempts;
+    private Integer maxAttempts; // null = unlimited
 
     /** Latest build status: BUILDING / READY / FAILED / PENDING / null (no build yet). */
     private String buildStatus;

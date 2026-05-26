@@ -173,23 +173,36 @@ public class CTFTeacherManagementService {
                                                           int limit) {
         competitionTeacher.loadOwned(competitionId, userId, isAdmin);
 
-        List<CTFCompetitionSolve> solves = solveRepo.findRecentByCompetition(competitionId);
-        if (limit > 0 && solves.size() > limit) solves = solves.subList(0, limit);
+        // Read from ctf_submissions which stores every attempt (correct + incorrect + cheat).
+        org.springframework.data.domain.Pageable page = limit > 0
+                ? org.springframework.data.domain.PageRequest.of(0, limit)
+                : org.springframework.data.domain.Pageable.unpaged();
+        List<CTFSubmission> submissions = submissionRepo.findByCompetitionIdOrderBySubmittedAtDesc(competitionId, page);
 
         Map<UUID, CTFTeam> teamMap = teamRepo.findByCompetitionId(competitionId)
                 .stream().collect(Collectors.toMap(CTFTeam::getId, t -> t));
         Map<UUID, CTFChallenge> chalMap = challengeRepo
                 .findByCompetitionIdAndDeletedFalse(competitionId).stream()
                 .collect(Collectors.toMap(CTFChallenge::getId, c -> c));
-        Set<UUID> userIds = solves.stream().map(CTFCompetitionSolve::getSolvedBy)
+        Set<UUID> userIds = submissions.stream().map(CTFSubmission::getUserId)
                 .filter(Objects::nonNull).collect(Collectors.toSet());
         Map<UUID, User> users = userRepo.findAllById(userIds).stream()
                 .collect(Collectors.toMap(User::getId, u -> u));
 
-        return solves.stream().map(s -> {
+        // Correct solves also have a point value stored in the solve record.
+        Map<String, Integer> solvePoints = solveRepo.findRecentByCompetition(competitionId).stream()
+                .collect(Collectors.toMap(
+                        s -> s.getTeamId() + ":" + s.getChallengeId(),
+                        CTFCompetitionSolve::getPointsAwarded,
+                        (a, b) -> a));
+
+        return submissions.stream().map(s -> {
             CTFTeam team = teamMap.get(s.getTeamId());
             CTFChallenge chal = chalMap.get(s.getChallengeId());
-            User u = s.getSolvedBy() != null ? users.get(s.getSolvedBy()) : null;
+            User u = s.getUserId() != null ? users.get(s.getUserId()) : null;
+            int pts = Boolean.TRUE.equals(s.getIsCorrect())
+                    ? solvePoints.getOrDefault(s.getTeamId() + ":" + s.getChallengeId(), 0)
+                    : 0;
             return CTFTeacherSubmissionDTO.builder()
                     .id(s.getId())
                     .teamId(s.getTeamId())
@@ -198,11 +211,13 @@ public class CTFTeacherManagementService {
                     .challengeId(s.getChallengeId())
                     .challengeTitle(chal != null ? chal.getTitle() : "—")
                     .challengeCategory(chal != null && chal.getCategory() != null ? chal.getCategory().name() : null)
-                    .solvedByUserId(s.getSolvedBy())
+                    .solvedByUserId(s.getUserId())
                     .solvedByName(u != null ? u.getFirstName() + " " + u.getLastName() : "Unknown")
-                    .pointsAwarded(s.getPointsAwarded())
-                    .correct(true)  // competition flow only stores correct solves
-                    .at(s.getSolvedAt())
+                    .pointsAwarded(pts)
+                    .correct(Boolean.TRUE.equals(s.getIsCorrect()))
+                    .cheatFlagged(Boolean.TRUE.equals(s.getIsCheatFlagged()))
+                    .submittedValue(s.getSubmittedValue())
+                    .at(s.getSubmittedAt())
                     .build();
         }).collect(Collectors.toList());
     }

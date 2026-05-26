@@ -8,6 +8,7 @@ import SockJS from "sockjs-client";
 import {
   getCtfCompetition, getCtfMyTeam, getCtfScoreboard, getApiBaseUrl,
   type CTFCompetitionDTO, type CTFCompetitionStatus, type CTFTeamResponse,
+  type CTFScoreboardEntryDTO,
 } from "@/lib/api";
 import { useCompetitionStatus } from "@/features/ctf/hooks/useCompetitionStatus";
 import { useCTFNotifications } from "@/features/ctf/hooks/useCTFNotifications";
@@ -96,10 +97,20 @@ export function CTFCompetitionProvider({
     Promise.all([
       getCtfCompetition(competitionId),
       getCtfMyTeam(competitionId).catch(() => null),
-    ]).then(([c, t]) => {
+    ]).then(async ([c, t]) => {
       if (cancelled) return;
+      let resolvedTeam: CTFTeamResponse | null = t && t.id ? t : null;
+      // When the competition is frozen, show the team's frozen score in the navbar
+      // so players cannot infer score movement while the freeze is active.
+      if (c?.isFrozen && resolvedTeam) {
+        const entries = await getCtfScoreboard(competitionId).catch((): CTFScoreboardEntryDTO[] => []);
+        const entry = entries.find(e => e.teamId === resolvedTeam!.id);
+        if (entry) {
+          resolvedTeam = { ...resolvedTeam, totalPoints: entry.totalPoints, solveCount: entry.solveCount };
+        }
+      }
       setCompetition(c);
-      setMyTeam(t && t.id ? t : null);
+      setMyTeam(resolvedTeam);
     }).catch(() => { /* surfaced by apiClient */ })
       .finally(() => { if (!cancelled) setLoading(false); });
     return () => { cancelled = true; };
@@ -149,7 +160,10 @@ export function CTFCompetitionProvider({
   const status = statusHook.status ?? competition?.status ?? null;
   const isPaused = statusHook.isPaused || competition?.isPaused || false;
   const isFrozen = statusHook.isFrozen || competition?.isFrozen || false;
-  const canSolve = status === "ACTIVE" && !isPaused;
+  // FROZEN is a display-only feature: solving must remain open.
+  // computeStatus() returns "FROZEN" (not "ACTIVE") when frozen, so we must
+  // explicitly include it here, otherwise canSolve=false blocks all submissions.
+  const canSolve = (status === "ACTIVE" || status === "FROZEN") && !isPaused;
 
   const openChallenge  = useCallback((id: string) => setSelected(id), []);
   const closeChallenge = useCallback(() => setSelected(null), []);

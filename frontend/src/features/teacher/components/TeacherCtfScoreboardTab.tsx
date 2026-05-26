@@ -4,8 +4,8 @@ import { useEffect, useState } from "react";
 import { Snowflake, Trophy } from "lucide-react";
 import { toast } from "@/components/ui/PSPToast";
 import {
-  getCtfScoreboard, getTeacherCtfTeams,
-  type CTFScoreboardEntryDTO, type CTFTeacherTeamDTO,
+  getCtfScoreboard, getCtfScoreboardLive,
+  type CTFScoreboardEntryDTO,
 } from "@/lib/api";
 
 interface Props {
@@ -15,26 +15,27 @@ interface Props {
 }
 
 export default function TeacherCtfScoreboardTab({ competitionId, isFrozen, frozenAt }: Props) {
-  const [scoreboard, setScoreboard] = useState<CTFScoreboardEntryDTO[]>([]);
-  const [teams, setTeams] = useState<CTFTeacherTeamDTO[]>([]);
+  // frozenBoard = what players see (frozen snapshot); liveBoard = real-time admin view
+  const [frozenBoard, setFrozenBoard] = useState<CTFScoreboardEntryDTO[]>([]);
+  const [liveBoard,   setLiveBoard]   = useState<CTFScoreboardEntryDTO[]>([]);
   const [showDiff, setShowDiff] = useState(false);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     Promise.all([
-      getCtfScoreboard(competitionId),
-      getTeacherCtfTeams(competitionId),
-    ]).then(([sb, t]) => {
-      setScoreboard(sb);
-      setTeams(t);
+      getCtfScoreboard(competitionId),      // player-visible (respects freeze)
+      getCtfScoreboardLive(competitionId),   // admin live (always real-time)
+    ]).then(([frozen, live]) => {
+      setFrozenBoard(frozen);
+      setLiveBoard(live);
     }).catch(() => toast.error("Failed to load scoreboard", "Please try again."))
       .finally(() => setLoading(false));
   }, [competitionId]);
 
-  // "Show what changed after freeze" — if frozen, the public scoreboard is the
-  // frozen snapshot. The teacher table reflects current totals (live). So if
-  // showDiff is on we compare teacher totals vs scoreboard totals.
-  const teamById = new Map(teams.map(t => [t.id, t]));
+  // Admin always sees the live board; frozenBoard is used only to show the diff column.
+  const scoreboard = isFrozen ? liveBoard : liveBoard;
+  const liveById = new Map(liveBoard.map(e => [e.teamId, e]));
+  const frozenById = new Map(frozenBoard.map(e => [e.teamId, e]));
 
   return (
     <div>
@@ -72,7 +73,7 @@ export default function TeacherCtfScoreboardTab({ competitionId, isFrozen, froze
           <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13 }}>
             <thead>
               <tr style={{ background: "var(--surface-2, #0f172a)" }}>
-                {["#", "Team", "Points (visible)", "Solves", "Points (live)", "Δ post-freeze"].map(h => (
+                {["#", "Team", "Points (live)", "Solves", "Points (frozen)", "Δ post-freeze"].map(h => (
                   <th key={h} style={{
                     padding: "10px 14px", textAlign: "left",
                     fontSize: 11, color: "var(--text-muted)", textTransform: "uppercase", letterSpacing: "0.05em",
@@ -83,10 +84,10 @@ export default function TeacherCtfScoreboardTab({ competitionId, isFrozen, froze
             </thead>
             <tbody>
               {scoreboard.map(row => {
-                const teacherTeam = teamById.get(row.teamId);
-                const livePts = teacherTeam?.totalPoints ?? row.totalPoints;
-                const diff = livePts - row.totalPoints;
-                const changed = isFrozen && diff > 0;
+                const frozenEntry = frozenById.get(row.teamId);
+                const frozenPts   = frozenEntry?.totalPoints ?? row.totalPoints;
+                const diff        = row.totalPoints - frozenPts;
+                const changed     = isFrozen && diff > 0;
                 return (
                   <tr key={row.teamId} style={{
                     borderBottom: "1px solid var(--border)",
@@ -103,26 +104,19 @@ export default function TeacherCtfScoreboardTab({ competitionId, isFrozen, froze
                           color: "#fff", fontSize: 10, fontWeight: 700,
                         }}>{row.teamName.charAt(0).toUpperCase()}</span>
                         <span style={{ fontWeight: 600 }}>{row.teamName}</span>
-                        {teacherTeam?.isDisqualified && (
-                          <span style={{
-                            fontSize: 10, fontWeight: 700, color: "#f87171",
-                            background: "rgba(239,68,68,0.12)", border: "1px solid rgba(239,68,68,0.3)",
-                            borderRadius: 3, padding: "1px 6px",
-                          }}>DQ</span>
-                        )}
                       </div>
                     </td>
-                    <td style={{ padding: "10px 14px", fontFamily: "monospace", fontWeight: 700 }}>
+                    <td style={{ padding: "10px 14px", fontFamily: "monospace", fontWeight: 700, color: "#f8fafc" }}>
                       {row.totalPoints}
                     </td>
                     <td style={{ padding: "10px 14px", color: "var(--text-muted)" }}>{row.solveCount}</td>
                     <td style={{ padding: "10px 14px", fontFamily: "monospace", color: "var(--text-muted)" }}>
-                      {livePts}
+                      {frozenPts}
                     </td>
                     <td style={{ padding: "10px 14px", fontFamily: "monospace",
                       color: diff > 0 ? "#22d3ee" : "var(--text-muted)",
                     }}>
-                      {diff > 0 ? `+${diff}` : "0"}
+                      {diff > 0 ? `+${diff}` : "—"}
                     </td>
                   </tr>
                 );

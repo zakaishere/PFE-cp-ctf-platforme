@@ -138,7 +138,10 @@ public class CTFChallengeService {
         if (dto.getDownloadableFileUrl() != null)  c.setDownloadableFileUrl(dto.getDownloadableFileUrl());
         if (dto.getDownloadableFileName() != null) c.setDownloadableFileName(dto.getDownloadableFileName());
         if (dto.getHints() != null)                c.setHints(dto.getHints());
-        if (dto.getMaxAttempts() != null)          c.setMaxAttempts(dto.getMaxAttempts());
+        // 0 or negative = unlimited (stored as null); positive = hard limit
+        if (dto.getMaxAttempts() != null) {
+            c.setMaxAttempts(dto.getMaxAttempts() <= 0 ? null : dto.getMaxAttempts());
+        }
         if (dto.getIsActive() != null)             c.setIsActive(dto.getIsActive());
     }
 

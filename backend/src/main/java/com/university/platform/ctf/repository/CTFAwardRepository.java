@@ -16,6 +16,14 @@ public interface CTFAwardRepository extends JpaRepository<CTFAward, UUID> {
     List<CTFAward> findByCompetitionIdAndAwardedAtLessThanEqual(
             UUID competitionId, LocalDateTime cutoff);
 
+    /** Returns all awards for a competition that match the given reason string (e.g. "solve:<challengeId>"). */
+    List<CTFAward> findByCompetitionIdAndReason(UUID competitionId, String reason);
+
+    List<CTFAward> findByCompetitionIdAndReasonStartingWith(UUID competitionId, String reasonPrefix);
+
+    List<CTFAward> findByCompetitionIdAndAwardedAtLessThanEqualAndReasonStartingWith(
+            UUID competitionId, LocalDateTime cutoff, String reasonPrefix);
+
     @Query("SELECT COALESCE(SUM(a.value), 0) FROM CTFAward a WHERE a.competitionId = :compId AND a.teamId = :teamId")
     int sumValueByCompetitionIdAndTeamId(@Param("compId") UUID compId, @Param("teamId") UUID teamId);
 

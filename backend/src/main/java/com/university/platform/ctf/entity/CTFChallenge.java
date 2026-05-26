@@ -51,6 +51,11 @@ public class CTFChallenge {
     @Column(name = "flag_hash", nullable = false, length = 64)
     private String flagHash;
 
+    /** Plaintext flag stored only for STATIC challenges — used to inject the correct value into Docker containers.
+     *  Never exposed to students via any API. Null for DYNAMIC challenges. */
+    @Column(name = "flag_value", length = 500)
+    private String flagValue;
+
     @Builder.Default
     @Enumerated(EnumType.STRING)
     @Column(name = "flag_type", nullable = false, length = 10)

@@ -12,11 +12,17 @@ public interface CTFSubmissionRepository extends JpaRepository<CTFSubmission, UU
 
     long countByChallengeIdAndUserId(UUID challengeId, UUID userId);
 
+    long countByChallengeIdAndTeamId(UUID challengeId, UUID teamId);
+
     Optional<CTFSubmission> findTopByChallengeIdAndUserIdOrderBySubmittedAtDesc(UUID challengeId, UUID userId);
 
     List<CTFSubmission> findByChallengeIdAndUserIdOrderBySubmittedAtDesc(UUID challengeId, UUID userId, Pageable pageable);
 
+    List<CTFSubmission> findByChallengeIdAndTeamIdOrderBySubmittedAtDesc(UUID challengeId, UUID teamId, Pageable pageable);
+
     List<CTFSubmission> findByChallengeIdOrderBySubmittedAtDesc(UUID challengeId, Pageable pageable);
+
+    List<CTFSubmission> findByCompetitionIdOrderBySubmittedAtDesc(UUID competitionId, Pageable pageable);
 
     long countByChallengeId(UUID challengeId);
 

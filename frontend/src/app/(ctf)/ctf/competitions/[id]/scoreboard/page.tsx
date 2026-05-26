@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { useParams } from "next/navigation";
+import Link from "next/link";
 import { Trophy, Snowflake, Loader2, ChevronDown } from "lucide-react";
 import {
   LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip,
@@ -205,9 +206,9 @@ function FinalResults({ visible, myTeamId }: {
           background: "#0f172a", border: "1px solid #1e293b", borderRadius: 12,
           marginBottom: 18,
         }}>
-          {top3[1] && <PodiumStep entry={top3[1]} rank={2} height={120} medal="🥈" />}
-          {top3[0] && <PodiumStep entry={top3[0]} rank={1} height={160} medal="🥇" />}
-          {top3[2] && <PodiumStep entry={top3[2]} rank={3} height={90}  medal="🥉" />}
+          {top3[1] && <PodiumStep entry={top3[1]} rank={2} height={120} medal="🥈" competitionId={ctx.competition!.id} />}
+          {top3[0] && <PodiumStep entry={top3[0]} rank={1} height={160} medal="🥇" competitionId={ctx.competition!.id} />}
+          {top3[2] && <PodiumStep entry={top3[2]} rank={3} height={90}  medal="🥉" competitionId={ctx.competition!.id} />}
         </div>
       )}
 
@@ -220,16 +221,21 @@ function FinalResults({ visible, myTeamId }: {
   );
 }
 
-function PodiumStep({ entry, rank, height, medal }: {
-  entry: CTFScoreboardEntryDTO; rank: number; height: number; medal: string;
+function PodiumStep({ entry, rank, height, medal, competitionId }: {
+  entry: CTFScoreboardEntryDTO; rank: number; height: number; medal: string; competitionId: string;
 }) {
   const accent = rank === 1 ? "#fbbf24" : rank === 2 ? "#94a3b8" : "#fb923c";
   return (
     <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 8 }}>
       <div style={{ fontSize: 36 }}>{medal}</div>
-      <div style={{ fontSize: 14, fontWeight: 700, color: "#f8fafc", textAlign: "center" }}>
+      <Link
+        href={`/ctf/competitions/${competitionId}/teams/${entry.teamId}`}
+        style={{ fontSize: 14, fontWeight: 700, color: "#f8fafc", textAlign: "center", textDecoration: "none" }}
+        onMouseEnter={e => { (e.target as HTMLElement).style.textDecoration = "underline"; }}
+        onMouseLeave={e => { (e.target as HTMLElement).style.textDecoration = "none"; }}
+      >
         {entry.teamName}
-      </div>
+      </Link>
       <div style={{ fontSize: 18, fontWeight: 800, color: accent, fontFamily: "ui-monospace, monospace" }}>
         {entry.totalPoints} pts
       </div>
@@ -307,12 +313,20 @@ function ScoreboardTable({ rows, myTeamId, competitionId }: {
                     <span style={{
                       width: 20, height: 20, borderRadius: "50%", background: r.avatarColor,
                       display: "inline-flex", alignItems: "center", justifyContent: "center",
-                      color: "#fff", fontSize: 10, fontWeight: 700,
+                      color: "#fff", fontSize: 10, fontWeight: 700, flexShrink: 0,
                     }}>{r.teamName.charAt(0).toUpperCase()}</span>
-                    <span style={{ fontWeight: 600, color: mine ? "#a78bfa" : "#f8fafc", fontSize: podium ? 14 : 13 }}>
+                    <Link
+                      href={`/ctf/competitions/${competitionId}/teams/${r.teamId}`}
+                      style={{
+                        fontWeight: 600, color: mine ? "#a78bfa" : "#f8fafc",
+                        fontSize: podium ? 14 : 13, textDecoration: "none",
+                      }}
+                      onMouseEnter={e => { (e.target as HTMLElement).style.textDecoration = "underline"; }}
+                      onMouseLeave={e => { (e.target as HTMLElement).style.textDecoration = "none"; }}
+                    >
                       {r.teamName}
-                      {mine && <span style={{ fontSize: 9, color: "#6366f1", marginLeft: 6, fontWeight: 700 }}>(YOU)</span>}
-                    </span>
+                    </Link>
+                    {mine && <span style={{ fontSize: 9, color: "#6366f1", fontWeight: 700 }}>(YOU)</span>}
                   </div>
                 </td>
                 <td style={{

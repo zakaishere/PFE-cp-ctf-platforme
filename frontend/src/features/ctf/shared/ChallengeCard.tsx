@@ -18,11 +18,9 @@ export default function ChallengeCard({ challenge: c, onOpen, isNew, solvedMeta 
   const accent = conf?.accent ?? "#94a3b8";
   const solved = c.solvedByMe;
 
-  // Static points-bar approximation — falls off as more teams solve, capped at 5%.
+  const displayPts = c.currentPoints ?? c.basePoints;
   const maxPts = c.basePoints || 1;
-  const barPct = Math.max(5, Math.round(
-    (c.solveCount > 0 ? Math.max(1, maxPts - c.solveCount * 10) : maxPts) / maxPts * 100,
-  ));
+  const barPct = Math.max(5, Math.round((displayPts / maxPts) * 100));
 
   return (
     <button
@@ -106,7 +104,7 @@ export default function ChallengeCard({ challenge: c, onOpen, isNew, solvedMeta 
             <span style={{ fontSize: 11, color: "#64748b", fontFamily: "ui-monospace, monospace" }}>
               {c.solveCount} solve{c.solveCount !== 1 ? "s" : ""}
             </span>
-            <span style={{ fontSize: 14, fontWeight: 700, color: accent }}>{c.basePoints} pts</span>
+            <span style={{ fontSize: 14, fontWeight: 700, color: accent }}>{displayPts} pts</span>
           </div>
           <div style={{ height: 3, background: "#1e293b", borderRadius: 2 }}>
             <div style={{
