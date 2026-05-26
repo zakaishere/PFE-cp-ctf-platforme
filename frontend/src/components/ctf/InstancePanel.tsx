@@ -334,42 +334,44 @@ export default function InstancePanel({
 
   if (state === "IDLE") return (
     <div style={cardStyle}>
-      <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 10 }}>
-        <Monitor size={15} color={c.blue} />
-        <span style={{ fontSize: 13, fontWeight: 700, color: c.text }}>
-          Live Environment Required
-        </span>
+      <div style={{
+        display: "flex", alignItems: "center", justifyContent: "space-between",
+        marginBottom: 10,
+      }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 7 }}>
+          <Monitor size={12} color={c.muted} />
+          <span style={{
+            fontSize: 10, fontWeight: 700, color: c.muted,
+            textTransform: "uppercase", letterSpacing: "0.1em",
+          }}>
+            Instance
+          </span>
+        </div>
         <span style={{
-          fontSize: 10, fontWeight: 600, padding: "2px 6px", borderRadius: 4,
-          background: connType === "TCP" ? "rgba(167,139,250,0.15)" : "rgba(96,165,250,0.12)",
+          fontSize: 9, fontWeight: 700, padding: "1px 6px", borderRadius: 3,
+          background: connType === "TCP" ? "rgba(167,139,250,0.12)" : "rgba(96,165,250,0.1)",
           color: connType === "TCP" ? c.purple : c.blue,
+          letterSpacing: "0.06em",
         }}>{connType}</span>
-      </div>
-      <div style={{ fontSize: 12, color: c.muted, marginBottom: 10, lineHeight: 1.6 }}>
-        This challenge runs in an isolated Docker container.
-        {connType === "TCP" && " Connect with netcat when ready."}
-      </div>
-      <div style={{ display: "flex", gap: 16, fontSize: 11, color: c.secondary, marginBottom: 14 }}>
-        <span>⏱ Duration: 30 min</span>
-        <span>🧠 RAM: 128 MB</span>
       </div>
       <button
         onClick={handleStart}
         disabled={busy}
         style={{
-          display: "flex", alignItems: "center", gap: 6,
+          width: "100%",
+          display: "flex", alignItems: "center", justifyContent: "center", gap: 7,
           background: c.blue, color: "#fff",
           border: "none", borderRadius: 6,
-          padding: "8px 16px", fontSize: 13, fontWeight: 600,
+          padding: "9px 14px", fontSize: 12.5, fontWeight: 700,
           cursor: "pointer", opacity: busy ? 0.6 : 1,
+          letterSpacing: "0.02em",
+          transition: "all 0.15s ease-in-out",
         }}
       >
-        {busy ? <Loader2 size={13} style={{ animation: "spin 1s linear infinite" }} /> : null}
-        ▶ Start Instance
+        {busy
+          ? <Loader2 size={13} style={{ animation: "spin 1s linear infinite" }} />
+          : <>▶ Start Instance</>}
       </button>
-      <div style={{ marginTop: 8, fontSize: 11, color: c.muted, display: "flex", alignItems: "center", gap: 4 }}>
-        <AlertCircle size={10} /> Uses shared server resources
-      </div>
     </div>
   );
 
