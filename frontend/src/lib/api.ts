@@ -1464,7 +1464,7 @@ export async function uploadCtfCoverImage(
   file: File,
 ): Promise<{ coverImageUrl: string }> {
   const base = getApiBaseUrl();
-  const token = typeof window !== "undefined" ? localStorage.getItem("token") : null;
+  const token = getToken();
   const fd = new FormData();
   fd.append("image", file);
   const res = await fetch(`${base}/api/teacher/ctf/competitions/${id}/cover`, {
