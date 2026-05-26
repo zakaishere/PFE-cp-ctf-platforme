@@ -14,8 +14,8 @@ spring:
     password: ${DB_PASSWORD:psp_password}
     driver-class-name: org.postgresql.Driver
     hikari:
-      maximum-pool-size: ${DB_POOL_SIZE:20}
-      minimum-idle: 5
+      maximum-pool-size: ${DB_POOL_SIZE:50}
+      minimum-idle: 10
       connection-timeout: 3000
       idle-timeout: 600000
       max-lifetime: 1800000
@@ -74,6 +74,7 @@ spring:
       - competition-status
       - user-profile
       - leaderboard
+      - hint-unlocks
 
 # ── Server ───────────────────────────────────────────
 server:
@@ -124,6 +125,23 @@ docker:
   tls:
     verify: ${DOCKER_TLS_VERIFY:false}
     cert-path: ${DOCKER_CERT_PATH:}
+
+# ── Actuator & Metrics ──────────────────────────────
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics,prometheus
+      base-path: /api/actuator
+  endpoint:
+    health:
+      show-details: when-authorized
+  metrics:
+    export:
+      prometheus:
+        enabled: true
+    tags:
+      application: ${spring.application.name}
 
 # ── Logging ──────────────────────────────────────────
 logging:

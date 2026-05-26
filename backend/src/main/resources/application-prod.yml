@@ -1,0 +1,35 @@
+# Production profile — tighter pool, stricter security, minimal logging.
+# Activate with: SPRING_PROFILES_ACTIVE=prod
+
+spring:
+  datasource:
+    hikari:
+      maximum-pool-size: ${DB_POOL_SIZE:80}
+      minimum-idle: 20
+      connection-timeout: 3000
+      idle-timeout: 300000
+      max-lifetime: 900000
+      leak-detection-threshold: 30000
+
+  jpa:
+    hibernate:
+      ddl-auto: validate
+    show-sql: false
+
+app:
+  security:
+    disable-verification: false
+
+server:
+  tomcat:
+    threads:
+      max: 400
+      min-spare: 40
+    accept-count: 200
+
+logging:
+  level:
+    root: WARN
+    com.university.platform: WARN
+    com.university.platform.ctf: INFO
+    org.hibernate.SQL: WARN

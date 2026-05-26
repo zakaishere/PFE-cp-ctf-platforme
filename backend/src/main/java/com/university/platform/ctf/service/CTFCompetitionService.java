@@ -8,6 +8,11 @@ import jakarta.persistence.EntityNotFoundException;
 import jakarta.transaction.Transactional;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import io.micrometer.core.instrument.Counter;
+import io.micrometer.core.instrument.MeterRegistry;
+import org.springframework.cache.annotation.CacheEvict;
+import org.springframework.cache.annotation.Cacheable;
+import org.springframework.cache.annotation.Caching;
 import org.springframework.http.HttpStatus;
 import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.stereotype.Service;
@@ -50,6 +55,10 @@ public class CTFCompetitionService {
     private final CTFInstanceService            instanceService;
     private final SimpMessagingTemplate         ws;
 
+    private final Counter flagSubmitCorrect;
+    private final Counter flagSubmitWrong;
+    private final Counter flagSubmitRateLimited;
+
     public CTFCompetitionService(CTFCompetitionRepository competitionRepo,
                                  CTFChallengeRepository challengeRepo,
                                  CTFTeamRepository teamRepo,
@@ -63,7 +72,8 @@ public class CTFCompetitionService {
                                  CTFScoringEngine scoringEngine,
                                  CTFTeamService teamService,
                                  CTFInstanceService instanceService,
-                                 SimpMessagingTemplate ws) {
+                                 SimpMessagingTemplate ws,
+                                 MeterRegistry meterRegistry) {
         this.competitionRepo = competitionRepo;
         this.challengeRepo   = challengeRepo;
         this.teamRepo        = teamRepo;
@@ -78,6 +88,9 @@ public class CTFCompetitionService {
         this.teamService     = teamService;
         this.instanceService = instanceService;
         this.ws              = ws;
+        this.flagSubmitCorrect     = meterRegistry.counter("ctf.flag.submit", "result", "correct");
+        this.flagSubmitWrong       = meterRegistry.counter("ctf.flag.submit", "result", "wrong");
+        this.flagSubmitRateLimited = meterRegistry.counter("ctf.flag.submit", "result", "rate_limited");
     }
 
     // ── Score timeline ─────────────────────────────────────────────────────────
@@ -227,6 +240,7 @@ public class CTFCompetitionService {
 
     // ── Challenges ─────────────────────────────────────────────────────────────
 
+    @Cacheable(value = "challenges", key = "#competitionId + ':' + #userId")
     public CTFChallengeListResponse getCompetitionChallenges(UUID competitionId, UUID userId) {
         CTFCompetition comp = requireCompetition(competitionId);
         CTFCompetition.Status status = comp.computeStatus();
@@ -322,6 +336,7 @@ public class CTFCompetitionService {
      * While frozen, returns scores/rankings as they were at {@code frozenAt},
      * so players cannot infer which teams solved challenges after the freeze.
      */
+    @Cacheable(value = "scoreboard", key = "#competitionId")
     public List<CTFScoreboardEntryDTO> getScoreboard(UUID competitionId) {
         CTFCompetition comp = requireCompetition(competitionId);
         CTFCompetition.Status status = comp.computeStatus();
@@ -408,6 +423,10 @@ public class CTFCompetitionService {
 
     // ── Flag submission ────────────────────────────────────────────────────────
 
+    @Caching(evict = {
+        @CacheEvict(value = "scoreboard", key = "#competitionId"),
+        @CacheEvict(value = "challenges", key = "#competitionId + ':' + #userId")
+    })
     public CTFCompetitionSubmitResponse submitFlag(UUID competitionId, UUID challengeId,
                                                     UUID userId, CTFCompetitionSubmitRequest req,
                                                     String ipAddress) {
@@ -462,6 +481,7 @@ public class CTFCompetitionService {
 
         String rateKey = teamId + ":" + challengeId;
         if (isRateLimited(rateKey)) {
+            flagSubmitRateLimited.increment();
             throw new ResponseStatusException(HttpStatus.TOO_MANY_REQUESTS,
                     "Too many incorrect attempts. Please wait before trying again.");
         }
@@ -533,6 +553,7 @@ public class CTFCompetitionService {
                 .build());
 
         if (!correct) {
+            flagSubmitWrong.increment();
             recordWrongAttempt(rateKey);
             long usedNow = userAttempts + 1;
             Integer remaining = remainingFor(challenge, usedNow);
@@ -544,6 +565,7 @@ public class CTFCompetitionService {
                     .lockedOut(remaining != null && remaining == 0)
                     .build();
         }
+        flagSubmitCorrect.increment();
 
         int solveCount = solveRepo.countByCompetitionIdAndChallengeId(competitionId, challengeId);
         int points     = scoringEngine.challengeValue(comp, challenge, solveCount + 1);
