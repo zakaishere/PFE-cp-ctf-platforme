@@ -43,4 +43,19 @@ public interface AssessmentRepository extends JpaRepository<Assessment, UUID> {
         """)
     List<Assessment> findVisibleToStudent(@Param("divisionId") UUID divisionId,
                                           @Param("semesterId") UUID semesterId);
+
+    // ── platform-stats counts ───────────────────────────────────────────────
+
+    /** Exams whose scheduled start time has passed and the timer hasn't expired. */
+    @Query("""
+        SELECT a FROM com.university.platform.assessment.model.LiveExam a
+        WHERE a.scheduledStartTime <= :now
+        """)
+    List<com.university.platform.assessment.model.LiveExam> findStartedLiveExams(@Param("now") LocalDateTime now);
+
+    @Query("""
+        SELECT COUNT(a) FROM com.university.platform.assessment.model.OpenTP a
+        WHERE a.deadline > :now
+        """)
+    long countOpenTPs(@Param("now") LocalDateTime now);
 }

@@ -227,6 +227,21 @@ export const activateTeacher = (id: string) =>
 export const rejectTeacher = (id: string) =>
   apiClient<{ message: string }>(`/api/admin/teachers/${id}/reject`, { method: "DELETE" });
 
+export interface PlatformStats {
+  totalTeachers:     number;
+  activeTeachers:    number;
+  pendingTeachers:   number;
+  totalStudents:     number;
+  totalProblems:     number;
+  totalSubmissions:  number;
+  activeLiveExams:   number;
+  openTps:           number;
+  totalCompetitions: number;
+}
+
+export const getPlatformStats = () =>
+  apiClient<PlatformStats>("/api/admin/stats", { method: "GET" });
+
 // --- Submissions ---
 
 export interface SubmissionRequest {

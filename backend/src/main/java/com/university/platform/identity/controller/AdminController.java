@@ -5,7 +5,13 @@ import com.university.platform.identity.model.Teacher;
 import com.university.platform.identity.model.Teacher.TeacherStatus;
 import com.university.platform.identity.model.Teacher.TeacherStatus;
 import com.university.platform.identity.repository.TeacherRepository;
+import com.university.platform.identity.repository.StudentRepository;
 import com.university.platform.identity.service.EmailService;
+import com.university.platform.assessment.repository.AssessmentRepository;
+import com.university.platform.assessment.repository.ProblemRepository;
+import com.university.platform.assessment.model.LiveExam;
+import com.university.platform.execution.repository.SubmissionRepository;
+import com.university.platform.competition.repository.CompetitionRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.ResponseEntity;
@@ -14,6 +20,8 @@ import org.springframework.web.bind.annotation.*;
 import org.springframework.web.server.ResponseStatusException;
 import org.springframework.http.HttpStatus;
 
+import java.time.LocalDateTime;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
@@ -22,17 +30,50 @@ import java.util.UUID;
 @RestController
 @RequestMapping("/api/admin")
 @RequiredArgsConstructor
-@CrossOrigin(origins = "*")   
+@CrossOrigin(origins = "*")
 public class AdminController {
 
-    private final TeacherRepository teacherRepository;
-    private final EmailService      emailService;
+    private final TeacherRepository     teacherRepository;
+    private final StudentRepository     studentRepository;
+    private final AssessmentRepository  assessmentRepository;
+    private final ProblemRepository     problemRepository;
+    private final SubmissionRepository  submissionRepository;
+    private final CompetitionRepository competitionRepository;
+    private final EmailService          emailService;
 
     @GetMapping("/pending-teachers")
     public ResponseEntity<List<Teacher>> getPendingTeachers() {
         List<Teacher> pending = teacherRepository
                 .findByStatusAndIsEmailVerifiedTrue(TeacherStatus.PENDING);
         return ResponseEntity.ok(pending);
+    }
+
+    @GetMapping("/stats")
+    @Transactional(readOnly = true)
+    public ResponseEntity<Map<String, Object>> getPlatformStats() {
+        LocalDateTime now = LocalDateTime.now();
+
+        // Live exams that are currently within their time window.
+        long activeLiveExams = assessmentRepository.findStartedLiveExams(now).stream()
+                .filter(e -> {
+                    Integer mins = e.getDurationMinutes();
+                    if (mins == null || mins <= 0) return false;
+                    LocalDateTime end = e.getScheduledStartTime().plusMinutes(mins);
+                    return end.isAfter(now);
+                })
+                .count();
+
+        Map<String, Object> stats = new HashMap<>();
+        stats.put("totalTeachers",      teacherRepository.count());
+        stats.put("activeTeachers",     teacherRepository.countByStatus(TeacherStatus.ACTIVE));
+        stats.put("pendingTeachers",    teacherRepository.countByStatus(TeacherStatus.PENDING));
+        stats.put("totalStudents",      studentRepository.count());
+        stats.put("totalProblems",      problemRepository.count());
+        stats.put("totalSubmissions",   submissionRepository.count());
+        stats.put("activeLiveExams",    activeLiveExams);
+        stats.put("openTps",            assessmentRepository.countOpenTPs(now));
+        stats.put("totalCompetitions",  competitionRepository.count());
+        return ResponseEntity.ok(stats);
     }
 
     @PutMapping("/teachers/{id}/activate")

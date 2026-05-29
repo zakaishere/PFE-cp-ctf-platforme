@@ -4,7 +4,7 @@ import { useState, useEffect } from "react";
 import Link from "next/link";
 import Navbar from "@/components/Navbar";
 import { Users, BookOpen, Clock, ClipboardList, Monitor, AlertTriangle, CheckCircle2, X, Loader2, Server } from "lucide-react";
-import { getPendingTeachers, activateTeacher, rejectTeacher, getLeaderboard, getCTFAdminConfig, updateCTFAdminConfig, type PendingTeacher, type LeaderboardEntry, type CTFResourceConfig } from "@/lib/api";
+import { getPendingTeachers, activateTeacher, rejectTeacher, getLeaderboard, getCTFAdminConfig, updateCTFAdminConfig, getPlatformStats, type PendingTeacher, type LeaderboardEntry, type CTFResourceConfig, type PlatformStats } from "@/lib/api";
 import { LoadingButton } from "@/components/ui/LoadingButton";
 
 const AVATAR_COLORS = ["#0052cc","#6554c0","#00875a","#ff8b00","#ff5630","#36b37e","#00b8d9","#de350b"];
@@ -21,6 +21,9 @@ export default function AdminDashboard() {
   const [topStudents, setTopStudents] = useState<LeaderboardEntry[]>([]);
   const [actionLoading, setActionLoading] = useState<string | null>(null);
 
+  // Platform stats
+  const [stats, setStats] = useState<PlatformStats | null>(null);
+
   // CTF config state
   const [ctfConfig, setCtfConfig] = useState<CTFResourceConfig | null>(null);
   const [ctfConfigDraft, setCtfConfigDraft] = useState<Partial<CTFResourceConfig>>({});
@@ -34,6 +37,7 @@ export default function AdminDashboard() {
       .finally(() => setLoadingPending(false));
     getLeaderboard().then(setTopStudents).catch(console.error);
     getCTFAdminConfig().then((c) => { setCtfConfig(c); setCtfConfigDraft(c); }).catch(console.error);
+    getPlatformStats().then(setStats).catch(console.error);
   }, []);
 
   const saveCtfConfig = async () => {
@@ -90,10 +94,10 @@ export default function AdminDashboard() {
         {/* Stats — 4 columns (dynamic) */}
         <div style={{ display: "grid", gridTemplateColumns: "repeat(4,1fr)", gap: 12, marginBottom: 20 }}>
           {[
-            { icon: <Clock size={20} />, val: loadingPending ? "…" : String(pending.length), lbl: "Pending Teachers", cls: "ic-orange" },
-            { icon: <BookOpen size={20} />, val: "—",  lbl: "Active Teachers", cls: "ic-green" },
-            { icon: <Users size={20} />, val: "—", lbl: "Total Students", cls: "ic-blue" },
-            { icon: <Monitor size={20} />, val: "—", lbl: "Submissions",    cls: "ic-red" },
+            { icon: <Clock size={20} />,    val: loadingPending ? "…" : String(pending.length),  lbl: "Pending Teachers", cls: "ic-orange" },
+            { icon: <BookOpen size={20} />, val: stats ? String(stats.activeTeachers) : "…",     lbl: "Active Teachers",  cls: "ic-green"  },
+            { icon: <Users size={20} />,    val: stats ? String(stats.totalStudents)  : "…",     lbl: "Total Students",   cls: "ic-blue"   },
+            { icon: <Monitor size={20} />,  val: stats ? String(stats.totalSubmissions) : "…",   lbl: "Submissions",      cls: "ic-red"    },
           ].map((s, i) => (
             <div key={i} className="psp-stat-card">
               <div className={`psp-stat-icon ${s.cls}`}>{s.icon}</div>
@@ -187,16 +191,16 @@ export default function AdminDashboard() {
             <div className="psp-card" style={{ marginBottom: 14 }}>
               <div className="psp-card-header"><span className="psp-card-title">Platform Overview</span></div>
               <div className="psp-card-body">
-                {[
-                  { label: "Total Users",          val: "330" },
-                  { label: "Active Exams Today",   val: "2 Live", valColor: "#de350b" },
-                  { label: "Open TPs",             val: "8" },
-                  { label: "Problems in Bank",     val: "124" },
-                  { label: "Docker Containers (Pool)", val: "80 / 80 ready", valColor: "#00875a" },
-                ].map((row, i) => (
+                {([
+                  { label: "Total Users",        val: stats ? String((stats.activeTeachers ?? 0) + (stats.totalStudents ?? 0)) : "…" },
+                  { label: "Active Live Exams",  val: stats ? `${stats.activeLiveExams}${stats.activeLiveExams > 0 ? " ongoing" : ""}` : "…", color: stats && stats.activeLiveExams > 0 ? "#de350b" : undefined },
+                  { label: "Open TPs",           val: stats ? String(stats.openTps) : "…" },
+                  { label: "Problems in Bank",   val: stats ? String(stats.totalProblems) : "…" },
+                  { label: "Competitions",       val: stats ? String(stats.totalCompetitions) : "…" },
+                ] as Array<{ label: string; val: string; color?: string }>).map((row, i) => (
                   <div key={i} style={{ display: "flex", justifyContent: "space-between", marginBottom: 10 }}>
                     <span style={{ fontSize: 13, color: "var(--text-muted)" }}>{row.label}</span>
-                    <strong style={{ color: row.valColor || "#172b4d" }}>{row.val}</strong>
+                    <strong style={{ color: row.color || "var(--text-primary)" }}>{row.val}</strong>
                   </div>
                 ))}
               </div>
