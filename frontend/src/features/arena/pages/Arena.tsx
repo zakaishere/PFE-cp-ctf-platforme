@@ -2,10 +2,7 @@
 
 import { useState, useEffect, useRef } from "react";
 import Link from "next/link";
-import dynamic from "next/dynamic";
-import {
-  Play, Send, Lock, AlertTriangle, CheckCircle2, XCircle, Clock, Loader2,
-} from "lucide-react";
+import { AlertTriangle, CheckCircle2, Clock, Loader2, Lock } from "lucide-react";
 import { Client as StompClient } from "@stomp/stompjs";
 import SockJS from "sockjs-client";
 import {
@@ -13,16 +10,11 @@ import {
   type ExamRoomDTO, type ExamProblemDTO,
 } from "@/lib/api";
 import { useAuth } from "@/features/auth/contexts/AuthContext";
-
-const MonacoEditor = dynamic(() => import("@monaco-editor/react"), { ssr: false });
-
-const DEFAULT_CODE: Record<string, string> = {
-  java:       `import java.util.Scanner;\n\npublic class Main {\n    public static void main(String[] args) {\n        Scanner sc = new Scanner(System.in);\n        // TODO: solve here\n    }\n}`,
-  python:     `import sys\ninput = sys.stdin.readline\n\ndef solve():\n    pass\n\nsolve()`,
-  cpp:        `#include <bits/stdc++.h>\nusing namespace std;\n\nint main() {\n    ios_base::sync_with_stdio(false);\n    cin.tie(NULL);\n    // TODO: solve here\n    return 0;\n}`,
-  c:          `#include <stdio.h>\n\nint main() {\n    // TODO: solve here\n    return 0;\n}`,
-  javascript: `const lines = require('fs').readFileSync('/dev/stdin','utf8').trim().split('\\n');\n// TODO: solve here`,
-};
+import CodeWorkspace, {
+  DEFAULT_WORKSPACE_CODE as DEFAULT_CODE,
+  type WorkspaceTestResult,
+  type WorkspaceVerdict,
+} from "@/features/arena/components/CodeWorkspace";
 
 const DIFF_STYLE: Record<string, { bg: string; color: string }> = {
   EASY:   { bg: "#e3fcef", color: "#006644" },
@@ -30,8 +22,8 @@ const DIFF_STYLE: Record<string, { bg: string; color: string }> = {
   HARD:   { bg: "#ffebe6", color: "#bf2600" },
 };
 
-type Verdict = "pending" | "accepted" | "wrong" | "tle" | null;
-interface TestResult { idx: number; status: "pass" | "fail" | "tle" | null; executionTimeMs?: number; }
+type Verdict = WorkspaceVerdict;
+type TestResult = WorkspaceTestResult;
 
 function formatTime(secs: number): string {
   const h = Math.floor(secs / 3600);
@@ -418,103 +410,22 @@ export default function Arena({ examId, mode = "exam" }: ArenaProps) {
         </div>
 
         {/* Right: editor + results */}
-        <div style={{ width: 480, display: "flex", flexDirection: "column", flexShrink: 0, background: "var(--bg-primary)" }}>
-          <div style={{ padding: "8px 12px", background: "var(--bg-tertiary)", borderBottom: "1px solid var(--border)", display: "flex", alignItems: "center", gap: 8, flexShrink: 0 }}>
-            <span style={{ fontSize: 12, fontWeight: 600, color: "var(--text-muted)" }}>Language</span>
-            <select
-              value={lang}
-              onChange={(e) => handleLangChange(e.target.value)}
-              style={{ border: "1px solid var(--border)", borderRadius: 3, padding: "0 8px", height: 28, fontSize: 12, color: "var(--text-primary)", outline: "none", background: "var(--bg-primary)" }}
-            >
-              <option value="java">Java</option>
-              <option value="python">Python</option>
-              <option value="cpp">C++</option>
-              <option value="c">C</option>
-              <option value="javascript">JavaScript</option>
-            </select>
-            <div style={{ marginLeft: "auto", display: "flex", gap: 6 }}>
-              <button
-                onClick={() => handleSubmit(true)}
-                disabled={judging || isEnded}
-                style={{ background: "var(--bg-primary)", color: "var(--text-primary)", border: "1px solid var(--border)", borderRadius: 3, height: 28, padding: "0 12px", fontSize: 12, cursor: (judging || isEnded) ? "not-allowed" : "pointer", display: "flex", alignItems: "center", gap: 4, opacity: (judging || isEnded) ? 0.5 : 1 }}
-              >
-                <Play size={11} /> Run
-              </button>
-              <button
-                onClick={() => handleSubmit(false)}
-                disabled={judging || isEnded}
-                style={{ background: (judging || isEnded) ? "#97a0af" : "#0052cc", color: "white", border: "none", borderRadius: 3, height: 28, padding: "0 14px", fontSize: 12, cursor: (judging || isEnded) ? "not-allowed" : "pointer", fontWeight: 600, display: "flex", alignItems: "center", gap: 4 }}
-              >
-                {judging
-                  ? <><Loader2 size={11} style={{ animation: "spin 1s linear infinite" }} /> Judging…</>
-                  : <><Send size={11} /> Submit</>}
-              </button>
-            </div>
-          </div>
-
-          <div style={{ flex: 1, overflow: "hidden", minHeight: 260 }}>
-            <MonacoEditor
-              height="100%"
-              language={lang}
-              theme="vs-dark"
-              value={code}
-              onChange={(v) => setCode(v ?? "")}
-              options={{ minimap: { enabled: false }, fontSize: 12, lineNumbers: "on", scrollBeyondLastLine: false }}
-            />
-          </div>
-
-          <div style={{ borderTop: "1px solid var(--border)", flexShrink: 0 }}>
-            <div style={{ padding: "8px 12px", background: "var(--bg-tertiary)", borderBottom: "1px solid var(--border)", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-              <span style={{ fontSize: 12, fontWeight: 600, color: "var(--text-primary)" }}>Test Cases</span>
-              {verdict === "pending" && (
-                <span style={{ fontSize: 11, color: "#0747a6", display: "flex", alignItems: "center", gap: 4 }}>
-                  <Loader2 size={11} style={{ animation: "spin 1s linear infinite" }} /> Judging…
-                </span>
-              )}
-            </div>
-            <div style={{ maxHeight: 200, overflowY: "auto" }}>
-              {results.length === 0 && !judging ? (
-                <div style={{ padding: 24, textAlign: "center", color: "var(--text-muted)", fontSize: 12 }}>
-                  {isEnded ? "This exam has ended." : "Run or submit your solution to see results."}
-                </div>
-              ) : (
-                Array.from({ length: Math.max(totalCases, results.length) }).map((_, i) => {
-                  const r = results[i];
-                  const isSample = i < visibleCount;
-                  const label = isSample ? `Sample ${i + 1}` : `Hidden ${i - visibleCount + 1}`;
-                  return (
-                    <div key={i} style={{ display: "flex", alignItems: "center", padding: "7px 12px", borderBottom: "1px solid #f4f5f7", gap: 8, fontSize: 12 }}>
-                      <span style={{ width: 28, color: "var(--text-muted)", fontSize: 11 }}>{i + 1}.</span>
-                      {!r ? (
-                        <span style={{ color: "var(--text-subtle)" }}>
-                          {!isSample ? <><Lock size={11} /> {label}</> : label}
-                        </span>
-                      ) : r.status === "pass" ? (
-                        <><CheckCircle2 size={14} color="#00875a" /><span style={{ flex: 1, fontWeight: 500 }}>{label}</span><span style={{ color: "var(--text-muted)", fontSize: 11 }}>{r.executionTimeMs ? `${r.executionTimeMs} ms` : "OK"}</span></>
-                      ) : r.status === "tle" ? (
-                        <><XCircle size={14} color="#ff8b00" /><span style={{ flex: 1, fontWeight: 500 }}>{label}</span><span style={{ color: "#ff8b00", fontSize: 11 }}>TLE</span></>
-                      ) : (
-                        <><XCircle size={14} color="#de350b" /><span style={{ flex: 1, fontWeight: 500 }}>{label}</span><span style={{ color: "#de350b", fontSize: 11 }}>WA</span></>
-                      )}
-                    </div>
-                  );
-                })
-              )}
-            </div>
-            {verdict && verdict !== "pending" && (
-              <div style={{
-                padding: "10px 14px", fontSize: 13, fontWeight: 600,
-                display: "flex", alignItems: "center", gap: 8,
-                background: verdict === "accepted" ? "#e3fcef" : verdict === "tle" ? "#fffae6" : "#ffebe6",
-                color:  verdict === "accepted" ? "#006644" : verdict === "tle" ? "#ff8b00" : "#bf2600",
-              }}>
-                {verdict === "accepted" ? <CheckCircle2 size={16} /> : <XCircle size={16} />}
-                {verdict === "accepted" ? "Accepted — All test cases passed" :
-                 verdict === "tle"      ? "Time Limit Exceeded" :
-                 "Wrong Answer — Some test cases failed"}
-              </div>
-            )}
-          </div>
+        <div style={{ width: 480, flexShrink: 0, display: "flex" }}>
+          <CodeWorkspace
+            language={lang}
+            onLanguageChange={handleLangChange}
+            code={code}
+            onCodeChange={setCode}
+            onRun={() => handleSubmit(true)}
+            onSubmit={() => handleSubmit(false)}
+            judging={judging}
+            disabled={isEnded}
+            results={results}
+            verdict={verdict}
+            totalCases={totalCases}
+            visibleCount={visibleCount}
+            isEndedMessage={isEnded ? "This exam has ended." : undefined}
+          />
         </div>
       </div>
     </div>
