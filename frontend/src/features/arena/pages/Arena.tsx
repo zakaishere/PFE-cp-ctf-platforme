@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useRef } from "react";
 import Link from "next/link";
-import { AlertTriangle, CheckCircle2, Clock, Loader2, Lock } from "lucide-react";
+import { AlertTriangle, CheckCircle2, Clock, FileText, Lock, Play, ShieldAlert } from "lucide-react";
 import { Client as StompClient } from "@stomp/stompjs";
 import SockJS from "sockjs-client";
 import {
@@ -15,6 +15,8 @@ import CodeWorkspace, {
   type WorkspaceTestResult,
   type WorkspaceVerdict,
 } from "@/features/arena/components/CodeWorkspace";
+import ArenaShell, { type ArenaTab } from "@/features/arena/components/ArenaShell";
+import { type ViolationEvent } from "@/hooks/useAntiCheat";
 
 const DIFF_STYLE: Record<string, { bg: string; color: string }> = {
   EASY:   { bg: "#e3fcef", color: "#006644" },
@@ -25,17 +27,12 @@ const DIFF_STYLE: Record<string, { bg: string; color: string }> = {
 type Verdict = WorkspaceVerdict;
 type TestResult = WorkspaceTestResult;
 
-function formatTime(secs: number): string {
-  const h = Math.floor(secs / 3600);
-  const m = Math.floor((secs % 3600) / 60);
-  const s = secs % 60;
-  return `${String(h).padStart(2, "0")}:${String(m).padStart(2, "0")}:${String(s).padStart(2, "0")}`;
-}
-
 interface ArenaProps {
   examId?: string;
   mode?: "exam" | "practice" | "tp";
 }
+
+type Phase = "briefing" | "active";
 
 export default function Arena({ examId, mode = "exam" }: ArenaProps) {
   const { userId } = useAuth();
@@ -57,6 +54,10 @@ export default function Arena({ examId, mode = "exam" }: ArenaProps) {
   const [verdict, setVerdict]   = useState<Verdict>(null);
   const [tabSwitches, setTabSwitches] = useState(0);
   const stompRef = useRef<StompClient | null>(null);
+
+  // Entry-flow phase: briefing → active. Practice mode skips briefing.
+  const [phase, setPhase] = useState<Phase>(mode === "practice" ? "active" : "briefing");
+  const enforceLockdown   = mode === "exam";
 
   // Load exam room
   useEffect(() => {
@@ -83,21 +84,18 @@ export default function Arena({ examId, mode = "exam" }: ArenaProps) {
     return () => clearInterval(id);
   }, [examRoom]);
 
-  // Anti-cheat: log tab visibility changes
-  useEffect(() => {
-    if (mode !== "exam" || !examId || !userId) return;
-    const onVis = () => {
-      if (document.hidden) {
-        setTabSwitches((n) => {
-          const next = n + 1;
-          logCheatEvent({ studentId: userId, assessmentId: examId, violationType: "TAB_SWITCH" }).catch(() => {});
-          return next;
-        });
-      }
-    };
-    document.addEventListener("visibilitychange", onVis);
-    return () => document.removeEventListener("visibilitychange", onVis);
-  }, [mode, examId, userId]);
+  // Anti-cheat reporter (wired into ArenaShell.lockdown.onViolation below).
+  // Reports every violation to the assessment audit endpoint; bumps the
+  // tab-switch counter shown in the sidebar for visibility violations.
+  const reportViolation = (event: ViolationEvent) => {
+    if (!enforceLockdown || !examId || !userId) return;
+    if (event.type === "TAB_SWITCH") setTabSwitches((n) => n + 1);
+    logCheatEvent({
+      studentId:     userId,
+      assessmentId:  examId,
+      violationType: event.type,
+    }).catch(() => {});
+  };
 
   // Reset editor when switching problems
   useEffect(() => {
@@ -108,8 +106,6 @@ export default function Arena({ examId, mode = "exam" }: ArenaProps) {
 
   const activeProblem: ExamProblemDTO | null = examRoom?.problems[activeProblemIdx] ?? null;
   const isEnded  = (examRoom?.isEnded ?? false) || remainingSecs <= 0;
-  const isUrgent = remainingSecs > 0 && remainingSecs < 600;
-  const timerStr = formatTime(remainingSecs);
   const solvedCount = examRoom?.problems.filter((p) => p.solvedByCurrentUser).length ?? 0;
 
   const diff      = activeProblem?.difficulty ?? "";
@@ -184,100 +180,28 @@ export default function Arena({ examId, mode = "exam" }: ArenaProps) {
     }
   };
 
-  // ── Full-screen loading ───────────────────────────────────────────────────
-  if (loading) {
+  // ── Briefing screen (Exam/TP entry gate) ─────────────────────────────────
+  if (!loading && !accessError && examRoom && phase === "briefing") {
     return (
-      <div style={{
-        height: "100vh", display: "flex", alignItems: "center", justifyContent: "center",
-        background: "#172b4d", flexDirection: "column", gap: 12,
-        fontFamily: "-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif",
-      }}>
-        <Loader2 size={28} style={{ animation: "spin 1s linear infinite", color: "#0052cc" }} />
-        <div style={{ fontSize: 14, fontWeight: 500, color: "rgba(255,255,255,0.8)" }}>Loading exam…</div>
-      </div>
-    );
-  }
-
-  // ── Access / not-found error ──────────────────────────────────────────────
-  if (accessError) {
-    return (
-      <div style={{
-        height: "100vh", display: "flex", alignItems: "center", justifyContent: "center",
-        background: "#172b4d", flexDirection: "column", gap: 12,
-        fontFamily: "-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif",
-      }}>
-        <div style={{ fontSize: 36 }}>🔒</div>
-        <div style={{ fontWeight: 700, fontSize: 16, color: "white" }}>Access Denied</div>
-        <div style={{ fontSize: 13, color: "rgba(255,255,255,0.55)", maxWidth: 360, textAlign: "center" }}>
-          {accessError}
-        </div>
-        <Link href="/assessments" style={{
-          marginTop: 8, background: "#0052cc", color: "white", borderRadius: 3,
-          padding: "8px 18px", fontSize: 13, fontWeight: 600, textDecoration: "none",
-        }}>
-          Back to Assessments
-        </Link>
-      </div>
+      <BriefingScreen
+        title={examRoom.title}
+        problemCount={examRoom.problems.length}
+        durationSeconds={examRoom.remainingSeconds}
+        isEnded={examRoom.isEnded}
+        enforceLockdown={enforceLockdown}
+        onEnter={() => setPhase("active")}
+      />
     );
   }
 
   const problems = examRoom?.problems ?? [];
 
-  return (
-    <div style={{
-      fontFamily: "-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif",
-      color: "var(--text-primary)", height: "100vh", overflow: "hidden", display: "flex", flexDirection: "column",
-    }}>
+  // ── Workspace tab content (3-pane) ────────────────────────────────────────
+  const workspaceContent = (
+    <div style={{ display: "flex", flex: 1, overflow: "hidden" }}>
 
-      {/* ── Top bar ── */}
-      <div style={{
-        background: "#172b4d", height: 44, display: "flex", alignItems: "center",
-        padding: "0 16px", gap: 16, flexShrink: 0, borderBottom: "1px solid #253858",
-      }}>
-        <div style={{ display: "flex", alignItems: "center", gap: 6, color: "white", fontWeight: 700, fontSize: 13 }}>
-          <div style={{ width: 22, height: 22, background: "#0052cc", borderRadius: 3, display: "flex", alignItems: "center", justifyContent: "center", color: "white", fontWeight: 900, fontSize: 11 }}>P</div>
-          PSP
-        </div>
-        <span style={{ color: "rgba(255,255,255,0.25)" }}>|</span>
-        <span style={{
-          color: "rgba(255,255,255,0.85)", fontSize: 13, fontWeight: 500,
-          maxWidth: 360, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
-        }}>
-          {examRoom?.title ?? "Exam"}
-        </span>
-        <div style={{ marginLeft: "auto", display: "flex", alignItems: "center", gap: 16 }}>
-          <span style={{
-            fontFamily: "monospace", fontSize: 15, fontWeight: 700,
-            color: isEnded ? "#97a0af" : isUrgent ? "#de350b" : "#ff8b00",
-          }}>
-            {isEnded ? "00:00:00" : timerStr}
-          </span>
-          <Link href="/assessments" style={{
-            background: "#de350b", color: "white", border: "none", borderRadius: 3,
-            padding: "0 12px", height: 28, fontSize: 12, fontWeight: 600,
-            cursor: "pointer", display: "flex", alignItems: "center", textDecoration: "none",
-          }}>
-            Leave Exam
-          </Link>
-        </div>
-      </div>
-
-      {/* ── Ended banner ── */}
-      {isEnded && (
-        <div style={{
-          background: "var(--red-light)", borderBottom: "1px solid #ff8f73",
-          padding: "7px 16px", fontSize: 13, color: "#bf2600",
-          fontWeight: 600, display: "flex", alignItems: "center", gap: 8, flexShrink: 0,
-        }}>
-          <AlertTriangle size={14} /> This exam has ended. Submissions are no longer accepted.
-        </div>
-      )}
-
-      {/* ── Three-panel body ── */}
-      <div style={{ display: "flex", flex: 1, overflow: "hidden" }}>
-
-        {/* Left: problem list + progress */}
-        <div style={{ width: 240, background: "#253858", display: "flex", flexDirection: "column", flexShrink: 0, borderRight: "1px solid #344563" }}>
+      {/* Left: problem list + progress */}
+      <div style={{ width: 240, background: "#253858", display: "flex", flexDirection: "column", flexShrink: 0, borderRight: "1px solid #344563" }}>
           <div style={{ padding: 12, flex: 1, overflowY: "auto" }}>
             <div style={{ fontSize: 10, fontWeight: 700, color: "rgba(255,255,255,0.4)", textTransform: "uppercase", letterSpacing: 0.5, marginBottom: 8 }}>
               Problems
@@ -427,6 +351,137 @@ export default function Arena({ examId, mode = "exam" }: ArenaProps) {
             isEndedMessage={isEnded ? "This exam has ended." : undefined}
           />
         </div>
+    </div>
+  );
+
+  const tabs: ArenaTab[] = [
+    {
+      key: "workspace",
+      label: "Workspace",
+      icon: <FileText size={14} />,
+      content: workspaceContent,
+    },
+  ];
+
+  return (
+    <ArenaShell
+      title={examRoom?.title ?? "Exam"}
+      backHref="/assessments"
+      backLabel="Leave Exam"
+      remainingSeconds={remainingSecs}
+      isEnded={isEnded}
+      loading={loading}
+      loadingMessage="Loading exam…"
+      accessError={accessError}
+      lockdown={enforceLockdown ? {
+        fullscreen:  true,
+        antiCheat:   true,
+        contextId:   examId,
+        onViolation: reportViolation,
+      } : undefined}
+      tabs={tabs}
+    />
+  );
+}
+
+// ── Briefing screen ──────────────────────────────────────────────────────────
+
+function BriefingScreen({
+  title, problemCount, durationSeconds, isEnded, enforceLockdown, onEnter,
+}: {
+  title:            string;
+  problemCount:     number;
+  durationSeconds:  number;
+  isEnded:          boolean;
+  enforceLockdown:  boolean;
+  onEnter:          () => void;
+}) {
+  const mins = Math.floor(Math.max(0, durationSeconds) / 60);
+  return (
+    <div style={{
+      height: "100vh", display: "flex", alignItems: "center", justifyContent: "center",
+      background: "#0d1426", color: "#f8fafc",
+      fontFamily: "-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif",
+    }}>
+      <div style={{
+        background: "#172b4d", borderRadius: 10, padding: "32px 36px",
+        maxWidth: 480, width: "100%", boxShadow: "0 16px 40px rgba(0,0,0,0.4)",
+      }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 18 }}>
+          <div style={{
+            width: 36, height: 36, background: "#0052cc", borderRadius: 6,
+            display: "flex", alignItems: "center", justifyContent: "center",
+            color: "white", fontWeight: 900, fontSize: 16,
+          }}>P</div>
+          <div>
+            <div style={{ fontSize: 11, color: "#94a3b8", textTransform: "uppercase", letterSpacing: 0.6 }}>
+              Entering arena
+            </div>
+            <div style={{ fontSize: 17, fontWeight: 700 }}>{title}</div>
+          </div>
+        </div>
+
+        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10, marginBottom: 18 }}>
+          <Stat label="Problems" value={String(problemCount)} />
+          <Stat label="Duration" value={mins > 0 ? `${mins} min` : "—"} />
+        </div>
+
+        {enforceLockdown && (
+          <div style={{
+            background: "rgba(222,53,11,0.12)", border: "1px solid rgba(222,53,11,0.4)",
+            borderRadius: 6, padding: "10px 12px", marginBottom: 18,
+            display: "flex", gap: 10, alignItems: "flex-start",
+          }}>
+            <ShieldAlert size={16} color="#f87171" style={{ flexShrink: 0, marginTop: 2 }} />
+            <div style={{ fontSize: 12, lineHeight: 1.55, color: "#fecaca" }}>
+              <strong style={{ color: "#fee2e2" }}>Anti-cheat is active.</strong>{" "}
+              Fullscreen is required. Tab switches, copy/paste outside the editor,
+              dev-tools shortcuts, and right-click are logged as violations.
+            </div>
+          </div>
+        )}
+
+        <button
+          type="button"
+          onClick={onEnter}
+          disabled={isEnded}
+          style={{
+            width: "100%", height: 42,
+            background: isEnded ? "#475569" : "#0052cc",
+            color: "white", border: "none", borderRadius: 6,
+            fontSize: 14, fontWeight: 700,
+            cursor: isEnded ? "not-allowed" : "pointer",
+            display: "flex", alignItems: "center", justifyContent: "center", gap: 8,
+          }}
+        >
+          <Play size={14} />
+          {isEnded ? "Session has ended" : "Enter Arena"}
+        </button>
+
+        <div style={{ textAlign: "center", marginTop: 12 }}>
+          <Link href="/assessments" style={{
+            fontSize: 12, color: "#94a3b8", textDecoration: "none",
+          }}>
+            ← Back to Exams &amp; TPs
+          </Link>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function Stat({ label, value }: { label: string; value: string }) {
+  return (
+    <div style={{
+      background: "rgba(255,255,255,0.04)",
+      border: "1px solid rgba(255,255,255,0.08)",
+      borderRadius: 6, padding: "10px 12px",
+    }}>
+      <div style={{ fontSize: 10, color: "#94a3b8", textTransform: "uppercase", letterSpacing: 0.6 }}>
+        {label}
+      </div>
+      <div style={{ fontSize: 16, fontWeight: 700, color: "#f8fafc", marginTop: 2 }}>
+        {value}
       </div>
     </div>
   );

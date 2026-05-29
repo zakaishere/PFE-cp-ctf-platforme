@@ -116,14 +116,13 @@ export default function ArenaShell({
   }
 
   // ── Anti-cheat (optional) ───────────────────────────────────────────────────
-  // Mount the hook unconditionally; gate behavior inside via a no-op context id.
   const violationsRef = useRef(0);
   const acEnabled  = !!lockdown?.antiCheat;
   const acContext  = lockdown?.contextId ?? "__disabled__";
   useAntiCheat({
-    competitionId: acEnabled ? acContext : "__disabled__",
+    competitionId: acContext,
+    enabled:       acEnabled,
     onViolation: (ev) => {
-      if (!acEnabled) return;
       violationsRef.current += 1;
       lockdown?.onViolation?.(ev);
     },
@@ -212,8 +211,8 @@ export default function ArenaShell({
   );
 
   // ── Lockdown wrapper ────────────────────────────────────────────────────────
-  if (lockdown?.fullscreen) {
-    return <FullscreenGate enabled>{shell}</FullscreenGate>;
+  if (lockdown?.fullscreen !== undefined) {
+    return <FullscreenGate enabled={lockdown.fullscreen}>{shell}</FullscreenGate>;
   }
   return shell;
 }

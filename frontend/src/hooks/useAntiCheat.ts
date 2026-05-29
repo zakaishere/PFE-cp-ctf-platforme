@@ -1,6 +1,5 @@
 import { useEffect, useRef } from "react";
 import { logger } from "@/lib/logger";
-import { reportCompetitionViolation } from "@/lib/api";
 
 export interface ViolationEvent {
   type:      string;
@@ -9,14 +8,20 @@ export interface ViolationEvent {
 }
 
 interface UseAntiCheatOptions {
+  /** Domain context id (CP competitionId, Exam/TP assessmentId). Used as effect key. */
   competitionId: string;
+  /** Called for every detected violation. Wire backend reporting here. */
   onViolation:   (event: ViolationEvent) => void;
+  /** When false, no listeners are attached. Defaults to true. */
+  enabled?:      boolean;
 }
 
-export function useAntiCheat({ competitionId, onViolation }: UseAntiCheatOptions) {
+export function useAntiCheat({ competitionId, onViolation, enabled = true }: UseAntiCheatOptions) {
   const violations = useRef<ViolationEvent[]>([]);
 
   useEffect(() => {
+    if (!enabled) return;
+
     function logViolation(type: string, details?: string) {
       const event: ViolationEvent = {
         type,
@@ -26,7 +31,6 @@ export function useAntiCheat({ competitionId, onViolation }: UseAntiCheatOptions
       violations.current.push(event);
       logger.warn("AntiCheat", `VIOLATION: ${type}`, event);
       onViolation(event);
-      reportCompetitionViolation(competitionId, event).catch(() => {});
     }
 
     function onVisibilityChange() {
@@ -131,7 +135,7 @@ export function useAntiCheat({ competitionId, onViolation }: UseAntiCheatOptions
       document.removeEventListener("selectstart", onSelectStart, true);
     };
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [competitionId]);
+  }, [competitionId, enabled]);
 
   return { violations: violations.current };
 }

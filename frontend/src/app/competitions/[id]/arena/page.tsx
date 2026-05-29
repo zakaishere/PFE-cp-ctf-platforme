@@ -12,6 +12,7 @@ import {
   getCompetitionScoreboard,
   getCompetitionTeamActivity,
   getApiBaseUrl,
+  reportCompetitionViolation,
   type ArenaDTO,
   type ArenaProblem,
 } from "@/lib/api";
@@ -19,8 +20,9 @@ import { toast } from "@/components/ui/PSPToast";
 import { useCountdown } from "@/hooks/useCountdown";
 import { useFullscreen } from "@/hooks/useFullscreen";
 import { useAntiCheat, type ViolationEvent } from "@/hooks/useAntiCheat";
-import { FullscreenGate } from "@/components/arena/FullscreenGate";
 import { useAuth } from "@/features/auth/contexts/AuthContext";
+import ArenaShell, { type ArenaTab } from "@/features/arena/components/ArenaShell";
+import { Code, Play, ShieldAlert, Trophy } from "lucide-react";
 
 const MonacoEditor = dynamic(() => import("@monaco-editor/react"), { ssr: false });
 
@@ -203,54 +205,9 @@ function EndOfCompetitionOverlay({
   );
 }
 
-// ─── Loading Skeleton ─────────────────────────────────────────────────────────
-
-function ArenaLoadingSkeleton() {
-  return (
-    <div className="h-screen flex flex-col bg-[#0d1117]">
-      <div className="h-11 bg-[#172b4d] flex items-center px-4 gap-4">
-        <div className="w-20 h-5 bg-blue-900 rounded animate-pulse" />
-        <div className="w-48 h-4 bg-blue-900 rounded animate-pulse" />
-        <div className="mx-auto w-24 h-6 bg-blue-900 rounded animate-pulse" />
-      </div>
-      <div className="flex flex-1 overflow-hidden">
-        <div className="w-56 bg-[#172b4d] border-r border-gray-800 p-3 flex flex-col gap-2">
-          {[1, 2, 3, 4].map(i => (
-            <div key={i} className="h-10 bg-gray-800 rounded animate-pulse" />
-          ))}
-        </div>
-        <div className="flex-1 bg-white p-6">
-          <div className="h-6 w-64 bg-gray-200 rounded mb-4 animate-pulse" />
-          <div className="h-4 w-full bg-gray-100 rounded mb-2 animate-pulse" />
-          <div className="h-4 w-3/4 bg-gray-100 rounded animate-pulse" />
-        </div>
-        <div className="w-[500px] bg-[#1e1e1e]" />
-      </div>
-    </div>
-  );
-}
-
-// ─── Error State ──────────────────────────────────────────────────────────────
-
-function ArenaErrorState({ message }: { message: string }) {
-  return (
-    <div className="h-screen bg-[#0d1117] flex items-center justify-center">
-      <div className="text-center">
-        <div className="text-5xl mb-4">⚠️</div>
-        <h2 className="text-white text-xl font-bold mb-2">Cannot enter arena</h2>
-        <p className="text-gray-400 text-sm mb-6">{message}</p>
-        <a
-          href="/competitions"
-          className="px-4 h-9 bg-blue-600 text-white text-sm font-semibold rounded hover:bg-blue-700 inline-flex items-center"
-        >
-          ← Back to Competitions
-        </a>
-      </div>
-    </div>
-  );
-}
-
 // ─── Page ─────────────────────────────────────────────────────────────────────
+
+type Phase = "briefing" | "active";
 
 export default function ArenaPage() {
   const params  = useParams();
@@ -266,6 +223,7 @@ export default function ArenaPage() {
   // ── UI state ────────────────────────────────────────────────────────────────
   const [activeProblemIdx, setActiveProblemIdx] = useState(0);
   const [rightPanel, setRightPanel]             = useState<"editor" | "scoreboard">("editor");
+  const [phase, setPhase]                       = useState<Phase>("briefing");
 
   // ── Editor state ────────────────────────────────────────────────────────────
   const [lang, setLang]   = useState("java");
@@ -316,7 +274,8 @@ export default function ArenaPage() {
     onViolation: useCallback((event: ViolationEvent) => {
       setViolationCount(c => c + 1);
       setViolationLog(prev => [...prev, event]);
-    }, []),
+      reportCompetitionViolation(competitionId, event).catch(() => {});
+    }, [competitionId]),
   });
 
   // ─── Load arena data ────────────────────────────────────────────────────────
@@ -554,190 +513,299 @@ export default function ArenaPage() {
 
   // ─── Render ──────────────────────────────────────────────────────────────────
 
-  if (loading)     return <ArenaLoadingSkeleton />;
-  if (accessError) return <ArenaErrorState message={accessError} />;
-  if (!arena)      return null;
+  // Briefing gate: lets the user explicitly enter (satisfies browser
+  // user-gesture requirement for fullscreen) and shows the lockdown notice.
+  if (!loading && !accessError && arena && phase === "briefing" && !competitionEnded) {
+    return (
+      <BriefingScreen
+        title={arena.title}
+        problemCount={arena.problems.length}
+        durationSeconds={arena.remainingSeconds}
+        mode={arena.mode}
+        teamName={arena.myTeam?.teamName}
+        onEnter={() => setPhase("active")}
+        onCancel={() => router.push(`/competitions/${competitionId}/lobby`)}
+      />
+    );
+  }
 
-  const activeProblem = arena.problems[activeProblemIdx];
-  const solvedCount   = arena.problems.filter(p => p.solveStatus === "SOLVED").length;
-  const timerColor    = countdown.isCritical ? "#de350b" : countdown.isUrgent ? "#ff8b00" : "#ffffff";
+  const activeProblem = arena?.problems[activeProblemIdx];
+  const solvedCount   = arena?.problems.filter(p => p.solveStatus === "SOLVED").length ?? 0;
+
+  // ── Body factories (called per-tab so refs/keys stay stable) ──────────────
+  const buildBody = (mainRight: React.ReactNode) => (
+    <div ref={containerRef} className="arena-shell" style={{ display: "flex", flex: 1, overflow: "hidden" }}>
+      <style>{`
+        @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.6} }
+        @keyframes spin   { to{transform:rotate(360deg)} }
+        @media print { body { display: none !important; } }
+        .arena-shell { -webkit-user-select: none; -moz-user-select: none; user-select: none; }
+        .arena-shell .monaco-editor,
+        .arena-shell .monaco-editor * { -webkit-user-select: text; -moz-user-select: text; user-select: text; }
+        .arena-shell .test-block,
+        .arena-shell .problem-title { -webkit-user-select: text; -moz-user-select: text; user-select: text; }
+      `}</style>
+
+      {arena && (
+        <LeftPanel
+          problems={arena.problems}
+          activeProblemIdx={activeProblemIdx}
+          setActiveProblemIdx={setActiveProblemIdx}
+          solvedCount={solvedCount}
+          mode={arena.mode}
+          activity={activity}
+        />
+      )}
+
+      {activeProblem && <ProblemStatement problem={activeProblem} />}
+
+      {mainRight}
+    </div>
+  );
+
+  const tabs: ArenaTab[] = [
+    {
+      key: "workspace",
+      label: "Workspace",
+      icon: <Code size={14} />,
+      content: buildBody(
+        activeProblem && (
+          <RightEditorPanel
+            lang={lang}
+            setLang={setLang}
+            code={currentCode()}
+            setCode={setCurrentCode}
+            running={running}
+            judging={judging}
+            runResults={runResults}
+            judgeResult={judgeResult}
+            isFullscreen={isFullscreen}
+            onRun={handleRun}
+            onSubmit={handleSubmit}
+            problem={activeProblem}
+          />
+        )
+      ),
+    },
+    {
+      key: "scoreboard",
+      label: "Scoreboard",
+      icon: <Trophy size={14} />,
+      content: buildBody(
+        arena && (
+          <ScoreboardPanel
+            scoreboard={scoreboard}
+            loading={sbLoading}
+            mode={arena.mode}
+            problems={arena.problems}
+            myUserId={userId}
+          />
+        )
+      ),
+    },
+  ];
 
   return (
-    <FullscreenGate enabled={!competitionEnded}>
-      <div
-        ref={containerRef}
-        className="arena-shell"
-        style={{ height: "100vh", display: "flex", flexDirection: "column", overflow: "hidden", fontFamily: "-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif" }}
-      >
-        <style>{`
-          @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.6} }
-          @keyframes spin   { to{transform:rotate(360deg)} }
-          @media print { body { display: none !important; } }
-          ::-webkit-scrollbar { width: 6px; }
-          ::-webkit-scrollbar-track { background: transparent; }
-          ::-webkit-scrollbar-thumb { background: #344563; border-radius: 3px; }
-          .arena-shell { -webkit-user-select: none; -moz-user-select: none; user-select: none; }
-          .arena-shell .monaco-editor,
-          .arena-shell .monaco-editor * { -webkit-user-select: text; -moz-user-select: text; user-select: text; }
-          .arena-shell .test-block,
-          .arena-shell .problem-title { -webkit-user-select: text; -moz-user-select: text; user-select: text; }
-        `}</style>
+    <>
+      <ArenaShell
+        title={arena?.title ?? "Competition"}
+        backHref={`/competitions/${competitionId}/lobby`}
+        backLabel="Leave"
+        remainingSeconds={countdown.raw}
+        isEnded={competitionEnded}
+        endedMessage="The competition has ended. Submissions are no longer accepted."
+        loading={loading}
+        loadingMessage="Loading competition…"
+        accessError={accessError}
+        lockdown={{
+          fullscreen: !competitionEnded,
+          // We wire useAntiCheat ourselves so we can surface the violation log.
+          antiCheat: false,
+        }}
+        tabs={tabs}
+        activeTabKey={rightPanel === "editor" ? "workspace" : "scoreboard"}
+        onTabChange={(k) => setRightPanel(k === "scoreboard" ? "scoreboard" : "editor")}
+        topBarExtras={
+          arena && (
+            <CPTopBarExtras
+              teamName={arena.myTeam?.teamName}
+              firstName={firstName}
+              violationCount={violationCount}
+              violationLog={violationLog}
+              showViolations={showViolations}
+              setShowViolations={setShowViolations}
+            />
+          )
+        }
+      />
 
-        {/* ── TOP BAR ── */}
-        <TopBar
+      {/* ── END OF COMPETITION OVERLAY ── */}
+      {showEndOverlay && arena && (
+        <EndOfCompetitionOverlay
           title={arena.title}
-          teamName={arena.myTeam?.teamName}
-          firstName={firstName}
-          hours={countdown.hours}
-          minutes={countdown.minutes}
-          seconds={countdown.seconds}
-          timerColor={timerColor}
-          isCritical={countdown.isCritical}
-          isEnded={competitionEnded}
-          rightPanel={rightPanel}
-          setRightPanel={setRightPanel}
-          violationCount={violationCount}
-          violationLog={violationLog}
-          showViolations={showViolations}
-          setShowViolations={setShowViolations}
-          onLeave={() => router.push(`/competitions/${competitionId}/lobby`)}
+          scoreboard={scoreboard}
+          myUserId={userId}
+          mode={arena.mode}
+          onViewResults={() => router.push(`/competitions/${competitionId}`)}
         />
-
-        {/* ── BODY ── */}
-        <div style={{ display: "flex", flex: 1, overflow: "hidden" }}>
-          <LeftPanel
-            problems={arena.problems}
-            activeProblemIdx={activeProblemIdx}
-            setActiveProblemIdx={setActiveProblemIdx}
-            solvedCount={solvedCount}
-            mode={arena.mode}
-            activity={activity}
-          />
-
-          <ProblemStatement problem={activeProblem} />
-
-          {rightPanel === "editor" ? (
-            <RightEditorPanel
-              lang={lang}
-              setLang={setLang}
-              code={currentCode()}
-              setCode={setCurrentCode}
-              running={running}
-              judging={judging}
-              runResults={runResults}
-              judgeResult={judgeResult}
-              isFullscreen={isFullscreen}
-              onRun={handleRun}
-              onSubmit={handleSubmit}
-              problem={activeProblem}
-            />
-          ) : (
-            <ScoreboardPanel
-              scoreboard={scoreboard}
-              loading={sbLoading}
-              mode={arena.mode}
-              problems={arena.problems}
-              myUserId={userId}
-            />
-          )}
-        </div>
-
-        {/* ── END OF COMPETITION OVERLAY ── */}
-        {showEndOverlay && (
-          <EndOfCompetitionOverlay
-            title={arena.title}
-            scoreboard={scoreboard}
-            myUserId={userId}
-            mode={arena.mode}
-            onViewResults={() => router.push(`/competitions/${competitionId}`)}
-          />
-        )}
-      </div>
-    </FullscreenGate>
+      )}
+    </>
   );
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// TopBar
+// Briefing screen (CP entry gate)
 // ─────────────────────────────────────────────────────────────────────────────
 
-function TopBar({
-  title, teamName, firstName, hours, minutes, seconds,
-  timerColor, isCritical, isEnded, rightPanel, setRightPanel,
-  violationCount, violationLog, showViolations, setShowViolations,
-  onLeave,
+function BriefingScreen({
+  title, problemCount, durationSeconds, mode, teamName, onEnter, onCancel,
 }: {
-  title: string; teamName?: string; firstName: string | null;
-  hours: string; minutes: string; seconds: string;
-  timerColor: string; isCritical: boolean; isEnded: boolean;
-  rightPanel: "editor" | "scoreboard";
-  setRightPanel: (v: "editor" | "scoreboard") => void;
-  violationCount: number;
-  violationLog: ViolationEvent[];
-  showViolations: boolean;
-  setShowViolations: (v: boolean) => void;
-  onLeave: () => void;
+  title:           string;
+  problemCount:    number;
+  durationSeconds: number;
+  mode:            "SOLO" | "TEAM";
+  teamName?:       string;
+  onEnter:         () => void;
+  onCancel:        () => void;
+}) {
+  const mins = Math.floor(Math.max(0, durationSeconds) / 60);
+  return (
+    <div style={{
+      height: "100vh", display: "flex", alignItems: "center", justifyContent: "center",
+      background: "#0d1426", color: "#f8fafc",
+      fontFamily: "-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif",
+    }}>
+      <div style={{
+        background: "#172b4d", borderRadius: 10, padding: "32px 36px",
+        maxWidth: 520, width: "100%", boxShadow: "0 16px 40px rgba(0,0,0,0.4)",
+      }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 18 }}>
+          <div style={{
+            width: 36, height: 36, background: "#0052cc", borderRadius: 6,
+            display: "flex", alignItems: "center", justifyContent: "center",
+            color: "white", fontWeight: 900, fontSize: 16,
+          }}>P</div>
+          <div>
+            <div style={{ fontSize: 11, color: "#94a3b8", textTransform: "uppercase", letterSpacing: 0.6 }}>
+              Entering competition
+            </div>
+            <div style={{ fontSize: 17, fontWeight: 700 }}>{title}</div>
+          </div>
+        </div>
+
+        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 10, marginBottom: 18 }}>
+          <BriefStat label="Problems" value={String(problemCount)} />
+          <BriefStat label="Duration" value={mins > 0 ? `${mins} min` : "—"} />
+          <BriefStat label={mode === "TEAM" ? "Team" : "Mode"} value={mode === "TEAM" ? (teamName ?? "—") : "Solo"} />
+        </div>
+
+        <div style={{
+          background: "rgba(222,53,11,0.12)", border: "1px solid rgba(222,53,11,0.4)",
+          borderRadius: 6, padding: "10px 12px", marginBottom: 18,
+          display: "flex", gap: 10, alignItems: "flex-start",
+        }}>
+          <ShieldAlert size={16} color="#f87171" style={{ flexShrink: 0, marginTop: 2 }} />
+          <div style={{ fontSize: 12, lineHeight: 1.55, color: "#fecaca" }}>
+            <strong style={{ color: "#fee2e2" }}>Anti-cheat is active.</strong>{" "}
+            Fullscreen is required to submit. Tab switches, copy/paste outside
+            the editor, dev-tools shortcuts and right-click are logged.
+          </div>
+        </div>
+
+        <button
+          type="button"
+          onClick={onEnter}
+          style={{
+            width: "100%", height: 42, background: "#0052cc",
+            color: "white", border: "none", borderRadius: 6,
+            fontSize: 14, fontWeight: 700, cursor: "pointer",
+            display: "flex", alignItems: "center", justifyContent: "center", gap: 8,
+          }}
+        >
+          <Play size={14} />
+          Enter Arena
+        </button>
+
+        <div style={{ textAlign: "center", marginTop: 12 }}>
+          <button
+            type="button"
+            onClick={onCancel}
+            style={{
+              background: "transparent", border: "none",
+              fontSize: 12, color: "#94a3b8", cursor: "pointer",
+            }}
+          >
+            ← Back to lobby
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function BriefStat({ label, value }: { label: string; value: string }) {
+  return (
+    <div style={{
+      background: "rgba(255,255,255,0.04)",
+      border: "1px solid rgba(255,255,255,0.08)",
+      borderRadius: 6, padding: "10px 12px",
+    }}>
+      <div style={{ fontSize: 10, color: "#94a3b8", textTransform: "uppercase", letterSpacing: 0.6 }}>
+        {label}
+      </div>
+      <div style={{
+        fontSize: 14, fontWeight: 700, color: "#f8fafc", marginTop: 2,
+        overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
+      }}>
+        {value}
+      </div>
+    </div>
+  );
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Top-bar extras (team/user name + violation counter + slide-over)
+// ─────────────────────────────────────────────────────────────────────────────
+
+function CPTopBarExtras({
+  teamName, firstName, violationCount, violationLog,
+  showViolations, setShowViolations,
+}: {
+  teamName?: string; firstName: string | null;
+  violationCount: number; violationLog: ViolationEvent[];
+  showViolations: boolean; setShowViolations: (v: boolean) => void;
 }) {
   return (
     <>
-      <div style={{ background: "#172b4d", height: 44, display: "flex", alignItems: "center", padding: "0 16px", gap: 12, flexShrink: 0, borderBottom: "1px solid #253858", position: "relative", zIndex: 10 }}>
-        {/* Logo */}
-        <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-          <div style={{ width: 22, height: 22, background: "#0052cc", borderRadius: 3, display: "flex", alignItems: "center", justifyContent: "center", color: "white", fontWeight: 900, fontSize: 11 }}>P</div>
-          <span style={{ color: "white", fontWeight: 700, fontSize: 13 }}>PSP</span>
-        </div>
-        <span style={{ color: "rgba(255,255,255,0.25)" }}>|</span>
-        <span style={{ color: "rgba(255,255,255,0.85)", fontSize: 13, fontWeight: 500, maxWidth: 260, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-          {title}{teamName ? ` — ${teamName}` : ""}
-        </span>
-
-        {/* Timer */}
-        <div style={{
-          fontFamily: "monospace", fontSize: 15, fontWeight: 700,
-          color: isEnded ? "#de350b" : timerColor,
-          animation: isCritical || isEnded ? "pulse 1s infinite" : "none",
-          marginLeft: "auto",
+      {teamName && (
+        <span style={{
+          color: "rgba(255,255,255,0.6)", fontSize: 12, fontWeight: 500,
+          maxWidth: 140, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
         }}>
-          {isEnded ? "ENDED" : `${hours}:${minutes}:${seconds}`}
-        </div>
+          {teamName}
+        </span>
+      )}
 
-        {/* Panel toggle */}
-        <div style={{ display: "flex", gap: 4 }}>
-          {(["editor", "scoreboard"] as const).map(p => (
-            <button key={p} onClick={() => setRightPanel(p)} style={{
-              background: rightPanel === p ? "#0052cc" : "transparent",
-              color: rightPanel === p ? "white" : "rgba(255,255,255,0.6)",
-              border: "1px solid",
-              borderColor: rightPanel === p ? "#0052cc" : "rgba(255,255,255,0.2)",
-              borderRadius: 3, height: 28, padding: "0 12px", fontSize: 12, cursor: "pointer", fontWeight: 500,
-            }}>{p === "editor" ? "Editor" : "Scoreboard"}</button>
-          ))}
-        </div>
-
-        {/* Violations counter */}
-        {violationCount > 0 && (
-          <button
-            onClick={() => setShowViolations(!showViolations)}
-            style={{
-              display: "flex", alignItems: "center", gap: 6,
-              background: "rgba(222,53,11,0.2)", border: "1px solid rgba(222,53,11,0.4)",
-              borderRadius: 3, padding: "3px 10px", cursor: "pointer",
-            }}
-          >
-            <span style={{ color: "#ff8b8b", fontSize: 11 }}>⚠</span>
-            <span style={{ color: "#ffb8b8", fontSize: 11, fontWeight: 600 }}>
-              {violationCount} violation{violationCount !== 1 ? "s" : ""}
-            </span>
-          </button>
-        )}
-
-        {firstName && <span style={{ color: "rgba(255,255,255,0.55)", fontSize: 12 }}>{firstName}</span>}
-        <button onClick={onLeave} style={{ background: "#de350b", color: "white", border: "none", borderRadius: 3, padding: "0 12px", height: 28, fontSize: 12, fontWeight: 600, cursor: "pointer" }}>
-          Leave
+      {violationCount > 0 && (
+        <button
+          onClick={() => setShowViolations(!showViolations)}
+          style={{
+            display: "flex", alignItems: "center", gap: 6,
+            background: "rgba(222,53,11,0.2)", border: "1px solid rgba(222,53,11,0.4)",
+            borderRadius: 3, padding: "3px 10px", cursor: "pointer",
+          }}
+        >
+          <span style={{ color: "#ff8b8b", fontSize: 11 }}>⚠</span>
+          <span style={{ color: "#ffb8b8", fontSize: 11, fontWeight: 600 }}>
+            {violationCount} violation{violationCount !== 1 ? "s" : ""}
+          </span>
         </button>
-      </div>
+      )}
 
-      {/* Violation slide-over */}
+      {firstName && (
+        <span style={{ color: "rgba(255,255,255,0.55)", fontSize: 12 }}>{firstName}</span>
+      )}
+
       {showViolations && (
         <div style={{
           position: "fixed", top: 44, right: 0, width: 360, height: "calc(100vh - 44px)",
