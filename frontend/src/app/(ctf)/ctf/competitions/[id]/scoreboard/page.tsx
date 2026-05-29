@@ -31,6 +31,11 @@ export default function ScoreboardPage() {
   };
 
   useEffect(() => { reload(); }, [id]);
+
+  // Reload whenever any team scores (WebSocket scoreboard event).
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  useEffect(() => { if (ctx.scoreboardVersion > 0) reload(); }, [ctx.scoreboardVersion]);
+
   useEffect(() => {
     const latest = ctx.notifications[0];
     if (!latest) return;

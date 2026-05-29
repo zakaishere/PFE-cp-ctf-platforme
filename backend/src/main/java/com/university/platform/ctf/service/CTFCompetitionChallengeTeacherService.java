@@ -114,6 +114,10 @@ public class CTFCompetitionChallengeTeacherService {
         c.setHints(buildHints(dto.getHints()));
         c.setAuthorId(userId);
         c.setDeleted(false);
+        c.setBloodBonusEnabled(Boolean.TRUE.equals(dto.getBloodBonusEnabled()));
+        c.setFirstBloodBonus(dto.getFirstBloodBonus()  != null ? dto.getFirstBloodBonus()  : 0);
+        c.setSecondBloodBonus(dto.getSecondBloodBonus() != null ? dto.getSecondBloodBonus() : 0);
+        c.setThirdBloodBonus(dto.getThirdBloodBonus()  != null ? dto.getThirdBloodBonus()  : 0);
 
         challengeRepo.save(c);
 
@@ -172,6 +176,10 @@ public class CTFCompetitionChallengeTeacherService {
         }
         if (dto.getIsActive() != null)             c.setIsActive(dto.getIsActive());
         if (dto.getHints() != null)                c.setHints(buildHints(dto.getHints()));
+        if (dto.getBloodBonusEnabled() != null)    c.setBloodBonusEnabled(dto.getBloodBonusEnabled());
+        if (dto.getFirstBloodBonus()  != null)     c.setFirstBloodBonus(dto.getFirstBloodBonus());
+        if (dto.getSecondBloodBonus() != null)     c.setSecondBloodBonus(dto.getSecondBloodBonus());
+        if (dto.getThirdBloodBonus()  != null)     c.setThirdBloodBonus(dto.getThirdBloodBonus());
 
         challengeRepo.save(c);
 
@@ -457,6 +465,10 @@ public class CTFCompetitionChallengeTeacherService {
                 .isHidden(Boolean.TRUE.equals(c.getIsHidden()))
                 .solveCount(0)
                 .solvedByMe(false)
+                .bloodBonusEnabled(Boolean.TRUE.equals(c.getBloodBonusEnabled()))
+                .firstBloodBonus(c.getFirstBloodBonus())
+                .secondBloodBonus(c.getSecondBloodBonus())
+                .thirdBloodBonus(c.getThirdBloodBonus())
                 .build();
     }
 

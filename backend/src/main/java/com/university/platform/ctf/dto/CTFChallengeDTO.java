@@ -50,4 +50,10 @@ public class CTFChallengeDTO {
 
     // Teacher-only field — always null in student-facing responses
     private Boolean isHidden;
+
+    // Blood bonus config — set when blood_bonus_enabled=true on the challenge
+    private Boolean bloodBonusEnabled;
+    private Integer firstBloodBonus;
+    private Integer secondBloodBonus;
+    private Integer thirdBloodBonus;
 }

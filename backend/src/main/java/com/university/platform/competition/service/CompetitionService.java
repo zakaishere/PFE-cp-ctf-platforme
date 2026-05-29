@@ -3,6 +3,9 @@ package com.university.platform.competition.service;
 import com.university.platform.assessment.JoinRequest;
 import com.university.platform.assessment.JoinRequestStatus;
 import com.university.platform.assessment.VisibilityMode;
+import com.university.platform.audit.AuditDomain;
+import com.university.platform.audit.AuditEventService;
+import com.university.platform.audit.Severity;
 import com.university.platform.assessment.model.Problem;
 import com.university.platform.assessment.model.Problem.DifficultyLevel;
 import com.university.platform.assessment.repository.JoinRequestRepository;
@@ -63,6 +66,7 @@ public class CompetitionService {
     private final TestCaseRepository testCaseRepository;
     private final CompetitionViolationRepository competitionViolationRepository;
     private final RabbitTemplate rabbitTemplate;
+    private final AuditEventService auditEventService;
 
     // -------------------------------------------------------------------------
     // Create competition
@@ -834,6 +838,19 @@ public class CompetitionService {
                 .details(req.details())
                 .build();
         competitionViolationRepository.save(violation);
+
+        Map<String, Object> detail = new HashMap<>();
+        if (req.details() != null) detail.put("details", req.details());
+        auditEventService.record(
+                AuditDomain.CP,
+                req.type(),
+                competitionId,
+                null,
+                studentId,
+                null,
+                null,
+                detail,
+                Severity.WARN);
     }
 
     // -------------------------------------------------------------------------

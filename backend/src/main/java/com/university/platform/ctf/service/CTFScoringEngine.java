@@ -65,10 +65,40 @@ public class CTFScoringEngine {
      * Returns a positive number (the penalty to subtract from the raw solve sum).
      * Pass {@code asOf = null} to include all hint unlocks (live / unfrozen view).
      *
-     * teamScore(team, asOf) = sum(challengeValue(solved challenges)) - hintPenalty(team, asOf)
+     * teamScore(team, asOf) = sum(challengeValue(solved challenges))
+     *                       - hintPenalty(team, asOf)
+     *                       + bloodBonus(challengeById, challengeSolveOrder, team)
      */
     public int hintPenalty(UUID competitionId, UUID teamId, LocalDateTime asOf) {
         return -awardRepo.sumHintAwardsByTeamId(competitionId, teamId, asOf);
+    }
+
+    /**
+     * Extra points awarded to {@code teamId} for being the 1st/2nd/3rd solver on
+     * challenges that have {@code blood_bonus_enabled = true}.
+     *
+     * {@code challengeById}      — challengeId → CTFChallenge (all challenges in the competition)
+     * {@code challengeSolveOrder} — challengeId → ordered list of teamIds that solved it
+     *                               (ascending by solved_at, already capped at asOf by the caller)
+     *
+     * This method is pure Java — no DB queries — so the caller must pass pre-built
+     * maps derived from the already-loaded solve list (respecting the freeze / asOf cutoff).
+     */
+    public int bloodBonus(Map<UUID, CTFChallenge> challengeById,
+                          Map<UUID, List<UUID>>   challengeSolveOrder,
+                          UUID                    teamId) {
+        int bonus = 0;
+        for (Map.Entry<UUID, CTFChallenge> e : challengeById.entrySet()) {
+            CTFChallenge ch = e.getValue();
+            if (!Boolean.TRUE.equals(ch.getBloodBonusEnabled())) continue;
+            List<UUID> order = challengeSolveOrder.get(e.getKey());
+            if (order == null) continue;
+            int pos = order.indexOf(teamId) + 1; // 1-indexed; 0 means team didn't solve it
+            if (pos == 1 && ch.getFirstBloodBonus()  != null) bonus += ch.getFirstBloodBonus();
+            else if (pos == 2 && ch.getSecondBloodBonus() != null) bonus += ch.getSecondBloodBonus();
+            else if (pos == 3 && ch.getThirdBloodBonus()  != null) bonus += ch.getThirdBloodBonus();
+        }
+        return bonus;
     }
 
     /**

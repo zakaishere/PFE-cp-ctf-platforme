@@ -164,4 +164,9 @@ Thumbs.db
 *.pem
 *.key
 *.crt
-.env.*.local   
+.env.*.local
+
+# ============================================================================
+# icode-ctf — standalone extracted project (not part of this repo)
+# ============================================================================
+icode-ctf/

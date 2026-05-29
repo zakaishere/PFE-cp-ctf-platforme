@@ -14,4 +14,8 @@ public class CTFChallengeSolverDTO {
     private String teamName;
     private String avatarColor;
     private LocalDateTime solvedAt;
+    /** 1 = first blood, 2 = second blood, 3 = third blood, null = no blood position. */
+    private Integer bloodPosition;
+    /** Bonus points awarded for this blood position; null when bloodPosition is null. */
+    private Integer bloodBonus;
 }

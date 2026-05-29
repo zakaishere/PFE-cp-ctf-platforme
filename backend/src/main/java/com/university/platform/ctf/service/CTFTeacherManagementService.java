@@ -1,5 +1,8 @@
 package com.university.platform.ctf.service;
 
+import com.university.platform.audit.AuditDomain;
+import com.university.platform.audit.AuditEventService;
+import com.university.platform.audit.Severity;
 import com.university.platform.ctf.dto.*;
 import com.university.platform.ctf.entity.*;
 import com.university.platform.ctf.repository.*;
@@ -41,6 +44,7 @@ public class CTFTeacherManagementService {
     private final UserRepository                userRepo;
     private final SimpMessagingTemplate         ws;
     private final CTFNotificationService        notifications;
+    private final AuditEventService             auditEventService;
 
     // ── Overview ─────────────────────────────────────────────────────────────
 
@@ -313,6 +317,17 @@ public class CTFTeacherManagementService {
         ev.setDismissedAt(LocalDateTime.now());
         ev.setDismissedBy(userId);
         cheatRepo.save(ev);
+
+        auditEventService.record(
+                AuditDomain.CTF,
+                "CHEAT_DISMISSED",
+                competitionId,
+                ev.getChallengeId(),
+                userId,
+                null,
+                null,
+                Map.of("originalEventId", cheatId.toString()),
+                Severity.INFO);
 
         // Build single-event response — reuse list mapper for consistency.
         return listCheats(competitionId, userId, isAdmin).stream()

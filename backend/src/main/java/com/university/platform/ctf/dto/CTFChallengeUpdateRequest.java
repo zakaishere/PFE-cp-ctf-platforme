@@ -39,4 +39,10 @@ public class CTFChallengeUpdateRequest {
 
     /** Full replacement of the hints list; null means keep existing hints. */
     private List<CTFHintRequest> hints;
+
+    // Blood bonus settings — null = keep existing value
+    private Boolean bloodBonusEnabled;
+    private Integer firstBloodBonus;
+    private Integer secondBloodBonus;
+    private Integer thirdBloodBonus;
 }

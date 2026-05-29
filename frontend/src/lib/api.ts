@@ -1180,10 +1180,12 @@ export interface CTFTeamResponse {
 }
 
 export interface CTFChallengeSolverDTO {
-  teamId:    string;
-  teamName:  string;
-  avatarColor: string;
-  solvedAt:  string;
+  teamId:       string;
+  teamName:     string;
+  avatarColor:  string;
+  solvedAt:     string;
+  bloodPosition?: number | null; // 1=first, 2=second, 3=third blood; null = no blood position
+  bloodBonus?:    number | null; // bonus points awarded; null when bloodPosition is null
 }
 
 export interface CTFTeamSolveEntryDTO {
@@ -1269,6 +1271,10 @@ export interface CTFCompetitionChallengeDTO {
   solveCount:          number;
   solvedByMe:          boolean;
   myHintPenalty?:      number;
+  bloodBonusEnabled?:  boolean;
+  firstBloodBonus?:    number | null;
+  secondBloodBonus?:   number | null;
+  thirdBloodBonus?:    number | null;
 }
 
 export interface CTFCompetitionSubmitResponse {
@@ -1527,6 +1533,10 @@ export interface TeacherCtfChallengeCreateRequest {
   maxAttempts?:         number | null; // null = unlimited; 0 also treated as unlimited by backend
   isActive?:            boolean;
   hints?:               { cost: number; text: string }[];
+  bloodBonusEnabled?:   boolean;
+  firstBloodBonus?:     number;
+  secondBloodBonus?:    number;
+  thirdBloodBonus?:     number;
 }
 
 export type TeacherCtfChallengeUpdateRequest = Partial<Omit<TeacherCtfChallengeCreateRequest, "plainFlag">>;

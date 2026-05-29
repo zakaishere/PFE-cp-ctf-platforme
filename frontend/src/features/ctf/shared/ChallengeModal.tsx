@@ -751,7 +751,37 @@ function SolversTab({
             >
               {s.teamName}
             </Link>
-            {i === 0 && (
+            {s.bloodPosition === 1 && (
+              <span style={{
+                fontSize: 8.5, fontWeight: 800, color: "#ef4444",
+                background: "rgba(239,68,68,0.1)", border: "1px solid rgba(239,68,68,0.22)",
+                borderRadius: 3, padding: "1px 5px",
+                letterSpacing: "0.05em", textTransform: "uppercase", flexShrink: 0,
+              }}>
+                FIRST BLOOD{s.bloodBonus ? ` +${s.bloodBonus}` : ""}
+              </span>
+            )}
+            {s.bloodPosition === 2 && (
+              <span style={{
+                fontSize: 8.5, fontWeight: 800, color: "#94a3b8",
+                background: "rgba(148,163,184,0.1)", border: "1px solid rgba(148,163,184,0.22)",
+                borderRadius: 3, padding: "1px 5px",
+                letterSpacing: "0.05em", textTransform: "uppercase", flexShrink: 0,
+              }}>
+                2ND BLOOD{s.bloodBonus ? ` +${s.bloodBonus}` : ""}
+              </span>
+            )}
+            {s.bloodPosition === 3 && (
+              <span style={{
+                fontSize: 8.5, fontWeight: 800, color: "#fb923c",
+                background: "rgba(251,146,60,0.1)", border: "1px solid rgba(251,146,60,0.22)",
+                borderRadius: 3, padding: "1px 5px",
+                letterSpacing: "0.05em", textTransform: "uppercase", flexShrink: 0,
+              }}>
+                3RD BLOOD{s.bloodBonus ? ` +${s.bloodBonus}` : ""}
+              </span>
+            )}
+            {s.bloodPosition == null && i === 0 && (
               <span style={{
                 fontSize: 8.5, fontWeight: 800, color: "#ef4444",
                 background: "rgba(239,68,68,0.1)", border: "1px solid rgba(239,68,68,0.22)",

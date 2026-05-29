@@ -6,7 +6,7 @@ import {
   Server, FileText, Cpu, HardDrive, Network, Terminal, Globe, Box,
   Info, Copy, Check, ChevronRight, UploadCloud, FileArchive, BookOpen,
   Search, Filter, Download, Zap, Square, RefreshCw, ExternalLink,
-  ChevronDown, SlidersHorizontal,
+  ChevronDown, SlidersHorizontal, Droplets,
 } from "lucide-react";
 import { toast } from "@/components/ui/PSPToast";
 import {
@@ -1061,6 +1061,12 @@ function ChallengePanel({
     maxAttempts: existing?.maxAttempts != null ? String(existing.maxAttempts) : "10",
     attemptsMode: (existing?.maxAttempts == null ? "unlimited" : "limited") as "limited" | "unlimited",
 
+    // Blood bonus
+    bloodBonusEnabled: existing?.bloodBonusEnabled ?? false,
+    firstBloodBonus: existing?.firstBloodBonus != null ? String(existing.firstBloodBonus) : "0",
+    secondBloodBonus: existing?.secondBloodBonus != null ? String(existing.secondBloodBonus) : "0",
+    thirdBloodBonus: existing?.thirdBloodBonus != null ? String(existing.thirdBloodBonus) : "0",
+
     // Docker
     requiresInstance: existing?.requiresInstance ?? false,
     dockerImage: existing?.dockerImage ?? "",
@@ -1193,6 +1199,10 @@ function ChallengePanel({
           ...dockerFields,
           maxAttempts: form.attemptsMode === "unlimited" ? 0 : parseInt(form.maxAttempts) || 10,
           hints: hints.length > 0 ? hints : undefined,
+          bloodBonusEnabled: form.bloodBonusEnabled,
+          firstBloodBonus: form.bloodBonusEnabled ? (parseInt(form.firstBloodBonus) || 0) : 0,
+          secondBloodBonus: form.bloodBonusEnabled ? (parseInt(form.secondBloodBonus) || 0) : 0,
+          thirdBloodBonus: form.bloodBonusEnabled ? (parseInt(form.thirdBloodBonus) || 0) : 0,
         };
         const created = await addTeacherCtfChallenge(competitionId, payload);
         if (reveal) {
@@ -1229,6 +1239,10 @@ function ChallengePanel({
           requiresInstance: form.requiresInstance,
           ...dockerFields,
           maxAttempts: form.attemptsMode === "unlimited" ? 0 : parseInt(form.maxAttempts) || 10,
+          bloodBonusEnabled: form.bloodBonusEnabled,
+          firstBloodBonus: form.bloodBonusEnabled ? (parseInt(form.firstBloodBonus) || 0) : 0,
+          secondBloodBonus: form.bloodBonusEnabled ? (parseInt(form.secondBloodBonus) || 0) : 0,
+          thirdBloodBonus: form.bloodBonusEnabled ? (parseInt(form.thirdBloodBonus) || 0) : 0,
         };
         await updateTeacherCtfChallenge(competitionId, existing.id, payload);
         toast.success("Challenge updated", form.title);
@@ -1584,6 +1598,48 @@ function BasicsTab({
             placeholder="https://…/image.png"
           />
         </Field>
+      </Section>
+
+      <Section icon={Droplets} title="Blood bonuses (optional)" desc="Award extra points to the 1st, 2nd, and 3rd teams to solve this challenge. Does not affect the displayed challenge value.">
+        <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: form.bloodBonusEnabled ? 14 : 0 }}>
+          <button
+            type="button"
+            onClick={() => setForm({ ...form, bloodBonusEnabled: !form.bloodBonusEnabled })}
+            style={{
+              display: "flex", alignItems: "center", gap: 6,
+              padding: "6px 14px", borderRadius: 6, cursor: "pointer",
+              border: form.bloodBonusEnabled ? "1px solid #ef4444" : "1px solid var(--border)",
+              background: form.bloodBonusEnabled ? "rgba(239,68,68,0.12)" : "transparent",
+              color: form.bloodBonusEnabled ? "#fca5a5" : "var(--text-muted)",
+              fontSize: 12, fontWeight: 600,
+            }}
+          >
+            <Droplets size={13} />
+            {form.bloodBonusEnabled ? "Enabled" : "Enable blood bonuses"}
+          </button>
+        </div>
+        {form.bloodBonusEnabled && (
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 12 }}>
+            <Field label="1st blood bonus (pts)">
+              <input className="input" type="number" min={0} value={form.firstBloodBonus}
+                onChange={(e) => setForm({ ...form, firstBloodBonus: e.target.value })}
+                placeholder="e.g. 100"
+              />
+            </Field>
+            <Field label="2nd blood bonus (pts)">
+              <input className="input" type="number" min={0} value={form.secondBloodBonus}
+                onChange={(e) => setForm({ ...form, secondBloodBonus: e.target.value })}
+                placeholder="e.g. 50"
+              />
+            </Field>
+            <Field label="3rd blood bonus (pts)">
+              <input className="input" type="number" min={0} value={form.thirdBloodBonus}
+                onChange={(e) => setForm({ ...form, thirdBloodBonus: e.target.value })}
+                placeholder="e.g. 25"
+              />
+            </Field>
+          </div>
+        )}
       </Section>
     </div>
   );

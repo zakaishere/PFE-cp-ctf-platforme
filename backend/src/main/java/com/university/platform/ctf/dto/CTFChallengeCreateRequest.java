@@ -42,4 +42,10 @@ public class CTFChallengeCreateRequest {
 
     /** Hints provided at creation time — backend generates IDs. */
     private List<CTFHintRequest> hints;
+
+    // Blood bonus settings — optional; null = disabled / keep existing
+    private Boolean bloodBonusEnabled;
+    private Integer firstBloodBonus;
+    private Integer secondBloodBonus;
+    private Integer thirdBloodBonus;
 }

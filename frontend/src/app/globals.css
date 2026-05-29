@@ -720,10 +720,11 @@ button, a, input, select, textarea, [role="button"] {
   border-radius: 3px;
 }
 
-/* ── Global selection color ──────────────────────────────── */
-::selection {
-  background: #deebff;
-  color: var(--text-primary);
+/* Custom selection style — inside @layer base so Tailwind's preflight
+   doesn't override the cascade ordering */
+@layer base {
+  ::selection      { background-color: #60a5ff; color: #000000; }
+  ::-moz-selection { background-color: #60a5ff; color: #000000; }
 }
 
 /* ── Custom scrollbar (webkit) ───────────────────────────── */

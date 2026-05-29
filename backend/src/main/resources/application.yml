@@ -16,7 +16,7 @@ spring:
     hikari:
       maximum-pool-size: ${DB_POOL_SIZE:50}
       minimum-idle: 10
-      connection-timeout: 3000
+      connection-timeout: 5000
       idle-timeout: 600000
       max-lifetime: 1800000
       leak-detection-threshold: 60000
@@ -45,12 +45,17 @@ spring:
     host: ${RABBITMQ_HOST:localhost}
     port: ${RABBITMQ_PORT:5672}
     username: ${RABBITMQ_USER:guest}
-    password: ${RABBITMQ_PASS:guest}
+    password: ${RABBITMQ_PASSWORD:${RABBITMQ_PASS:guest}}
     listener:
       simple:
         concurrency: 3
         max-concurrency: 10
-        prefetch: 1
+        prefetch: 4
+        retry:
+          enabled: true
+          initial-interval: 2000
+          max-attempts: 3
+          multiplier: 2.0
 
   # ── Mail ─────────────────────────────────────────
   mail:
@@ -125,6 +130,17 @@ docker:
   tls:
     verify: ${DOCKER_TLS_VERIFY:false}
     cert-path: ${DOCKER_CERT_PATH:}
+
+# ── Ephemeral execution (Exam/CP code runner) ───────
+# workdir: host directory where per-submission source/input files are staged
+#   and bind-mounted read-only into the container at /src. Defaults to /dev/shm
+#   (RAM-disk, fast). Override to a disk path if /dev/shm is undersized.
+# tmpfs-size-mb: in-container /app tmpfs size for compiled artefacts + runtime
+#   scratch. The host backend container must also have shm_size >= ~ N * this
+#   value where N is your peak concurrent submissions (see docker-compose.yml).
+execution:
+  workdir: ${EXECUTION_WORKDIR:/dev/shm}
+  tmpfs-size-mb: ${EXECUTION_TMPFS_MB:100}
 
 # ── Actuator & Metrics ──────────────────────────────
 management:

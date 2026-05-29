@@ -161,6 +161,24 @@ public class CTFChallenge {
     @Column(name = "library_source_id")
     private UUID librarySourceId;
 
+    // Blood bonus — optional per-solve reward for 1st/2nd/3rd solvers.
+    // disabled by default; bonus does NOT change the displayed challenge point value.
+    @Builder.Default
+    @Column(name = "blood_bonus_enabled", nullable = false)
+    private Boolean bloodBonusEnabled = false;
+
+    @Builder.Default
+    @Column(name = "first_blood_bonus", nullable = false)
+    private Integer firstBloodBonus = 0;
+
+    @Builder.Default
+    @Column(name = "second_blood_bonus", nullable = false)
+    private Integer secondBloodBonus = 0;
+
+    @Builder.Default
+    @Column(name = "third_blood_bonus", nullable = false)
+    private Integer thirdBloodBonus = 0;
+
     @Builder.Default
     @Column(name = "deleted", nullable = false)
     private Boolean deleted = false;

@@ -1,5 +1,8 @@
 package com.university.platform.ctf.service;
 
+import com.university.platform.audit.AuditDomain;
+import com.university.platform.audit.AuditEventService;
+import com.university.platform.audit.Severity;
 import com.university.platform.ctf.dto.*;
 import com.university.platform.ctf.entity.*;
 import com.university.platform.ctf.exception.CTFPausedException;
@@ -54,6 +57,7 @@ public class CTFCompetitionService {
     private final CTFTeamService                teamService;
     private final CTFInstanceService            instanceService;
     private final SimpMessagingTemplate         ws;
+    private final AuditEventService             auditEventService;
 
     private final Counter flagSubmitCorrect;
     private final Counter flagSubmitWrong;
@@ -73,6 +77,7 @@ public class CTFCompetitionService {
                                  CTFTeamService teamService,
                                  CTFInstanceService instanceService,
                                  SimpMessagingTemplate ws,
+                                 AuditEventService auditEventService,
                                  MeterRegistry meterRegistry) {
         this.competitionRepo = competitionRepo;
         this.challengeRepo   = challengeRepo;
@@ -88,6 +93,7 @@ public class CTFCompetitionService {
         this.teamService     = teamService;
         this.instanceService = instanceService;
         this.ws              = ws;
+        this.auditEventService = auditEventService;
         this.flagSubmitCorrect     = meterRegistry.counter("ctf.flag.submit", "result", "correct");
         this.flagSubmitWrong       = meterRegistry.counter("ctf.flag.submit", "result", "wrong");
         this.flagSubmitRateLimited = meterRegistry.counter("ctf.flag.submit", "result", "rate_limited");
@@ -314,19 +320,32 @@ public class CTFCompetitionService {
                 .findByCompetitionIdAndChallengeIdOrderBySolvedAtAsc(competitionId, challengeId);
         Map<UUID, CTFTeam> teamMap = teamRepo.findByCompetitionId(competitionId).stream()
                 .collect(Collectors.toMap(CTFTeam::getId, t -> t));
-        return solves.stream()
-                .map(s -> {
-                    CTFTeam team = teamMap.get(s.getTeamId());
-                    if (team == null) return null;
-                    return CTFChallengeSolverDTO.builder()
-                            .teamId(s.getTeamId())
-                            .teamName(team.getName())
-                            .avatarColor(team.getAvatarColor())
-                            .solvedAt(s.getSolvedAt())
-                            .build();
-                })
-                .filter(Objects::nonNull)
-                .collect(Collectors.toList());
+        CTFChallenge challenge = challengeRepo.findByIdAndDeletedFalse(challengeId).orElse(null);
+        boolean bloodEnabled = challenge != null && Boolean.TRUE.equals(challenge.getBloodBonusEnabled());
+
+        List<CTFChallengeSolverDTO> result = new ArrayList<>();
+        for (int i = 0; i < solves.size(); i++) {
+            CTFCompetitionSolve s = solves.get(i);
+            CTFTeam team = teamMap.get(s.getTeamId());
+            if (team == null) continue;
+            int pos = i + 1; // 1-indexed solve position (solves ordered ASC by solvedAt)
+            Integer bloodPosition = (bloodEnabled && pos <= 3) ? pos : null;
+            Integer bloodBonusPts = null;
+            if (bloodEnabled && challenge != null) {
+                if      (pos == 1) bloodBonusPts = challenge.getFirstBloodBonus();
+                else if (pos == 2) bloodBonusPts = challenge.getSecondBloodBonus();
+                else if (pos == 3) bloodBonusPts = challenge.getThirdBloodBonus();
+            }
+            result.add(CTFChallengeSolverDTO.builder()
+                    .teamId(s.getTeamId())
+                    .teamName(team.getName())
+                    .avatarColor(team.getAvatarColor())
+                    .solvedAt(s.getSolvedAt())
+                    .bloodPosition(bloodPosition)
+                    .bloodBonus(bloodBonusPts)
+                    .build());
+        }
+        return result;
     }
 
     // ── Scoreboard ──────────────────────────────────────────────────────────────
@@ -390,6 +409,16 @@ public class CTFCompetitionService {
             hintDeductions.merge(a.getTeamId(), a.getValue(), Integer::sum);
         }
 
+        // 4b. Blood bonus: build ordered solve-position maps from the already-loaded solves.
+        //     allSolves is ordered ASC by solved_at, so insertion order = solve position.
+        Map<UUID, CTFChallenge> challengeById = challenges.stream()
+                .collect(Collectors.toMap(CTFChallenge::getId, c -> c));
+        Map<UUID, List<UUID>> challengeSolveOrder = new LinkedHashMap<>();
+        for (CTFCompetitionSolve s : allSolves) {
+            challengeSolveOrder.computeIfAbsent(s.getChallengeId(), k -> new ArrayList<>())
+                    .add(s.getTeamId());
+        }
+
         // 5. Build per-team entries
         List<CTFTeam> teams = teamRepo.findByCompetitionId(competitionId);
         List<CTFScoreboardEntryDTO> board = new ArrayList<>();
@@ -399,6 +428,7 @@ public class CTFCompetitionService {
                     .mapToInt(cid -> challengeCurrentValue.getOrDefault(cid, 0))
                     .sum();
             score += hintDeductions.getOrDefault(team.getId(), 0);
+            score += scoringEngine.bloodBonus(challengeById, challengeSolveOrder, team.getId());
 
             board.add(CTFScoreboardEntryDTO.builder()
                     .teamId(team.getId())
@@ -535,6 +565,16 @@ public class CTFCompetitionService {
                         .sourceTeam(sourceFlag.get().getTeamId())
                         .submittedValue(req.getFlag().trim())
                         .build());
+                auditEventService.record(
+                        AuditDomain.CTF,
+                        "STOLEN_FLAG",
+                        competitionId,
+                        challengeId,
+                        userId,
+                        teamId,
+                        sourceFlag.get().getTeamId(),
+                        Map.of("submittedValue", req.getFlag().trim()),
+                        Severity.CHEAT);
             }
         }
 

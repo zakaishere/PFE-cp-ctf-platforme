@@ -25,6 +25,8 @@ interface CTFContextValue {
   loading:     boolean;
   refetchStatus: () => void;
   refetchTeam:   () => Promise<void>;
+  /** Increments each time the scoreboard WebSocket fires — pages can watch this to reload data. */
+  scoreboardVersion: number;
 
   // Notifications surface — sourced from useCTFNotifications. Exposed here so
   // both the shell (bell/mute toggle) and individual pages (history list,
@@ -60,6 +62,7 @@ export function CTFCompetitionProvider({
   const [myTeam, setMyTeam]           = useState<CTFTeamResponse | null>(null);
   const [loading, setLoading]         = useState(true);
   const [selectedChallengeId, setSelected] = useState<string | null>(null);
+  const [scoreboardVersion, setScoreboardVersion] = useState(0);
 
   const mountedRef = useRef(true);
   useEffect(() => () => { mountedRef.current = false; }, []);
@@ -137,6 +140,7 @@ export function CTFCompetitionProvider({
       reconnectDelay: 5_000,
       onConnect: () => {
         client.subscribe(`/topic/ctf/competitions/${competitionId}/scoreboard`, () => {
+          if (mountedRef.current) setScoreboardVersion(v => v + 1);
           const teamId = myTeamIdRef.current;
           if (!teamId) return;
           getCtfScoreboard(competitionId).then(entries => {
@@ -171,7 +175,7 @@ export function CTFCompetitionProvider({
   const value: CTFContextValue = useMemo(() => ({
     competition, myTeam, status,
     isPaused, isFrozen, canSolve,
-    loading,
+    loading, scoreboardVersion,
     refetchStatus, refetchTeam,
     notifications: notif.notifications,
     unreadCount:   notif.unreadCount,
@@ -182,7 +186,7 @@ export function CTFCompetitionProvider({
     dismissToast:  notif.dismissToast,
     selectedChallengeId, openChallenge, closeChallenge,
   }), [
-    competition, myTeam, status, isPaused, isFrozen, canSolve, loading,
+    competition, myTeam, status, isPaused, isFrozen, canSolve, loading, scoreboardVersion,
     refetchStatus, refetchTeam,
     notif.notifications, notif.unreadCount, notif.markAllRead,
     notif.isMuted, notif.toggleMute, notif.pendingToasts, notif.dismissToast,
