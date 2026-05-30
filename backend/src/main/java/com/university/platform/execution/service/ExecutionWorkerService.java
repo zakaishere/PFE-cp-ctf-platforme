@@ -2,6 +2,7 @@ package com.university.platform.execution.service;
 
 import com.university.platform.assessment.model.TestCase;
 import com.university.platform.assessment.repository.TestCaseRepository;
+import com.university.platform.assessment.service.ExamScoringService;
 import com.university.platform.competition.service.CompetitionScoringService;
 import com.university.platform.config.RabbitMQConfig;
 import com.university.platform.execution.dto.WebSocketSubmissionMessage.SubmissionCompleteMessage;
@@ -36,6 +37,7 @@ public class ExecutionWorkerService {
     private final DockerService dockerService;
     private final SimpMessagingTemplate messagingTemplate;
     private final CompetitionScoringService competitionScoringService;
+    private final ExamScoringService examScoringService;
 
     @RabbitListener(queues = RabbitMQConfig.QUEUE_NAME)
     @Transactional
@@ -100,9 +102,7 @@ public class ExecutionWorkerService {
                 submission.setStatus(SubmissionStatus.COMPLETED);
                 submissionRepository.save(submission);
 
-                if (submission.getCompetitionId() != null) {
-                    competitionScoringService.processResult(submission, errorResult);
-                }
+                dispatchScoring(submission, errorResult, 0, results.size());
                 pushSubmissionComplete(submissionId, 0, results.size(), results.size(), "COMPILATION_ERROR", feedback);
                 return;
             }
@@ -169,12 +169,11 @@ public class ExecutionWorkerService {
             }
             submissionRepository.save(submission);
 
-            if (submission.getCompetitionId() != null) {
-                competitionScoringService.processResult(submission, result);
-            }
-
             int totalPassed = (int) results.stream().filter(TestCaseResult::passed).count();
             int totalFailed = results.size() - totalPassed;
+
+            dispatchScoring(submission, result, totalPassed, results.size());
+
             pushSubmissionComplete(submissionId, totalPassed, totalFailed, results.size(),
                     toFinalStatus(metrics.overallStatus()));
 
@@ -192,12 +191,42 @@ public class ExecutionWorkerService {
             submission.setStatus(SubmissionStatus.COMPLETED);
             submissionRepository.save(submission);
 
-            if (submission.getCompetitionId() != null) {
-                competitionScoringService.processResult(submission, errorResult);
-            }
+            dispatchScoring(submission, errorResult, 0, 0);
             pushSubmissionComplete(submissionId, 0, 0, 0, "RUNTIME_ERROR");
 
             throw new RuntimeException("Worker execution failed", ex);
+        }
+    }
+
+    // -------------------------------------------------------------------------
+    // Scoring dispatch — runs AFTER results are persisted. Each scoring service
+    // runs in its own (REQUIRES_NEW) transaction and is wrapped here so a
+    // scoring failure can never roll back or block the saved result.
+    // -------------------------------------------------------------------------
+
+    private void dispatchScoring(Submission submission, Result result, int passedCount, int totalCount) {
+        if (submission.isPlanningMode()) return;   // run-only never scores
+
+        if (submission.getCompetitionId() != null) {
+            try {
+                competitionScoringService.processResult(submission, result, passedCount, totalCount);
+            } catch (Exception ex) {
+                log.error("[WORKER] Competition scoring failed for submission {}: {}",
+                        submission.getSubmissionId(), ex.getMessage(), ex);
+            }
+        }
+
+        if (submission.getAssessment() != null) {
+            try {
+                examScoringService.scoreSubmission(
+                        submission.getAssessment().getAssessmentId(),
+                        submission.getProblem().getProblemId(),
+                        submission.getStudent().getId(),
+                        passedCount, totalCount);
+            } catch (Exception ex) {
+                log.error("[WORKER] Exam/TP scoring failed for submission {}: {}",
+                        submission.getSubmissionId(), ex.getMessage(), ex);
+            }
         }
     }
 

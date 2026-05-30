@@ -280,6 +280,22 @@ public class CompetitionController {
     }
 
     // -------------------------------------------------------------------------
+    // GET /api/competitions/{id}/scoreboard/full  (mode-aware; freeze applies
+    // to students, teachers/admins always see live standings)
+    // -------------------------------------------------------------------------
+
+    @GetMapping("/{id}/scoreboard/full")
+    public ResponseEntity<?> getFullScoreboard(
+            @PathVariable UUID id,
+            @RequestHeader("Authorization") String auth) {
+
+        Claims claims = parseClaims(auth);
+        String role = claims.get("role", String.class);
+        boolean isTeacher = "TEACHER".equals(role) || "ADMIN".equals(role);
+        return ResponseEntity.ok(scoreboardService.getFullScoreboard(id, isTeacher));
+    }
+
+    // -------------------------------------------------------------------------
     // POST /api/competitions/{id}/violations  (STUDENT)
     // -------------------------------------------------------------------------
 

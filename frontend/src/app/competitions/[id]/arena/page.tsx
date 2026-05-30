@@ -22,6 +22,7 @@ import { useFullscreen } from "@/hooks/useFullscreen";
 import { useAntiCheat, type ViolationEvent } from "@/hooks/useAntiCheat";
 import { useAuth } from "@/features/auth/contexts/AuthContext";
 import ArenaShell, { type ArenaTab } from "@/features/arena/components/ArenaShell";
+import CPScoreboard from "@/features/competitions/components/CPScoreboard";
 import { Code, Play, ShieldAlert, Trophy } from "lucide-react";
 
 const MonacoEditor = dynamic(() => import("@monaco-editor/react"), { ssr: false });
@@ -593,13 +594,12 @@ export default function ArenaPage() {
       icon: <Trophy size={14} />,
       content: buildBody(
         arena && (
-          <ScoreboardPanel
-            scoreboard={scoreboard}
-            loading={sbLoading}
-            mode={arena.mode}
-            problems={arena.problems}
-            myUserId={userId}
-          />
+          <div style={{ flex: 1, display: "flex", minWidth: 0 }}>
+            <CPScoreboard
+              competitionId={competitionId}
+              myParticipantId={arena.mode === "TEAM" ? (arena.myTeam?.teamId ?? null) : userId}
+            />
+          </div>
         )
       ),
     },

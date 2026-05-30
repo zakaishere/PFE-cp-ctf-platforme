@@ -204,6 +204,7 @@ export default function CompetitionManagerV2() {
   const [createForm, setCreateForm] = useState<CreateCompetitionRequest>({
     title: "", description: "", mode: "SOLO", accessType: "REQUEST_BASED",
     scheduledStartTime: "", durationMinutes: 120, minTeamSize: 2, maxTeamSize: 4,
+    scoringMode: "ICPC", freezeEnabled: false, freezeMinutesBeforeEnd: 60,
   });
   const [creating, setCreating] = useState(false);
 
@@ -954,6 +955,69 @@ export default function CompetitionManagerV2() {
                 <div><label className="psp-form-label">Start Date & Time</label><input type="datetime-local" className="psp-form-input" value={createForm.scheduledStartTime} onChange={e => setCreateForm(f => ({ ...f, scheduledStartTime: e.target.value }))} /></div>
                 <div><label className="psp-form-label">Duration (mins)</label><input type="number" className="psp-form-input" value={createForm.durationMinutes} onChange={e => setCreateForm(f => ({ ...f, durationMinutes: parseInt(e.target.value) || 120 }))} /></div>
               </div>
+
+              {/* Scoring mode */}
+              <div>
+                <label className="psp-form-label">Scoring Mode</label>
+                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 8 }}>
+                  {(["ICPC", "RATED", "PARTIAL"] as const).map(m => {
+                    const active = (createForm.scoringMode ?? "ICPC") === m;
+                    return (
+                      <button
+                        key={m}
+                        type="button"
+                        onClick={() => setCreateForm(f => ({ ...f, scoringMode: m }))}
+                        style={{
+                          padding: "8px 6px", borderRadius: 6, cursor: "pointer",
+                          border: active ? "2px solid #0052cc" : "1px solid var(--border)",
+                          background: active ? "#deebff" : "var(--bg-primary)",
+                          color: active ? "#0052cc" : "var(--text-primary)",
+                          fontWeight: active ? 700 : 500, fontSize: 12,
+                        }}
+                      >
+                        {m}
+                      </button>
+                    );
+                  })}
+                </div>
+                <div style={{ fontSize: 11, color: "var(--text-muted)", marginTop: 6, lineHeight: 1.5 }}>
+                  {createForm.scoringMode === "RATED"
+                    ? "Points decay over time. Faster solves earn more; each problem has a starting value, decay rate and floor."
+                    : createForm.scoringMode === "PARTIAL"
+                    ? "Score = percentage of test cases passed. Best submission counts. No time penalty."
+                    : "Teams ranked by problems solved, then total penalty time. Each wrong attempt adds the problem's penalty minutes."}
+                </div>
+              </div>
+
+              {/* Scoreboard freeze (ICPC / RATED only) */}
+              {createForm.scoringMode !== "PARTIAL" && (
+                <div style={{ border: "1px solid var(--border)", borderRadius: 6, padding: "10px 12px" }}>
+                  <label style={{ display: "flex", alignItems: "center", gap: 8, cursor: "pointer", fontSize: 13, fontWeight: 600 }}>
+                    <input
+                      type="checkbox"
+                      checked={!!createForm.freezeEnabled}
+                      onChange={e => setCreateForm(f => ({ ...f, freezeEnabled: e.target.checked }))}
+                    />
+                    Freeze scoreboard before the competition ends
+                  </label>
+                  {createForm.freezeEnabled && (
+                    <div style={{ marginTop: 10, display: "flex", alignItems: "center", gap: 8 }}>
+                      <span style={{ fontSize: 12, color: "var(--text-muted)" }}>Freeze</span>
+                      <input
+                        type="number"
+                        className="psp-form-input"
+                        style={{ width: 80 }}
+                        value={createForm.freezeMinutesBeforeEnd ?? 60}
+                        onChange={e => setCreateForm(f => ({ ...f, freezeMinutesBeforeEnd: parseInt(e.target.value) || 60 }))}
+                      />
+                      <span style={{ fontSize: 12, color: "var(--text-muted)" }}>minutes before end</span>
+                    </div>
+                  )}
+                  <div style={{ fontSize: 11, color: "var(--text-subtle)", marginTop: 6 }}>
+                    Players see standings as of the freeze moment; full standings reveal when the contest ends. Teachers always see live.
+                  </div>
+                </div>
+              )}
             </div>
             <div className="psp-modal-footer">
               <button className="psp-btn psp-btn-secondary" onClick={() => setCreateOpen(false)}>Cancel</button>

@@ -77,7 +77,40 @@ public class Competition {
     @Builder.Default
     private Integer minTeamSize = 1;
 
+    // ── Scoring mode + scoreboard freeze (migration v22) ────────────────────
+
+    @Enumerated(EnumType.STRING)
+    @Column(name = "scoring_mode", nullable = false, length = 8)
+    @Builder.Default
+    private ScoringMode scoringMode = ScoringMode.ICPC;
+
+    /** Absolute moment the public scoreboard freezes. Null = never freezes. */
+    @Column(name = "freeze_at")
+    private LocalDateTime freezeAt;
+
+    @Column(name = "freeze_duration_minutes")
+    @Builder.Default
+    private Integer freezeDurationMinutes = 60;
+
     public enum CompetitionMode { SOLO, TEAM }
 
     public enum CompetitionStatus { DRAFT, REGISTRATION, ACTIVE, ENDED }
+
+    public enum ScoringMode { ICPC, RATED, PARTIAL }
+
+    /** Competition end = start + duration. */
+    public LocalDateTime getEndTime() {
+        return startTime != null ? startTime.plusMinutes(durationMinutes) : null;
+    }
+
+    /**
+     * True while the public scoreboard should be hidden: after freezeAt and
+     * before the competition ends. Teachers bypass this; students do not.
+     */
+    public boolean isScoreboardFrozen() {
+        if (freezeAt == null) return false;
+        LocalDateTime now = LocalDateTime.now();
+        LocalDateTime end = getEndTime();
+        return now.isAfter(freezeAt) && (end == null || now.isBefore(end));
+    }
 }

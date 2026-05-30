@@ -102,6 +102,20 @@ public class CompetitionService {
                     "Competitions cannot be restricted to a single module.");
         }
 
+        Competition.ScoringMode scoringMode = req.getScoringMode() != null
+                ? req.getScoringMode()
+                : Competition.ScoringMode.ICPC;
+
+        // Freeze applies only to time-ranked modes (ICPC / RATED).
+        LocalDateTime freezeAt = null;
+        int freezeMinutes = req.getFreezeMinutesBeforeEnd() != null ? req.getFreezeMinutesBeforeEnd() : 60;
+        if (Boolean.TRUE.equals(req.getFreezeEnabled())
+                && scoringMode != Competition.ScoringMode.PARTIAL
+                && freezeMinutes > 0
+                && freezeMinutes < req.getDurationMinutes()) {
+            freezeAt = req.getStartTime().plusMinutes(req.getDurationMinutes() - freezeMinutes);
+        }
+
         Competition competition = Competition.builder()
                 .title(req.getTitle())
                 .description(req.getDescription())
@@ -113,6 +127,9 @@ public class CompetitionService {
                 .status(CompetitionStatus.REGISTRATION)
                 .isPublic(req.getIsPublic() != null ? req.getIsPublic() : true)
                 .visibilityMode(visibility)
+                .scoringMode(scoringMode)
+                .freezeAt(freezeAt)
+                .freezeDurationMinutes(freezeMinutes)
                 .build();
 
         competitionRepository.save(competition);
@@ -176,11 +193,22 @@ public class CompetitionService {
 
         int orderIndex = competitionProblemRepository.countByCompetitionId(competitionId);
 
+        // Per-problem scoring config — maxPoints defaults to the assigned points.
+        int maxPoints     = (req != null && req.getMaxPoints() != null) ? req.getMaxPoints() : points;
+        int minPoints     = (req != null && req.getMinPoints() != null) ? req.getMinPoints() : 0;
+        int wrongPenalty  = (req != null && req.getWrongPenalty() != null) ? req.getWrongPenalty() : 20;
+        java.math.BigDecimal decayPerMin = (req != null && req.getDecayPerMin() != null)
+                ? req.getDecayPerMin() : new java.math.BigDecimal("1.0");
+
         CompetitionProblem cp = CompetitionProblem.builder()
                 .competitionId(competitionId)
                 .problem(problem)
                 .orderIndex(orderIndex)
                 .points(points)
+                .maxPoints(maxPoints)
+                .minPoints(minPoints)
+                .decayPerMin(decayPerMin)
+                .wrongPenalty(wrongPenalty)
                 .build();
 
         competitionProblemRepository.save(cp);

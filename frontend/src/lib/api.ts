@@ -564,6 +564,8 @@ export const getStudentExamResults = (examId: string) =>
 
 // --- Competitions ---
 
+export type ScoringMode = "ICPC" | "RATED" | "PARTIAL";
+
 export interface CreateCompetitionRequest {
   title: string;
   description: string;
@@ -573,7 +575,54 @@ export interface CreateCompetitionRequest {
   accessType: "REQUEST_BASED" | "OPEN";
   scheduledStartTime: string;
   durationMinutes: number;
+  scoringMode?: ScoringMode;
+  freezeEnabled?: boolean;
+  freezeMinutesBeforeEnd?: number;
 }
+
+// ── Full mode-aware scoreboard ───────────────────────────────────────────────
+
+export interface ScoreboardProblemColumn {
+  problemId: string;
+  label: string;
+  title: string;
+  maxPoints: number;
+  firstBloodParticipantId: string | null;
+}
+
+export interface ScoreboardProblemCell {
+  solved: boolean;
+  attempted: boolean;
+  wrongAttempts: number;
+  score: number;
+  penaltyMinutes: number;
+  firstBlood: boolean;
+  solvedAtMinute: number | null;
+}
+
+export interface ScoreboardRow {
+  rank: number;
+  participantId: string;
+  name: string;
+  members: { studentId: string; firstName: string; lastName: string }[] | null;
+  score: number;
+  penaltyMinutes: number;
+  solvedCount: number;
+  cells: Record<string, ScoreboardProblemCell>;
+}
+
+export interface FullScoreboard {
+  competitionId: string;
+  scoringMode: ScoringMode;
+  mode: "SOLO" | "TEAM";
+  frozen: boolean;
+  freezeAt: string | null;
+  problems: ScoreboardProblemColumn[];
+  rows: ScoreboardRow[];
+}
+
+export const getFullScoreboard = (id: string) =>
+  apiClient<FullScoreboard>(`/api/competitions/${id}/scoreboard/full`, { method: "GET" });
 
 export const getCompetitions = (status?: string) =>
   apiClient<any[]>(`/api/competitions${status ? `?status=${status}` : ""}`, { method: "GET" });
