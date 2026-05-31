@@ -58,4 +58,28 @@ public interface AssessmentRepository extends JpaRepository<Assessment, UUID> {
         WHERE a.deadline > :now
         """)
     long countOpenTPs(@Param("now") LocalDateTime now);
+
+    // Teacher-scoped queries for dashboard
+    @Query("SELECT a FROM Assessment a WHERE a.createdBy.id = :teacherId ORDER BY a.assessmentId DESC")
+    List<Assessment> findByTeacherIdOrderByIdDesc(@Param("teacherId") UUID teacherId);
+
+    @Query("""
+        SELECT a FROM com.university.platform.assessment.model.LiveExam a
+        WHERE a.createdBy.id = :teacherId
+          AND a.scheduledStartTime <= :now
+        ORDER BY a.scheduledStartTime DESC
+        """)
+    List<com.university.platform.assessment.model.LiveExam> findActiveExamsByTeacher(
+            @Param("teacherId") UUID teacherId,
+            @Param("now") LocalDateTime now);
+
+    @Query("""
+        SELECT a FROM com.university.platform.assessment.model.OpenTP a
+        WHERE a.createdBy.id = :teacherId
+          AND a.deadline > :now
+        ORDER BY a.deadline ASC
+        """)
+    List<com.university.platform.assessment.model.OpenTP> findOpenTPsByTeacher(
+            @Param("teacherId") UUID teacherId,
+            @Param("now") LocalDateTime now);
 }

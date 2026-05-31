@@ -21,4 +21,12 @@ public interface CompetitionRepository extends JpaRepository<Competition, UUID> 
             @Param("status") CompetitionStatus status,
             @Param("now") LocalDateTime now
     );
+
+    List<Competition> findByCreatedByOrderByStartTimeDesc(UUID createdBy);
+
+    List<Competition> findByCreatedByAndStatus(UUID createdBy, CompetitionStatus status);
+
+    long countByCreatedBy(UUID createdBy);
+
+    long countByStatus(CompetitionStatus status);
 }

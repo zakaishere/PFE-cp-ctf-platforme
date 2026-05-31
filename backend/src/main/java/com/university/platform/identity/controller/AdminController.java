@@ -10,18 +10,26 @@ import com.university.platform.identity.service.EmailService;
 import com.university.platform.assessment.repository.AssessmentRepository;
 import com.university.platform.assessment.repository.ProblemRepository;
 import com.university.platform.assessment.model.LiveExam;
+import com.university.platform.competition.model.Competition.CompetitionStatus;
 import com.university.platform.execution.repository.SubmissionRepository;
 import com.university.platform.competition.repository.CompetitionRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.amqp.core.AmqpAdmin;
+import org.springframework.amqp.core.QueueInformation;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.actuate.health.HealthComponent;
+import org.springframework.boot.actuate.health.HealthEndpoint;
 import org.springframework.http.ResponseEntity;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.server.ResponseStatusException;
 import org.springframework.http.HttpStatus;
 
+import javax.sql.DataSource;
 import java.time.LocalDateTime;
 import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
@@ -40,6 +48,15 @@ public class AdminController {
     private final SubmissionRepository  submissionRepository;
     private final CompetitionRepository competitionRepository;
     private final EmailService          emailService;
+
+    @Autowired(required = false)
+    private AmqpAdmin amqpAdmin;
+
+    @Autowired(required = false)
+    private DataSource dataSource;
+
+    @Autowired(required = false)
+    private HealthEndpoint healthEndpoint;
 
     @GetMapping("/pending-teachers")
     public ResponseEntity<List<Teacher>> getPendingTeachers() {
@@ -101,6 +118,114 @@ public class AdminController {
         return ResponseEntity.ok(Map.of("message",
                 "Teacher " + teacher.getFirstName() + " " + teacher.getLastName()
                 + " has been activated. Approval email sent."));
+    }
+
+    // ─────────────────────────────────────────────────────────────────────────
+    // Admin dashboard overview
+    // ─────────────────────────────────────────────────────────────────────────
+
+    @GetMapping("/dashboard/overview")
+    @Transactional(readOnly = true)
+    public ResponseEntity<Map<String, Object>> getDashboardOverview() {
+        LocalDateTime now = LocalDateTime.now();
+
+        long activeLiveExams = assessmentRepository.findStartedLiveExams(now).stream()
+                .filter(e -> {
+                    Integer mins = e.getDurationMinutes();
+                    if (mins == null || mins <= 0) return false;
+                    return now.isBefore(e.getScheduledStartTime().plusMinutes(mins));
+                })
+                .count();
+
+        long activeCompetitions = competitionRepository.countByStatus(CompetitionStatus.ACTIVE);
+
+        Map<String, Object> stats = new LinkedHashMap<>();
+        stats.put("totalTeachers",      teacherRepository.count());
+        stats.put("activeTeachers",     teacherRepository.countByStatus(TeacherStatus.ACTIVE));
+        stats.put("pendingTeachers",    teacherRepository.countByStatus(TeacherStatus.PENDING));
+        stats.put("totalStudents",      studentRepository.count());
+        stats.put("totalProblems",      problemRepository.count());
+        stats.put("totalSubmissions",   submissionRepository.count());
+        stats.put("activeLiveExams",    activeLiveExams);
+        stats.put("openTps",            assessmentRepository.countOpenTPs(now));
+        stats.put("totalCompetitions",  competitionRepository.count());
+        stats.put("activeCompetitions", activeCompetitions);
+
+        Map<String, Object> result = new LinkedHashMap<>();
+        result.put("stats", stats);
+        return ResponseEntity.ok(result);
+    }
+
+    // ─────────────────────────────────────────────────────────────────────────
+    // Admin health metrics (simplified, used by admin dashboard UI)
+    // ─────────────────────────────────────────────────────────────────────────
+
+    @GetMapping("/health/metrics")
+    public ResponseEntity<Map<String, Object>> getHealthMetrics() {
+        Map<String, Object> metrics = new LinkedHashMap<>();
+
+        // RabbitMQ queue depth
+        Map<String, Object> rabbit = new LinkedHashMap<>();
+        try {
+            if (amqpAdmin != null) {
+                QueueInformation info = amqpAdmin.getQueueInfo("psp.submission.queue");
+                int depth = info != null ? info.getMessageCount() : 0;
+                rabbit.put("queueDepth", depth);
+                rabbit.put("status", depth > 200 ? "CRITICAL" : depth > 50 ? "WARN" : "OK");
+            } else {
+                rabbit.put("queueDepth", -1);
+                rabbit.put("status", "UNKNOWN");
+            }
+        } catch (Exception ex) {
+            rabbit.put("queueDepth", -1);
+            rabbit.put("status", "UNKNOWN");
+        }
+        metrics.put("rabbitmq", rabbit);
+
+        // DB connection pool
+        Map<String, Object> db = new LinkedHashMap<>();
+        try {
+            if (dataSource != null && dataSource instanceof com.zaxxer.hikari.HikariDataSource hds) {
+                var pool = hds.getHikariPoolMXBean();
+                if (pool != null) {
+                    int active = pool.getActiveConnections();
+                    int total  = hds.getMaximumPoolSize();
+                    db.put("active", active);
+                    db.put("total", total);
+                    db.put("status", active >= total - 2 ? "CRITICAL" : active > total * 0.8 ? "WARN" : "OK");
+                } else {
+                    db.put("status", "UNKNOWN");
+                }
+            } else {
+                db.put("status", "UNKNOWN");
+            }
+        } catch (Exception ex) {
+            db.put("status", "UNKNOWN");
+        }
+        metrics.put("database", db);
+
+        // JVM heap
+        Map<String, Object> heap = new LinkedHashMap<>();
+        Runtime rt = Runtime.getRuntime();
+        long usedMb  = (rt.totalMemory() - rt.freeMemory()) / (1024 * 1024);
+        long totalMb = rt.maxMemory() / (1024 * 1024);
+        int heapPct  = totalMb > 0 ? (int) (usedMb * 100 / totalMb) : 0;
+        heap.put("usedMb",  usedMb);
+        heap.put("totalMb", totalMb);
+        heap.put("pct",     heapPct);
+        heap.put("status",  heapPct >= 90 ? "CRITICAL" : heapPct >= 75 ? "WARN" : "OK");
+        metrics.put("heap", heap);
+
+        // Overall
+        boolean critical = metrics.values().stream()
+                .filter(v -> v instanceof Map)
+                .anyMatch(v -> "CRITICAL".equals(((Map<?, ?>) v).get("status")));
+        boolean warn = metrics.values().stream()
+                .filter(v -> v instanceof Map)
+                .anyMatch(v -> "WARN".equals(((Map<?, ?>) v).get("status")));
+        metrics.put("overall", critical ? "CRITICAL" : warn ? "WARN" : "OK");
+
+        return ResponseEntity.ok(metrics);
     }
 
     @DeleteMapping("/teachers/{id}/reject")

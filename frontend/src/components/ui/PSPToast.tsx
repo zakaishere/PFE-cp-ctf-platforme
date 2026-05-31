@@ -20,17 +20,17 @@ function _notify() {
 }
 
 export const toast = {
-  show(type: ToastType, title: string, message: string, duration = 5000): string {
+  show(type: ToastType, title: string, message = "", duration = 5000): string {
     const id = `t-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`;
     _items = [..._items, { id, type, title, message, duration }];
     _notify();
     if (duration > 0) setTimeout(() => toast.dismiss(id), duration);
     return id;
   },
-  error  (title: string, message: string) { return toast.show("error",   title, message, 6000); },
-  warning(title: string, message: string) { return toast.show("warning", title, message, 5000); },
-  success(title: string, message: string) { return toast.show("success", title, message, 4000); },
-  info   (title: string, message: string) { return toast.show("info",    title, message, 4000); },
+  error  (title: string, message = "") { return toast.show("error",   title, message, 6000); },
+  warning(title: string, message = "") { return toast.show("warning", title, message, 5000); },
+  success(title: string, message = "") { return toast.show("success", title, message, 4000); },
+  info   (title: string, message = "") { return toast.show("info",    title, message, 4000); },
   dismiss(id: string) {
     _items = _items.filter(t => t.id !== id);
     _notify();

@@ -4,7 +4,7 @@ import { useState, useEffect } from "react";
 import Link from "next/link";
 import Navbar from "@/components/Navbar";
 import { Users, BookOpen, Clock, ClipboardList, Monitor, AlertTriangle, CheckCircle2, X, Loader2, Server } from "lucide-react";
-import { getPendingTeachers, activateTeacher, rejectTeacher, getLeaderboard, getCTFAdminConfig, updateCTFAdminConfig, getPlatformStats, type PendingTeacher, type LeaderboardEntry, type CTFResourceConfig, type PlatformStats } from "@/lib/api";
+import { getPendingTeachers, activateTeacher, rejectTeacher, getLeaderboard, getCTFAdminConfig, updateCTFAdminConfig, getPlatformStats, getAdminHealthMetrics, type PendingTeacher, type LeaderboardEntry, type CTFResourceConfig, type PlatformStats, type AdminHealthMetrics } from "@/lib/api";
 import { LoadingButton } from "@/components/ui/LoadingButton";
 
 const AVATAR_COLORS = ["#0052cc","#6554c0","#00875a","#ff8b00","#ff5630","#36b37e","#00b8d9","#de350b"];
@@ -23,6 +23,7 @@ export default function AdminDashboard() {
 
   // Platform stats
   const [stats, setStats] = useState<PlatformStats | null>(null);
+  const [health, setHealth] = useState<AdminHealthMetrics | null>(null);
 
   // CTF config state
   const [ctfConfig, setCtfConfig] = useState<CTFResourceConfig | null>(null);
@@ -38,6 +39,7 @@ export default function AdminDashboard() {
     getLeaderboard().then(setTopStudents).catch(console.error);
     getCTFAdminConfig().then((c) => { setCtfConfig(c); setCtfConfigDraft(c); }).catch(console.error);
     getPlatformStats().then(setStats).catch(console.error);
+    getAdminHealthMetrics().then(setHealth).catch(console.error);
   }, []);
 
   const saveCtfConfig = async () => {
@@ -184,6 +186,56 @@ export default function AdminDashboard() {
               </div>
               <div style={{ padding: 16, fontSize: 12, color: "var(--text-muted)" }}>
                 Real-time activity feed will appear here once WebSocket is connected.
+              </div>
+            </div>
+
+            {/* System health */}
+            <div className="psp-card" style={{ marginBottom: 14 }}>
+              <div className="psp-card-header">
+                <span className="psp-card-title">System Health</span>
+                {health && (
+                  <span style={{
+                    fontSize: 11, fontWeight: 700, padding: "2px 8px", borderRadius: 4,
+                    background: health.overall === "OK" ? "rgba(0,135,90,0.12)" : health.overall === "WARN" ? "rgba(255,139,0,0.12)" : "rgba(222,53,11,0.12)",
+                    color: health.overall === "OK" ? "#00875a" : health.overall === "WARN" ? "#ff8b00" : "#de350b",
+                  }}>{health.overall}</span>
+                )}
+              </div>
+              <div className="psp-card-body">
+                {!health ? (
+                  <div style={{ fontSize: 12, color: "var(--text-muted)" }}>Loading…</div>
+                ) : ([
+                  {
+                    label: "RabbitMQ Queue",
+                    val: health.rabbitmq.status === "UNKNOWN" ? "Unavailable" : `${health.rabbitmq.queueDepth} msgs`,
+                    status: health.rabbitmq.status,
+                  },
+                  {
+                    label: "DB Connections",
+                    val: health.database.status === "UNKNOWN" ? "Unavailable"
+                      : `${health.database.active ?? "?"} / ${health.database.total ?? "?"} active`,
+                    status: health.database.status,
+                  },
+                  {
+                    label: "JVM Heap",
+                    val: `${health.heap.usedMb} / ${health.heap.totalMb} MB (${health.heap.pct}%)`,
+                    status: health.heap.status,
+                  },
+                ] as Array<{ label: string; val: string; status: string }>).map((row, i) => {
+                  const clr = row.status === "OK" ? "#00875a" : row.status === "WARN" ? "#ff8b00" : row.status === "CRITICAL" ? "#de350b" : "var(--text-muted)";
+                  return (
+                    <div key={i} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 10 }}>
+                      <span style={{ fontSize: 13, color: "var(--text-muted)" }}>{row.label}</span>
+                      <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                        <strong style={{ color: "var(--text-primary)", fontSize: 12 }}>{row.val}</strong>
+                        <span style={{
+                          fontSize: 10, fontWeight: 700, padding: "1px 5px", borderRadius: 3,
+                          background: `${clr}1a`, color: clr,
+                        }}>{row.status}</span>
+                      </div>
+                    </div>
+                  );
+                })}
               </div>
             </div>
 

@@ -242,6 +242,44 @@ export interface PlatformStats {
 export const getPlatformStats = () =>
   apiClient<PlatformStats>("/api/admin/stats", { method: "GET" });
 
+// ── Admin dashboard ──────────────────────────────────────────────────────────
+
+export interface AdminDashboardOverview {
+  stats: PlatformStats & { activeCompetitions: number };
+}
+
+export const getAdminDashboardOverview = () =>
+  apiClient<AdminDashboardOverview>("/api/admin/dashboard/overview", { method: "GET" });
+
+export interface AdminHealthMetrics {
+  overall: "OK" | "WARN" | "CRITICAL";
+  rabbitmq: { queueDepth: number; status: "OK" | "WARN" | "CRITICAL" | "UNKNOWN" };
+  database: { active?: number; total?: number; status: "OK" | "WARN" | "CRITICAL" | "UNKNOWN" };
+  heap:     { usedMb: number; totalMb: number; pct: number; status: "OK" | "WARN" | "CRITICAL" };
+}
+
+export const getAdminHealthMetrics = () =>
+  apiClient<AdminHealthMetrics>("/api/admin/health/metrics", { method: "GET" });
+
+// ── Teacher dashboard ────────────────────────────────────────────────────────
+
+export interface TeacherDashboardOverview {
+  stats: {
+    competitions: { active: number; upcoming: number; total: number };
+    exams:        { active: number; upcoming: number; total: number };
+    tps:          { open: number; total: number };
+    ctfs:         { active: number; upcoming: number; total: number };
+  };
+  activeCompetitions: Array<{ id: string; title: string; status: string; startTime: string | null; durationMinutes: number; mode: string; manageUrl: string }>;
+  activeExams:        Array<{ id: string; title: string; status: string; scheduledStartTime: string | null; durationMinutes: number; manageUrl: string }>;
+  openTPs:            Array<{ id: string; title: string; status: string; deadline: string | null; manageUrl: string }>;
+  activeCtfs:         Array<{ id: string; title: string; status: string; startTime: string | null; manageUrl: string }>;
+  upcomingEvents:     Array<{ type: string; id: string; title: string; startTime: string | null; manageUrl: string }>;
+}
+
+export const getTeacherDashboardOverview = () =>
+  apiClient<TeacherDashboardOverview>("/api/teacher/dashboard/overview", { method: "GET" });
+
 // --- Submissions ---
 
 export interface SubmissionRequest {
@@ -680,6 +718,18 @@ export const patchCompetitionPenalty = (id: string, data: { penaltyEnabled: bool
 
 export const patchCompetitionSettings = (id: string, data: { title?: string; description?: string; durationMinutes?: number }) =>
   apiClient<{ message: string }>(`/api/competitions/${id}/settings`, { method: "PATCH", body: JSON.stringify(data) });
+
+export const startCompetition = (id: string) =>
+  apiClient<{ message: string; status: string }>(`/api/competitions/${id}/start`, { method: "POST" });
+
+export const endCompetition = (id: string) =>
+  apiClient<{ message: string; status: string }>(`/api/competitions/${id}/end`, { method: "POST" });
+
+export const getCompetitionOverview = (id: string) =>
+  apiClient<{ competitionId: string; title: string; status: string; mode: string; scoringMode: string; teamCount: number; submissionCount: number; acCount: number }>(`/api/competitions/${id}/overview`, { method: "GET" });
+
+export const getCompetitionViolations = (id: string) =>
+  apiClient<any[]>(`/api/competitions/${id}/violations/list`, { method: "GET" }, { silentErrors: true });
 
 export const reorderAssessmentProblems = (id: string, problemIds: string[]) =>
   apiClient<{ message: string }>(`/api/assessments/${id}/problems/reorder`, { method: "PUT", body: JSON.stringify({ problemIds }) });
