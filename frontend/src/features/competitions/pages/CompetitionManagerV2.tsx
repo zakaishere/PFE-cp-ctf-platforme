@@ -8,6 +8,7 @@ import {
   Trophy, Plus, Calendar, Timer, Users, Lock, Unlock, Flame, Loader2,
   GripVertical, ChevronDown, ChevronUp, Copy, Check, X, Settings,
   BarChart2, Search, AlertTriangle, CheckCircle2, RefreshCw, Trash2,
+  ChevronLeft, ChevronRight, FileText, ListChecks,
 } from "lucide-react";
 import {
   DndContext, closestCenter, KeyboardSensor, PointerSensor, useSensor, useSensors,
@@ -208,6 +209,7 @@ export default function CompetitionManagerV2() {
     scoringMode: "ICPC", freezeEnabled: false, freezeMinutesBeforeEnd: 60,
   });
   const [creating, setCreating] = useState(false);
+  const [createStep, setCreateStep] = useState(0);
 
   // problem reorder
   const [removing, setRemoving] = useState<string | null>(null);
@@ -409,7 +411,8 @@ export default function CompetitionManagerV2() {
       if (payload.mode !== "TEAM") { delete payload.minTeamSize; delete payload.maxTeamSize; }
       await createCompetition(payload);
       setCreateOpen(false);
-      setCreateForm({ title: "", description: "", mode: "SOLO", accessType: "REQUEST_BASED", scheduledStartTime: "", durationMinutes: 120, minTeamSize: 2, maxTeamSize: 4 });
+      setCreateStep(0);
+      setCreateForm({ title: "", description: "", mode: "SOLO", accessType: "REQUEST_BASED", scheduledStartTime: "", durationMinutes: 120, minTeamSize: 2, maxTeamSize: 4, scoringMode: "ICPC", freezeEnabled: false, freezeMinutesBeforeEnd: 60 });
       loadList();
       toast({ title: "Competition created" });
     } catch (e: any) {
@@ -455,7 +458,7 @@ export default function CompetitionManagerV2() {
         <div className="mgr-left">
           <div className="mgr-left-header">
             <span style={{ fontSize: 13, fontWeight: 700, color: "var(--text-primary)" }}>Competitions</span>
-            <button className="psp-btn psp-btn-primary psp-btn-sm" onClick={() => setCreateOpen(true)}>
+            <button className="psp-btn psp-btn-primary psp-btn-sm" onClick={() => { setCreateStep(0); setCreateOpen(true); }}>
               <Plus size={11} /> New
             </button>
           </div>
@@ -923,112 +926,178 @@ export default function CompetitionManagerV2() {
         </div>
       </div>
 
-      {/* Create Competition Modal */}
-      {createOpen && (
+      {/* Create Competition Wizard */}
+      {createOpen && (() => {
+        const STEPS = [
+          { label: "Basics",   icon: <FileText size={13} /> },
+          { label: "Schedule", icon: <Calendar size={13} /> },
+          { label: "Format",   icon: <Settings size={13} /> },
+          { label: "Problems", icon: <ListChecks size={13} /> },
+          { label: "Review",   icon: <Check size={13} /> },
+        ];
+        const last = STEPS.length - 1;
+        const canNext = createStep !== 0 || createForm.title.trim().length > 0;
+        const scoreDesc =
+          createForm.scoringMode === "RATED"
+            ? "Points decay over time. Faster solves earn more; each problem has a starting value, decay rate and floor."
+            : createForm.scoringMode === "PARTIAL"
+            ? "Score = percentage of test cases passed. Best submission counts. No time penalty."
+            : "Ranked by problems solved, then total penalty time. Each wrong attempt adds the problem's penalty minutes.";
+
+        const Segmented = ({ value, options, onChange }: { value: string; options: { v: string; label: string }[]; onChange: (v: string) => void }) => (
+          <div style={{ display: "grid", gridTemplateColumns: `repeat(${options.length}, 1fr)`, gap: 8 }}>
+            {options.map(o => {
+              const active = value === o.v;
+              return (
+                <button key={o.v} type="button" onClick={() => onChange(o.v)} style={{
+                  padding: "9px 6px", borderRadius: "var(--r-sm)", cursor: "pointer",
+                  border: active ? "1px solid var(--brand)" : "1px solid var(--line)",
+                  background: active ? "var(--accent-soft)" : "var(--bg-2)",
+                  color: active ? "var(--brand-2)" : "var(--ink-2)",
+                  fontWeight: active ? 700 : 500, fontSize: 12.5,
+                }}>{o.label}</button>
+              );
+            })}
+          </div>
+        );
+
+        return (
         <div className="psp-modal-overlay" onClick={() => setCreateOpen(false)}>
-          <div className="psp-modal" style={{ maxWidth: 520 }} onClick={e => e.stopPropagation()}>
+          <div className="psp-modal" style={{ maxWidth: 640 }} onClick={e => e.stopPropagation()}>
             <div className="psp-modal-header">
-              <span style={{ fontSize: 16, fontWeight: 600 }}>New Competition</span>
-              <button onClick={() => setCreateOpen(false)} style={{ background: "none", border: "none", fontSize: 18, cursor: "pointer", color: "var(--text-muted)" }}><X size={18} /></button>
+              <span style={{ fontSize: 16, fontWeight: 700 }}>New Competition</span>
+              <button onClick={() => setCreateOpen(false)} style={{ background: "none", border: "none", cursor: "pointer", color: "var(--text-muted)" }}><X size={18} /></button>
             </div>
-            <div className="psp-modal-body" style={{ display: "flex", flexDirection: "column", gap: 14 }}>
-              <div><label className="psp-form-label">Title *</label><input className="psp-form-input" value={createForm.title} onChange={e => setCreateForm(f => ({ ...f, title: e.target.value }))} /></div>
-              <div><label className="psp-form-label">Description</label><textarea className="psp-form-textarea" value={createForm.description} onChange={e => setCreateForm(f => ({ ...f, description: e.target.value }))} style={{ minHeight: 70 }} /></div>
-              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
-                <div><label className="psp-form-label">Mode</label>
-                  <select className="psp-form-select" value={createForm.mode} onChange={e => setCreateForm(f => ({ ...f, mode: e.target.value as any }))}>
-                    <option value="SOLO">Solo</option><option value="TEAM">Team</option>
-                  </select>
-                </div>
-                <div><label className="psp-form-label">Access</label>
-                  <select className="psp-form-select" value={createForm.accessType} onChange={e => setCreateForm(f => ({ ...f, accessType: e.target.value as any }))}>
-                    <option value="REQUEST_BASED">Request Based</option><option value="OPEN">Open</option>
-                  </select>
-                </div>
-              </div>
-              {createForm.mode === "TEAM" && (
+
+            {/* Stepper header */}
+            <div style={{ display: "flex", alignItems: "center", padding: "16px 20px", borderBottom: "1px solid var(--line)", gap: 4 }}>
+              {STEPS.map((s, i) => {
+                const done = i < createStep, active = i === createStep;
+                return (
+                  <div key={s.label} style={{ display: "flex", alignItems: "center", flex: i === last ? "0 0 auto" : 1 }}>
+                    <button type="button" onClick={() => i < createStep && setCreateStep(i)}
+                      style={{ display: "flex", alignItems: "center", gap: 7, background: "none", border: "none", cursor: i < createStep ? "pointer" : "default", padding: 0 }}>
+                      <span style={{
+                        width: 26, height: 26, borderRadius: "50%", display: "grid", placeItems: "center",
+                        fontSize: 12, fontWeight: 700, flexShrink: 0,
+                        background: active ? "var(--brand)" : done ? "var(--accent-soft)" : "var(--bg-2)",
+                        color: active ? "#0a0e18" : done ? "var(--brand-2)" : "var(--ink-3)",
+                        border: active ? "none" : `1px solid ${done ? "var(--accent-ring)" : "var(--line)"}`,
+                      }}>{done ? <Check size={13} /> : i + 1}</span>
+                      <span style={{ fontSize: 12.5, fontWeight: active ? 700 : 500, color: active ? "var(--ink)" : "var(--ink-3)", whiteSpace: "nowrap" }}>{s.label}</span>
+                    </button>
+                    {i !== last && <div style={{ flex: 1, height: 1, background: done ? "var(--accent-ring)" : "var(--line)", margin: "0 10px" }} />}
+                  </div>
+                );
+              })}
+            </div>
+
+            <div className="psp-modal-body" style={{ display: "flex", flexDirection: "column", gap: 14, minHeight: 240 }}>
+              {/* Step 0 — Basics */}
+              {createStep === 0 && (<>
+                <div><label className="psp-form-label">Title *</label><input className="psp-form-input" autoFocus value={createForm.title} onChange={e => setCreateForm(f => ({ ...f, title: e.target.value }))} placeholder="e.g. Spring Algorithms Cup" /></div>
+                <div><label className="psp-form-label">Description</label><textarea className="psp-form-textarea" value={createForm.description} onChange={e => setCreateForm(f => ({ ...f, description: e.target.value }))} style={{ minHeight: 110 }} placeholder="What is this competition about?" /></div>
+              </>)}
+
+              {/* Step 1 — Schedule */}
+              {createStep === 1 && (
                 <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
-                  <div><label className="psp-form-label">Min Team</label><input type="number" className="psp-form-input" value={createForm.minTeamSize} onChange={e => setCreateForm(f => ({ ...f, minTeamSize: parseInt(e.target.value) || 2 }))} /></div>
-                  <div><label className="psp-form-label">Max Team</label><input type="number" className="psp-form-input" value={createForm.maxTeamSize} onChange={e => setCreateForm(f => ({ ...f, maxTeamSize: parseInt(e.target.value) || 4 }))} /></div>
+                  <div><label className="psp-form-label">Start date & time</label><input type="datetime-local" className="psp-form-input" value={createForm.scheduledStartTime} onChange={e => setCreateForm(f => ({ ...f, scheduledStartTime: e.target.value }))} /></div>
+                  <div><label className="psp-form-label">Duration (minutes)</label><input type="number" className="psp-form-input" value={createForm.durationMinutes} onChange={e => setCreateForm(f => ({ ...f, durationMinutes: parseInt(e.target.value) || 120 }))} /></div>
                 </div>
               )}
-              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
-                <div><label className="psp-form-label">Start Date & Time</label><input type="datetime-local" className="psp-form-input" value={createForm.scheduledStartTime} onChange={e => setCreateForm(f => ({ ...f, scheduledStartTime: e.target.value }))} /></div>
-                <div><label className="psp-form-label">Duration (mins)</label><input type="number" className="psp-form-input" value={createForm.durationMinutes} onChange={e => setCreateForm(f => ({ ...f, durationMinutes: parseInt(e.target.value) || 120 }))} /></div>
-              </div>
 
-              {/* Scoring mode */}
-              <div>
-                <label className="psp-form-label">Scoring Mode</label>
-                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 8 }}>
-                  {(["ICPC", "RATED", "PARTIAL"] as const).map(m => {
-                    const active = (createForm.scoringMode ?? "ICPC") === m;
-                    return (
-                      <button
-                        key={m}
-                        type="button"
-                        onClick={() => setCreateForm(f => ({ ...f, scoringMode: m }))}
-                        style={{
-                          padding: "8px 6px", borderRadius: 6, cursor: "pointer",
-                          border: active ? "2px solid #0052cc" : "1px solid var(--border)",
-                          background: active ? "var(--accent-soft)" : "var(--bg-primary)",
-                          color: active ? "var(--brand)" : "var(--text-primary)",
-                          fontWeight: active ? 700 : 500, fontSize: 12,
-                        }}
-                      >
-                        {m}
-                      </button>
-                    );
-                  })}
+              {/* Step 2 — Format */}
+              {createStep === 2 && (<>
+                <div>
+                  <label className="psp-form-label">Mode</label>
+                  <Segmented value={createForm.mode ?? "SOLO"} options={[{ v: "SOLO", label: "Solo" }, { v: "TEAM", label: "Team" }]} onChange={v => setCreateForm(f => ({ ...f, mode: v as any }))} />
                 </div>
-                <div style={{ fontSize: 11, color: "var(--text-muted)", marginTop: 6, lineHeight: 1.5 }}>
-                  {createForm.scoringMode === "RATED"
-                    ? "Points decay over time. Faster solves earn more; each problem has a starting value, decay rate and floor."
-                    : createForm.scoringMode === "PARTIAL"
-                    ? "Score = percentage of test cases passed. Best submission counts. No time penalty."
-                    : "Teams ranked by problems solved, then total penalty time. Each wrong attempt adds the problem's penalty minutes."}
+                {createForm.mode === "TEAM" && (
+                  <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
+                    <div><label className="psp-form-label">Min team size</label><input type="number" className="psp-form-input" value={createForm.minTeamSize} onChange={e => setCreateForm(f => ({ ...f, minTeamSize: parseInt(e.target.value) || 2 }))} /></div>
+                    <div><label className="psp-form-label">Max team size</label><input type="number" className="psp-form-input" value={createForm.maxTeamSize} onChange={e => setCreateForm(f => ({ ...f, maxTeamSize: parseInt(e.target.value) || 4 }))} /></div>
+                  </div>
+                )}
+                <div>
+                  <label className="psp-form-label">Access</label>
+                  <Segmented value={createForm.accessType ?? "REQUEST_BASED"} options={[{ v: "REQUEST_BASED", label: "Request based" }, { v: "OPEN", label: "Open" }]} onChange={v => setCreateForm(f => ({ ...f, accessType: v as any }))} />
                 </div>
-              </div>
+                <div>
+                  <label className="psp-form-label">Scoring mode</label>
+                  <Segmented value={createForm.scoringMode ?? "ICPC"} options={[{ v: "ICPC", label: "ICPC" }, { v: "RATED", label: "Rated" }, { v: "PARTIAL", label: "Partial" }]} onChange={v => setCreateForm(f => ({ ...f, scoringMode: v as any }))} />
+                  <div style={{ fontSize: 11.5, color: "var(--text-muted)", marginTop: 6, lineHeight: 1.5 }}>{scoreDesc}</div>
+                </div>
+                {/* Freeze only applies to ICPC / RATED */}
+                {createForm.scoringMode !== "PARTIAL" && (
+                  <div style={{ border: "1px solid var(--line)", borderRadius: "var(--r-sm)", padding: "10px 12px" }}>
+                    <label style={{ display: "flex", alignItems: "center", gap: 8, cursor: "pointer", fontSize: 13, fontWeight: 600 }}>
+                      <input type="checkbox" checked={!!createForm.freezeEnabled} onChange={e => setCreateForm(f => ({ ...f, freezeEnabled: e.target.checked }))} />
+                      Freeze scoreboard before the competition ends
+                    </label>
+                    {createForm.freezeEnabled && (
+                      <div style={{ marginTop: 10, display: "flex", alignItems: "center", gap: 8 }}>
+                        <span style={{ fontSize: 12, color: "var(--text-muted)" }}>Freeze</span>
+                        <input type="number" className="psp-form-input" style={{ width: 80 }} value={createForm.freezeMinutesBeforeEnd ?? 60} onChange={e => setCreateForm(f => ({ ...f, freezeMinutesBeforeEnd: parseInt(e.target.value) || 60 }))} />
+                        <span style={{ fontSize: 12, color: "var(--text-muted)" }}>minutes before end</span>
+                      </div>
+                    )}
+                    <div style={{ fontSize: 11, color: "var(--text-subtle)", marginTop: 6 }}>Players see standings as of the freeze moment; full standings reveal when the contest ends. Teachers always see live.</div>
+                  </div>
+                )}
+              </>)}
 
-              {/* Scoreboard freeze (ICPC / RATED only) */}
-              {createForm.scoringMode !== "PARTIAL" && (
-                <div style={{ border: "1px solid var(--border)", borderRadius: 6, padding: "10px 12px" }}>
-                  <label style={{ display: "flex", alignItems: "center", gap: 8, cursor: "pointer", fontSize: 13, fontWeight: 600 }}>
-                    <input
-                      type="checkbox"
-                      checked={!!createForm.freezeEnabled}
-                      onChange={e => setCreateForm(f => ({ ...f, freezeEnabled: e.target.checked }))}
-                    />
-                    Freeze scoreboard before the competition ends
-                  </label>
-                  {createForm.freezeEnabled && (
-                    <div style={{ marginTop: 10, display: "flex", alignItems: "center", gap: 8 }}>
-                      <span style={{ fontSize: 12, color: "var(--text-muted)" }}>Freeze</span>
-                      <input
-                        type="number"
-                        className="psp-form-input"
-                        style={{ width: 80 }}
-                        value={createForm.freezeMinutesBeforeEnd ?? 60}
-                        onChange={e => setCreateForm(f => ({ ...f, freezeMinutesBeforeEnd: parseInt(e.target.value) || 60 }))}
-                      />
-                      <span style={{ fontSize: 12, color: "var(--text-muted)" }}>minutes before end</span>
-                    </div>
-                  )}
-                  <div style={{ fontSize: 11, color: "var(--text-subtle)", marginTop: 6 }}>
-                    Players see standings as of the freeze moment; full standings reveal when the contest ends. Teachers always see live.
+              {/* Step 3 — Problems */}
+              {createStep === 3 && (
+                <div style={{ display: "flex", flexDirection: "column", alignItems: "center", textAlign: "center", padding: "28px 16px", gap: 10 }}>
+                  <div style={{ width: 46, height: 46, borderRadius: 12, background: "var(--accent-soft)", display: "grid", placeItems: "center", color: "var(--brand)" }}><ListChecks size={22} /></div>
+                  <div style={{ fontSize: 14, fontWeight: 700, color: "var(--ink)" }}>Add problems after creating</div>
+                  <div style={{ fontSize: 12.5, color: "var(--ink-2)", maxWidth: 360, lineHeight: 1.6 }}>
+                    Once the competition is created you&apos;ll attach problems and set per-problem points{createForm.scoringMode === "RATED" ? ", decay rate and floor" : createForm.scoringMode === "ICPC" ? " and wrong-answer penalty" : ""} on the Manage screen.
                   </div>
                 </div>
               )}
+
+              {/* Step 4 — Review */}
+              {createStep === 4 && (
+                <div style={{ display: "flex", flexDirection: "column", gap: 0 }}>
+                  {[
+                    ["Title", createForm.title || "—"],
+                    ["Description", createForm.description?.trim() ? createForm.description : "—"],
+                    ["Start", createForm.scheduledStartTime ? fmtDate(createForm.scheduledStartTime) : "Not scheduled"],
+                    ["Duration", fmtDuration(createForm.durationMinutes ?? 120)],
+                    ["Mode", createForm.mode === "TEAM" ? `Team (${createForm.minTeamSize}–${createForm.maxTeamSize})` : "Solo"],
+                    ["Access", createForm.accessType === "OPEN" ? "Open" : "Request based"],
+                    ["Scoring", createForm.scoringMode ?? "ICPC"],
+                    ["Freeze", createForm.scoringMode !== "PARTIAL" && createForm.freezeEnabled ? `${createForm.freezeMinutesBeforeEnd ?? 60} min before end` : "Off"],
+                  ].map(([k, v], i) => (
+                    <div key={i} style={{ display: "flex", justifyContent: "space-between", gap: 16, padding: "9px 0", borderBottom: i < 7 ? "1px solid var(--line)" : "none" }}>
+                      <span style={{ fontSize: 12.5, color: "var(--ink-3)" }}>{k}</span>
+                      <span style={{ fontSize: 12.5, fontWeight: 600, color: "var(--ink)", textAlign: "right", maxWidth: 380, overflow: "hidden", textOverflow: "ellipsis" }}>{v}</span>
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
-            <div className="psp-modal-footer">
-              <button className="psp-btn psp-btn-secondary" onClick={() => setCreateOpen(false)}>Cancel</button>
-              <button className="psp-btn psp-btn-primary" onClick={handleCreate} disabled={creating} style={{ display: "flex", alignItems: "center", gap: 6 }}>
-                {creating ? <Loader2 size={13} /> : <Plus size={13} />} Create
+
+            <div className="psp-modal-footer" style={{ justifyContent: "space-between" }}>
+              <button className="psp-btn psp-btn-secondary" onClick={() => createStep === 0 ? setCreateOpen(false) : setCreateStep(s => s - 1)} style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                {createStep === 0 ? "Cancel" : <><ChevronLeft size={14} /> Back</>}
               </button>
+              {createStep < last ? (
+                <button className="psp-btn psp-btn-primary" disabled={!canNext} onClick={() => setCreateStep(s => s + 1)} style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                  Next <ChevronRight size={14} />
+                </button>
+              ) : (
+                <button className="psp-btn psp-btn-primary" onClick={handleCreate} disabled={creating} style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                  {creating ? <Loader2 size={13} className="animate-spin" /> : <Plus size={13} />} Create competition
+                </button>
+              )}
             </div>
           </div>
         </div>
-      )}
+        );
+      })()}
     </>
   );
 }

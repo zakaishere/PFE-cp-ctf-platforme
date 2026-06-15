@@ -79,7 +79,7 @@ function StatCard({
       </div>
       <div style={{ fontSize: 11, color: "var(--text-muted)", lineHeight: 1.8 }}>
         {active !== undefined && (
-          <div><span style={{ color: "#00875a", fontWeight: 700 }}>{active} active</span></div>
+          <div><span style={{ color: "var(--success)", fontWeight: 700 }}>{active} active</span></div>
         )}
         {upcoming !== undefined && (
           <div><span style={{ color: "var(--brand)", fontWeight: 600 }}>{upcoming} upcoming</span></div>
@@ -202,7 +202,7 @@ export default function TeacherOverview() {
                 listHref="/teacher/exams"
               />
               <StatCard
-                icon={<FlaskConical size={14} color="#00875a" />}
+                icon={<FlaskConical size={14} color="var(--success)" />}
                 label="TPs"
                 active={stats?.tps.open}
                 total={stats?.tps.total ?? 0}
@@ -215,13 +215,13 @@ export default function TeacherOverview() {
             {/* CTF card */}
             {(stats?.ctfs.active ?? 0) + (stats?.ctfs.upcoming ?? 0) > 0 && (
               <div style={{
-                background: "rgba(99,102,241,0.07)", border: "1px solid rgba(99,102,241,0.25)",
+                background: "var(--accent-soft)", border: "1px solid var(--accent-ring)",
                 borderRadius: 8, padding: "14px 20px", marginBottom: 24,
                 display: "flex", alignItems: "center", justifyContent: "space-between",
               }}>
                 <div>
                   <div style={{ display: "flex", alignItems: "center", gap: 8, fontWeight: 700, color: "var(--text-primary)", marginBottom: 4 }}>
-                    <Flag size={14} color="#818cf8" /> CTF
+                    <Flag size={14} color="var(--brand-2)" /> CTF
                   </div>
                   <div style={{ fontSize: 12, color: "var(--text-muted)" }}>
                     {stats?.ctfs.active ?? 0} ACTIVE · {stats?.ctfs.upcoming ?? 0} UPCOMING · {stats?.ctfs.total ?? 0} total
@@ -229,7 +229,7 @@ export default function TeacherOverview() {
                 </div>
                 <Link href="/teacher/ctf" style={{
                   display: "inline-flex", alignItems: "center", gap: 6,
-                  background: "#6366f1", color: "white", padding: "6px 14px",
+                  background: "var(--brand)", color: "white", padding: "6px 14px",
                   borderRadius: 6, fontSize: 12, fontWeight: 600, textDecoration: "none",
                 }}>
                   Manage CTF <ArrowRight size={12} />
@@ -282,7 +282,7 @@ export default function TeacherOverview() {
                     </div>
                     {data.openTPs.map(tp => (
                       <ActiveTile key={tp.id}
-                        icon={<FlaskConical size={12} color="#00875a" />}
+                        icon={<FlaskConical size={12} color="var(--success)" />}
                         status="OPEN" title={tp.title}
                         subtitle={tp.deadline ? `Deadline: ${fmtDate(tp.deadline)}` : "No deadline"}
                         manageUrl={tp.manageUrl}
@@ -298,7 +298,7 @@ export default function TeacherOverview() {
                     </div>
                     {data.activeCtfs.map(c => (
                       <ActiveTile key={c.id}
-                        icon={<Flag size={12} color="#818cf8" />}
+                        icon={<Flag size={12} color="var(--brand-2)" />}
                         status="ACTIVE" title={c.title}
                         manageUrl={c.manageUrl}
                       />
