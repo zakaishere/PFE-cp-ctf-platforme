@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
+import { APP_NAME } from "@/lib/brand";
 import Link from "next/link";
 import Navbar from "@/components/Navbar";
 import {
@@ -186,7 +187,7 @@ export default function TeacherStudents() {
     <>
       <Navbar />
       <div className="psp-breadcrumb">
-        <Link href="/teacher">PSP</Link> › <span style={{ color: "var(--text-primary)" }}>Students</span>
+        <Link href="/teacher">{APP_NAME}</Link> › <span style={{ color: "var(--text-primary)" }}>Students</span>
       </div>
 
       <div className="mgr-shell">
@@ -303,7 +304,7 @@ export default function TeacherStudents() {
                   <>
                     {reqLoading ? (
                       <div style={{ display: "flex", justifyContent: "center", padding: 60 }}>
-                        <Loader2 size={22} style={{ animation: "spin 1s linear infinite", color: "#0052cc" }} />
+                        <Loader2 size={22} style={{ animation: "spin 1s linear infinite", color: "var(--brand)" }} />
                       </div>
                     ) : (
                       <>
@@ -414,7 +415,7 @@ export default function TeacherStudents() {
                   <>
                     {reqLoading ? (
                       <div style={{ display: "flex", justifyContent: "center", padding: 60 }}>
-                        <Loader2 size={22} style={{ animation: "spin 1s linear infinite", color: "#0052cc" }} />
+                        <Loader2 size={22} style={{ animation: "spin 1s linear infinite", color: "var(--brand)" }} />
                       </div>
                     ) : approvedReqs.length === 0 ? (
                       <div className="psp-empty" style={{ border: "1px solid var(--border)", borderRadius: 3, background: "var(--bg-primary)" }}>
@@ -492,7 +493,7 @@ export default function TeacherStudents() {
           <div className="mgr-right-body" style={{ padding: 0 }}>
             {overviewLoading ? (
               <div style={{ display: "flex", justifyContent: "center", padding: 32 }}>
-                <Loader2 size={16} style={{ animation: "spin 1s linear infinite", color: "#0052cc" }} />
+                <Loader2 size={16} style={{ animation: "spin 1s linear infinite", color: "var(--brand)" }} />
               </div>
             ) : allStudentsList.length === 0 ? (
               <div style={{ padding: "24px 16px", textAlign: "center", color: "var(--text-subtle)", fontSize: 12 }}>

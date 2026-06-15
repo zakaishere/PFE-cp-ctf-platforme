@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { APP_NAME } from "@/lib/brand";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import Navbar from "@/components/Navbar";
@@ -189,7 +190,7 @@ function CompetitionCard({ c, onAction }: { c: any; onAction: (action: string, i
 
   const borderColor =
     isActive ? "#de350b" :
-    isReg    ? "#0052cc" :
+    isReg    ? "var(--brand)" :
                "var(--border)";
 
   const registered = c.registeredCount ?? c.participantCount ?? 0;
@@ -373,7 +374,7 @@ export default function CompetitionsPage() {
     <>
       <Navbar />
       <div className="psp-breadcrumb">
-        <Link href="/dashboard">PSP</Link> › <span style={{ color: "var(--text-primary)" }}>Competitions</span>
+        <Link href="/dashboard">{APP_NAME}</Link> › <span style={{ color: "var(--text-primary)" }}>Competitions</span>
       </div>
       <div className="psp-main">
 

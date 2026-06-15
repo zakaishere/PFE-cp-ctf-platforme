@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { APP_NAME } from "@/lib/brand";
 import Link from "next/link";
 import Navbar from "@/components/Navbar";
 import { toast } from "@/components/ui/PSPToast";
@@ -57,7 +58,7 @@ export default function TeacherCtfCompetitionsList() {
     <>
       <Navbar />
       <div className="psp-breadcrumb">
-        <Link href="/teacher">PSP</Link> ›{" "}
+        <Link href="/teacher">{APP_NAME}</Link> ›{" "}
         <span style={{ color: "var(--text-primary)" }}>CTF</span>
       </div>
 

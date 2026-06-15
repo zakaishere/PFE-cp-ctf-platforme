@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { APP_NAME } from "@/lib/brand";
 import Link from "next/link";
 import Navbar from "@/components/Navbar";
 import {
@@ -121,7 +122,7 @@ const TeacherCTF = () => {
     <>
       <Navbar />
       <div className="psp-breadcrumb">
-        <Link href="/teacher">PSP</Link> ›{" "}
+        <Link href="/teacher">{APP_NAME}</Link> ›{" "}
         <span style={{ color: "var(--text-primary)" }}>CTF Challenges</span>
       </div>
 
@@ -234,7 +235,7 @@ const TeacherCTF = () => {
                 {search || catFilter !== "all" || diffFilter !== "all" || statusFilter !== "all"
                   ? "Try adjusting your filters."
                   : <>Create your first CTF challenge.{" "}
-                    <Link href="/teacher/ctf/new" style={{ color: "#0052cc", fontWeight: 600 }}>Get started →</Link>
+                    <Link href="/teacher/ctf/new" style={{ color: "var(--brand)", fontWeight: 600 }}>Get started →</Link>
                   </>
                 }
               </div>

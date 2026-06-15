@@ -109,7 +109,7 @@ export default function PracticeArena({ problemId }: { problemId: string }) {
               <div style={{ fontWeight: 600, color: "var(--text-primary)", fontSize: 16, marginBottom: 6 }}>
                 Problem not found
               </div>
-              <a href="/problems" style={{ color: "#0052cc", fontSize: 13 }}>
+              <a href="/problems" style={{ color: "var(--brand)", fontSize: 13 }}>
                 ← Back to problems
               </a>
             </div>

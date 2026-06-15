@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useRef } from "react";
+import { APP_NAME } from "@/lib/brand";
 import Link from "next/link";
 import Navbar from "@/components/Navbar";
 import { useInfiniteProblems } from "@/hooks/useInfiniteProblems";
@@ -34,7 +35,7 @@ export default function ProblemsPage() {
     <>
       <Navbar />
       <div className="psp-breadcrumb">
-        <Link href="/dashboard">PSP</Link> › <span style={{ color: "var(--text-primary)" }}>Problems</span>
+        <Link href="/dashboard">{APP_NAME}</Link> › <span style={{ color: "var(--text-primary)" }}>Problems</span>
       </div>
       <div className="psp-main">
         <div style={{ marginBottom: 20 }}>
@@ -108,7 +109,7 @@ export default function ProblemsPage() {
                   <td>
                     <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
                       <div style={{ width: 56, height: 4, background: "var(--border)", borderRadius: 2 }}>
-                        <div style={{ width: `${p.passRate}%`, height: "100%", background: "#0052cc", borderRadius: 2 }} />
+                        <div style={{ width: `${p.passRate}%`, height: "100%", background: "var(--brand)", borderRadius: 2 }} />
                       </div>
                       <span style={{ fontSize: 11, color: "var(--text-muted)" }}>{p.passRate.toFixed(0)}%</span>
                     </div>
@@ -136,7 +137,7 @@ export default function ProblemsPage() {
           {error && (
             <div style={{ textAlign: "center", padding: "24px 16px", color: "#de350b", fontSize: 13 }}>
               {error} —{" "}
-              <button onClick={() => window.location.reload()} style={{ background: "none", border: "none", color: "#0052cc", cursor: "pointer", textDecoration: "underline" }}>
+              <button onClick={() => window.location.reload()} style={{ background: "none", border: "none", color: "var(--brand)", cursor: "pointer", textDecoration: "underline" }}>
                 Retry
               </button>
             </div>

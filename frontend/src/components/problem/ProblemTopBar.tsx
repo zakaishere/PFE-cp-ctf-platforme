@@ -29,7 +29,7 @@ export function ProblemTopBar({ problem, loading, initials = "U" }: ProblemTopBa
       <Link href="/" style={{ display: "flex", alignItems: "center", gap: 6, textDecoration: "none", flexShrink: 0 }}>
         <div style={{
           width: 26, height: 26,
-          background: "#0052cc",
+          background: "var(--brand)",
           borderRadius: 5,
           display: "flex", alignItems: "center", justifyContent: "center",
           color: "white", fontWeight: 900, fontSize: 12, flexShrink: 0, letterSpacing: "-0.5px",
@@ -135,7 +135,7 @@ export function ProblemTopBar({ problem, loading, initials = "U" }: ProblemTopBa
       {/* User avatar */}
       <div style={{
         width: 28, height: 28,
-        background: "#0052cc",
+        background: "var(--brand)",
         borderRadius: "50%",
         display: "flex", alignItems: "center", justifyContent: "center",
         color: "white", fontSize: 10, fontWeight: 700,

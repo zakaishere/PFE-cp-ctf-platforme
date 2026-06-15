@@ -57,7 +57,7 @@ const DIFF_STYLE: Record<string, { bg: string; text: string }> = {
 
 const SOLVE_DOT: Record<string, string> = {
   SOLVED:    "#00875a",
-  ATTEMPTED: "#ff8b00",
+  ATTEMPTED: "var(--warn)",
   UNSOLVED:  "#5e6c84",
 };
 
@@ -681,7 +681,7 @@ function BriefingScreen({
       }}>
         <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 18 }}>
           <div style={{
-            width: 36, height: 36, background: "#0052cc", borderRadius: 6,
+            width: 36, height: 36, background: "var(--brand)", borderRadius: 6,
             display: "flex", alignItems: "center", justifyContent: "center",
             color: "white", fontWeight: 900, fontSize: 16,
           }}>P</div>
@@ -716,7 +716,7 @@ function BriefingScreen({
           type="button"
           onClick={onEnter}
           style={{
-            width: "100%", height: 42, background: "#0052cc",
+            width: "100%", height: 42, background: "var(--brand)",
             color: "white", border: "none", borderRadius: 6,
             fontSize: 14, fontWeight: 700, cursor: "pointer",
             display: "flex", alignItems: "center", justifyContent: "center", gap: 8,
@@ -866,7 +866,7 @@ function LeftPanel({
           <button key={p.problemId} onClick={() => setActiveProblemIdx(i)} style={{
             display: "flex", alignItems: "center", gap: 8, padding: "7px 10px",
             borderRadius: 3, cursor: "pointer", marginBottom: 3, width: "100%", textAlign: "left",
-            background: activeProblemIdx === i ? "#0052cc" : "transparent", border: "none",
+            background: activeProblemIdx === i ? "var(--brand)" : "transparent", border: "none",
           }}>
             <div style={{ width: 8, height: 8, borderRadius: "50%", flexShrink: 0, background: SOLVE_DOT[p.solveStatus] ?? "#5e6c84" }} />
             <span style={{ fontSize: 12, color: "rgba(255,255,255,0.85)", fontWeight: 500, flex: 1 }}>
@@ -1011,7 +1011,7 @@ function RightEditorPanel({
   else if (judging) submitLabel = "Judging…";
   else if (!isFullscreen) submitLabel = "⛔ Fullscreen required";
 
-  let submitBg = "#0052cc";
+  let submitBg = "var(--brand)";
   if (problem.solveStatus === "SOLVED") submitBg = "#00875a";
   else if (submitDisabled) submitBg = "#97a0af";
 
@@ -1098,7 +1098,7 @@ function ScoreboardPanel({
 
       {loading ? (
         <div style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center" }}>
-          <div style={{ width: 24, height: 24, border: "2px solid var(--border)", borderTopColor: "#0052cc", borderRadius: "50%", animation: "spin 0.8s linear infinite" }} />
+          <div style={{ width: 24, height: 24, border: "2px solid var(--border)", borderTopColor: "var(--brand)", borderRadius: "50%", animation: "spin 0.8s linear infinite" }} />
         </div>
       ) : (
         <div style={{ flex: 1, overflowY: "auto" }}>
@@ -1122,7 +1122,7 @@ function ScoreboardPanel({
                 {scoreboard.map(entry => {
                   const isMe = mode === "SOLO" && entry.studentId === myUserId;
                   return (
-                    <tr key={entry.teamId ?? entry.studentId} style={{ borderBottom: "1px solid #f4f5f7", background: isMe ? "#deebff" : "transparent" }}>
+                    <tr key={entry.teamId ?? entry.studentId} style={{ borderBottom: "1px solid #f4f5f7", background: isMe ? "var(--accent-soft)" : "transparent" }}>
                       <td style={{ padding: "8px 12px", color: "var(--text-muted)", fontWeight: 700 }}>{entry.rank}</td>
                       <td style={{ padding: "8px 12px", color: "var(--text-primary)", fontWeight: 500 }}>
                         {mode === "TEAM" ? entry.teamName : `${entry.firstName} ${entry.lastName}`}
@@ -1158,7 +1158,7 @@ function ScoreboardPanel({
 function JudgeResultBanner({ result }: { result: JudgeResult }) {
   const isPending = result.verdict === "PENDING";
   const isAC      = result.verdict === "AC";
-  const bg    = isPending ? "#deebff" : isAC ? "#e3fcef" : "#ffebe6";
+  const bg    = isPending ? "var(--accent-soft)" : isAC ? "#e3fcef" : "#ffebe6";
   const color = isPending ? "#0747a6" : isAC ? "#006644"  : "#bf2600";
 
   return (

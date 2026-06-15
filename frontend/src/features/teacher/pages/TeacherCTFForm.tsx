@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { APP_NAME } from "@/lib/brand";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import Navbar from "@/components/Navbar";
@@ -484,7 +485,7 @@ const TeacherCTFForm = ({ editId }: Props) => {
       <>
         <Navbar />
         <div className="psp-breadcrumb">
-          <Link href="/teacher">PSP</Link> ›{" "}
+          <Link href="/teacher">{APP_NAME}</Link> ›{" "}
           <Link href="/teacher/ctf">CTF Challenges</Link> ›{" "}
           <span style={{ color: "var(--text-primary)" }}>Loading…</span>
         </div>
@@ -501,7 +502,7 @@ const TeacherCTFForm = ({ editId }: Props) => {
     <>
       <Navbar />
       <div className="psp-breadcrumb">
-        <Link href="/teacher">PSP</Link> ›{" "}
+        <Link href="/teacher">{APP_NAME}</Link> ›{" "}
         <Link href="/teacher/ctf">CTF Challenges</Link> ›{" "}
         <span style={{ color: "var(--text-primary)" }}>{isEdit ? "Edit Challenge" : "New Challenge"}</span>
       </div>

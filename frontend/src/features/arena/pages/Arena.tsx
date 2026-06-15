@@ -218,7 +218,7 @@ export default function Arena({ examId, mode = "exam" }: ArenaProps) {
                   style={{
                     display: "flex", alignItems: "center", gap: 8,
                     padding: "8px 10px", borderRadius: 3, cursor: "pointer", marginBottom: 3,
-                    background: activeProblemIdx === i ? "#0052cc" : "transparent",
+                    background: activeProblemIdx === i ? "var(--brand)" : "transparent",
                   }}
                 >
                   <div style={{
@@ -238,7 +238,7 @@ export default function Arena({ examId, mode = "exam" }: ArenaProps) {
             <div style={{ fontSize: 10, fontWeight: 700, color: "rgba(255,255,255,0.4)", textTransform: "uppercase", letterSpacing: 0.5, marginBottom: 6 }}>Progress</div>
             <div style={{ fontSize: 12, color: "rgba(255,255,255,0.65)" }}>{solvedCount} / {problems.length} solved</div>
             <div style={{ background: "#344563", height: 4, borderRadius: 2, marginTop: 6 }}>
-              <div style={{ background: "#0052cc", height: 4, borderRadius: 2, width: problems.length > 0 ? `${(solvedCount / problems.length) * 100}%` : "0%" }} />
+              <div style={{ background: "var(--brand)", height: 4, borderRadius: 2, width: problems.length > 0 ? `${(solvedCount / problems.length) * 100}%` : "0%" }} />
             </div>
           </div>
 
@@ -409,7 +409,7 @@ function BriefingScreen({
       }}>
         <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 18 }}>
           <div style={{
-            width: 36, height: 36, background: "#0052cc", borderRadius: 6,
+            width: 36, height: 36, background: "var(--brand)", borderRadius: 6,
             display: "flex", alignItems: "center", justifyContent: "center",
             color: "white", fontWeight: 900, fontSize: 16,
           }}>P</div>
@@ -447,7 +447,7 @@ function BriefingScreen({
           disabled={isEnded}
           style={{
             width: "100%", height: 42,
-            background: isEnded ? "#475569" : "#0052cc",
+            background: isEnded ? "#475569" : "var(--brand)",
             color: "white", border: "none", borderRadius: 6,
             fontSize: 14, fontWeight: 700,
             cursor: isEnded ? "not-allowed" : "pointer",

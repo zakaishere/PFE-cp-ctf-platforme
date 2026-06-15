@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { APP_NAME } from "@/lib/brand";
 import Link from "next/link";
 import Navbar from "@/components/Navbar";
 import { Plus, Trophy, Clock, Users, Zap, Lock, Edit2 } from "lucide-react";
@@ -44,7 +45,7 @@ export default function TeacherCTFCompetitionsPage() {
     <>
       <Navbar />
       <div className="psp-breadcrumb">
-        <Link href="/teacher">PSP</Link> ›{" "}
+        <Link href="/teacher">{APP_NAME}</Link> ›{" "}
         <Link href="/teacher/ctf">CTF</Link> ›{" "}
         <span style={{ color: "var(--text-primary)" }}>Competitions</span>
       </div>

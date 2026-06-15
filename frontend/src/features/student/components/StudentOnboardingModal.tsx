@@ -61,8 +61,8 @@ export default function StudentOnboardingModal({ open, onComplete }: Props) {
       <div className="modal-panel" style={{ background: "var(--bg-primary)", borderRadius: 6, width: "100%", maxWidth: 460, boxShadow: "0 8px 32px rgba(0,0,0,0.24)" }}>
         {/* Header */}
         <div style={{ padding: "20px 24px 16px", borderBottom: "1px solid var(--border)", display: "flex", alignItems: "center", gap: 12 }}>
-          <div style={{ width: 40, height: 40, borderRadius: "50%", background: "#deebff", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
-            <GraduationCap size={20} color="#0052cc" />
+          <div style={{ width: 40, height: 40, borderRadius: "50%", background: "var(--accent-soft)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+            <GraduationCap size={20} color="var(--brand)" />
           </div>
           <div>
             <div style={{ fontSize: 16, fontWeight: 700, color: "var(--text-primary)" }}>Complete your profile</div>

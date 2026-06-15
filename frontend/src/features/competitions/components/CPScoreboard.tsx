@@ -42,7 +42,7 @@ export default function CPScoreboard({
   if (loading) {
     return (
       <div style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center", background: "var(--bg-primary)" }}>
-        <Loader2 size={22} style={{ animation: "spin 0.8s linear infinite", color: "#0052cc" }} />
+        <Loader2 size={22} style={{ animation: "spin 0.8s linear infinite", color: "var(--brand)" }} />
       </div>
     );
   }
@@ -130,7 +130,7 @@ export default function CPScoreboard({
               return (
                 <tr key={row.participantId} style={{
                   borderBottom: "1px solid #f4f5f7",
-                  background: isMe ? "#deebff" : "transparent",
+                  background: isMe ? "var(--accent-soft)" : "transparent",
                 }}>
                   <td style={tdSticky(0, 36, isMe)}>
                     <RankBadge rank={row.rank} />
@@ -146,7 +146,7 @@ export default function CPScoreboard({
                       <td style={tdCenter(500, "var(--text-muted)")}>{row.penaltyMinutes}</td>
                     </>
                   ) : (
-                    <td style={tdCenter(700, "#0052cc")}>{row.score}</td>
+                    <td style={tdCenter(700, "var(--brand)")}>{row.score}</td>
                   )}
                   {board.problems.map((p) => (
                     <td key={p.problemId} style={{ padding: "6px 4px", textAlign: "center" }}>
@@ -231,7 +231,7 @@ function tdSticky(left: number, width: number, isMe: boolean): React.CSSProperti
   return {
     padding: "7px 8px", textAlign: "center",
     position: "sticky", left, width,
-    background: isMe ? "#deebff" : "var(--bg-primary)", zIndex: 1,
+    background: isMe ? "var(--accent-soft)" : "var(--bg-primary)", zIndex: 1,
   };
 }
 

@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { APP_NAME } from "@/lib/brand";
 import Link from "next/link";
 import Navbar from "@/components/Navbar";
 import {
@@ -313,7 +314,7 @@ const TeacherProblems = () => {
     <>
       <Navbar />
       <div className="psp-breadcrumb">
-        <Link href="/teacher">PSP</Link> ›{" "}
+        <Link href="/teacher">{APP_NAME}</Link> ›{" "}
         <span style={{ color: "var(--text-primary)" }}>Problems</span>
       </div>
 
@@ -427,7 +428,7 @@ const TeacherProblems = () => {
               <div style={{ fontSize: 13 }}>
                 Try adjusting your filters or{" "}
                 <button
-                  style={{ color: "#0052cc", background: "none", border: "none", cursor: "pointer", fontWeight: 600, padding: 0, fontSize: 13 }}
+                  style={{ color: "var(--brand)", background: "none", border: "none", cursor: "pointer", fontWeight: 600, padding: 0, fontSize: 13 }}
                   onClick={openCreate}
                 >
                   create a new problem
@@ -484,7 +485,7 @@ const TeacherProblems = () => {
             {/* Header */}
             <div className="psp-modal-header">
               <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                <FileText size={16} color="#0052cc" />
+                <FileText size={16} color="var(--brand)" />
                 <span style={{ fontSize: 15, fontWeight: 600, color: "var(--text-primary)" }}>
                   {editingProblem ? "Edit Problem" : "New Problem"}
                 </span>
@@ -563,7 +564,7 @@ const TeacherProblems = () => {
                 <div>
                   <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 8 }}>
                     <label className="psp-form-label" style={{ marginBottom: 0, display: "flex", alignItems: "center", gap: 6 }}>
-                      <Lightbulb size={13} color="#ff8b00" />
+                      <Lightbulb size={13} color="var(--warn)" />
                       Hints ({form.hints.length})
                       <span style={{ fontSize: 11, color: "var(--text-subtle)", fontWeight: 400 }}>
                         — shown to students on request
@@ -639,7 +640,7 @@ const TeacherProblems = () => {
                 <div>
                   <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 8 }}>
                     <label className="psp-form-label" style={{ marginBottom: 0, display: "flex", alignItems: "center", gap: 6 }}>
-                      <Code2 size={13} color="#0052cc" />
+                      <Code2 size={13} color="var(--brand)" />
                       Test Cases ({testCases.length})
                     </label>
                     <button className="psp-btn psp-btn-secondary psp-btn-sm" onClick={addTestCase}>
@@ -714,7 +715,7 @@ const TeacherProblems = () => {
                                 type="checkbox"
                                 checked={tc.isHidden}
                                 onChange={e => updateTestCase(tc.id, "isHidden", e.target.checked)}
-                                style={{ accentColor: "#0052cc" }}
+                                style={{ accentColor: "var(--brand)" }}
                               />
                               Hidden from students (used for grading only)
                             </label>
@@ -735,7 +736,7 @@ const TeacherProblems = () => {
               </button>
               <button
                 className="psp-btn psp-btn-secondary"
-                style={{ borderColor: "#ff8b00", color: "#ff8b00" }}
+                style={{ borderColor: "var(--warn)", color: "var(--warn)" }}
                 onClick={() => saveProblem("draft")}
               >
                 <Save size={13} /> Save as Draft

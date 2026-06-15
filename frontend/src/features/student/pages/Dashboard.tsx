@@ -1,13 +1,15 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { APP_NAME } from "@/lib/brand";
 import Link from "next/link";
 import Navbar from "@/components/Navbar";
-import { ClipboardList, CheckCircle2, Trophy, Star, Megaphone, Settings } from "lucide-react";
+import { ClipboardList, CheckCircle2, Trophy, Star, Megaphone, Settings, Medal } from "lucide-react";
 import { getStudentProfile, getLeaderboard, type StudentProfile, type LeaderboardEntry } from "@/lib/api";
 import StudentOnboardingModal from "@/features/student/components/StudentOnboardingModal";
 
-const AVATAR_COLORS = ["#0052cc","#6554c0","#00875a","#ff8b00","#ff5630","#36b37e","#00b8d9","#de350b"];
+const MEDAL_COLORS = ["#f5c451", "#c7cdd9", "#cd8a52"]; // gold, silver, bronze
+const AVATAR_COLORS = ["var(--brand)","#6554c0","#00875a","var(--warn)","#ff5630","#36b37e","#00b8d9","#de350b"];
 
 export default function StudentDashboard() {
   const [profile, setProfile] = useState<StudentProfile | null>(null);
@@ -31,14 +33,13 @@ export default function StudentDashboard() {
 
   const firstName = profile?.firstName ?? "…";
   const subtitle = [profile?.divisionName, profile?.semesterName].filter(Boolean).join(" · ") || "Profile incomplete";
-  const medals = ["🥇","🥈","🥉"];
 
   return (
     <>
       <StudentOnboardingModal open={showOnboarding} onComplete={handleOnboardingComplete} />
       <Navbar />
       <div className="psp-breadcrumb">
-        <Link href="/dashboard">PSP</Link> ›{" "}
+        <Link href="/dashboard">{APP_NAME}</Link> ›{" "}
         <span style={{ color: "var(--text-primary)" }}>Dashboard</span>
       </div>
       <div className="psp-main">
@@ -69,7 +70,7 @@ export default function StudentDashboard() {
             <Megaphone size={14} style={{ flexShrink: 0 }} />
             <span>
               Your academic profile is incomplete.{" "}
-              <button onClick={() => setShowOnboarding(true)} style={{ background: "none", border: "none", color: "#0052cc", fontWeight: 600, cursor: "pointer", padding: 0 }}>
+              <button onClick={() => setShowOnboarding(true)} style={{ background: "none", border: "none", color: "var(--brand)", fontWeight: 600, cursor: "pointer", padding: 0 }}>
                 Select your filière and semester →
               </button>
             </span>
@@ -103,10 +104,10 @@ export default function StudentDashboard() {
             <div className="psp-card">
               <div className="psp-card-header">
                 <span className="psp-card-title">Assessments</span>
-                <Link href="/assessments" style={{ fontSize: 12, color: "#0052cc" }}>View all</Link>
+                <Link href="/assessments" style={{ fontSize: 12, color: "var(--brand)" }}>View all</Link>
               </div>
               <div style={{ padding: "24px 16px", textAlign: "center", color: "var(--text-muted)", fontSize: 13 }}>
-                Visit <Link href="/assessments" style={{ color: "#0052cc" }}>Assessments</Link> to see your exams and TPs.
+                Visit <Link href="/assessments" style={{ color: "var(--brand)" }}>Assessments</Link> to see your exams and TPs.
               </div>
             </div>
 
@@ -114,7 +115,7 @@ export default function StudentDashboard() {
             <div className="psp-card">
               <div className="psp-card-header"><span className="psp-card-title">Recent Submissions</span></div>
               <div style={{ padding: "24px 16px", textAlign: "center", color: "var(--text-muted)", fontSize: 13 }}>
-                Visit <Link href="/problems" style={{ color: "#0052cc" }}>Problems</Link> to practice and submit solutions.
+                Visit <Link href="/problems" style={{ color: "var(--brand)" }}>Problems</Link> to practice and submit solutions.
               </div>
             </div>
           </div>
@@ -125,9 +126,9 @@ export default function StudentDashboard() {
             <div className="psp-card" style={{ marginBottom: 14 }}>
               <div className="psp-card-header">
                 <span className="psp-card-title" style={{ display: "flex", alignItems: "center", gap: 5 }}>
-                  <Trophy size={13} color="#ff8b00" /> Leaderboard
+                  <Trophy size={13} color="var(--warn)" /> Leaderboard
                 </span>
-                <Link href="/leaderboard" style={{ fontSize: 11, color: "#0052cc" }}>View All</Link>
+                <Link href="/leaderboard" style={{ fontSize: 11, color: "var(--brand)" }}>View All</Link>
               </div>
               <div className="psp-scroll">
                 {topStudents.slice(0, 5).map((u, i) => {
@@ -137,18 +138,18 @@ export default function StudentDashboard() {
                   return (
                     <div key={u.studentId} style={{
                       display: "flex", alignItems: "center", padding: "9px 14px",
-                      borderBottom: "1px solid #f4f5f7", gap: 10,
-                      background: isMe ? "#deebff" : undefined,
-                      borderLeft: isMe ? "3px solid #0052cc" : undefined,
+                      borderBottom: "1px solid var(--line)", gap: 10,
+                      background: isMe ? "var(--accent-soft)" : undefined,
+                      borderLeft: isMe ? "3px solid var(--brand)" : undefined,
                     }}>
-                      <div style={{ width: 22, textAlign: "center", fontWeight: 700, fontSize: 12 }}>
-                        {medals[i] ? <span>{medals[i]}</span> : <span style={{ color: "var(--text-muted)" }}>{i + 1}</span>}
+                      <div style={{ width: 22, display: "flex", justifyContent: "center", alignItems: "center", fontWeight: 700, fontSize: 12 }}>
+                        {i < 3 ? <Medal size={15} color={MEDAL_COLORS[i]} /> : <span style={{ color: "var(--text-muted)" }}>{i + 1}</span>}
                       </div>
                       <div style={{ width: 26, height: 26, borderRadius: "50%", background: color, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 10, fontWeight: 700, color: "white", flexShrink: 0 }}>
                         {ini}
                       </div>
                       <div style={{ flex: 1, fontSize: 12, fontWeight: 500 }}>{isMe ? <strong>You</strong> : `${u.firstName} ${u.lastName}`}</div>
-                      <div style={{ fontWeight: 700, color: "#0052cc", fontSize: 12 }}>{u.totalPoints}</div>
+                      <div style={{ fontWeight: 700, color: "var(--brand)", fontSize: 12 }}>{u.totalPoints}</div>
                     </div>
                   );
                 })}
@@ -162,7 +163,7 @@ export default function StudentDashboard() {
             <div className="psp-card">
               <div className="psp-card-header">
                 <span className="psp-card-title">My Profile</span>
-                <button onClick={() => setShowOnboarding(true)} style={{ fontSize: 11, color: "#0052cc", background: "none", border: "none", cursor: "pointer" }}>Edit</button>
+                <button onClick={() => setShowOnboarding(true)} style={{ fontSize: 11, color: "var(--brand)", background: "none", border: "none", cursor: "pointer" }}>Edit</button>
               </div>
               <div className="psp-card-body">
                 {[

@@ -138,7 +138,7 @@ export default function ArenaShell({
         background: "#172b4d", flexDirection: "column", gap: 12,
         fontFamily: "-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif",
       }}>
-        <Loader2 size={28} style={{ animation: "spin 1s linear infinite", color: "#0052cc" }} />
+        <Loader2 size={28} style={{ animation: "spin 1s linear infinite", color: "var(--brand)" }} />
         <div style={{ fontSize: 14, fontWeight: 500, color: "rgba(255,255,255,0.8)" }}>{loadingMessage}</div>
       </div>
     );
@@ -161,7 +161,7 @@ export default function ArenaShell({
           {accessError}
         </div>
         <Link href={backHref} style={{
-          marginTop: 8, background: "#0052cc", color: "white", borderRadius: 3,
+          marginTop: 8, background: "var(--brand)", color: "white", borderRadius: 3,
           padding: "8px 18px", fontSize: 13, fontWeight: 600, textDecoration: "none",
         }}>
           Back
@@ -241,7 +241,7 @@ function TopBar({ title, backHref, backLabel, remainingSeconds, isEnded, extras 
         color: "white", fontWeight: 700, fontSize: 13,
       }}>
         <div style={{
-          width: 22, height: 22, background: "#0052cc", borderRadius: 3,
+          width: 22, height: 22, background: "var(--brand)", borderRadius: 3,
           display: "flex", alignItems: "center", justifyContent: "center",
           color: "white", fontWeight: 900, fontSize: 11,
         }}>P</div>
@@ -260,7 +260,7 @@ function TopBar({ title, backHref, backLabel, remainingSeconds, isEnded, extras 
         {showTimer && (
           <span style={{
             fontFamily: "ui-monospace, monospace", fontSize: 15, fontWeight: 700,
-            color: isEnded ? "#97a0af" : isUrgent ? "#de350b" : "#ff8b00",
+            color: isEnded ? "#97a0af" : isUrgent ? "#de350b" : "var(--warn)",
           }}>
             {isEnded ? "00:00:00" : timerStr}
           </span>
@@ -310,7 +310,7 @@ function NavTabs({ tabs, activeKey, onSelect }: {
             <span>{t.label}</span>
             {t.badge !== undefined && t.badge > 0 && (
               <span style={{
-                background: "#0052cc", color: "white",
+                background: "var(--brand)", color: "white",
                 borderRadius: 10, padding: "1px 6px",
                 fontSize: 10, fontWeight: 700, lineHeight: 1,
               }}>

@@ -5,7 +5,7 @@ interface Props {
   color?: string;
 }
 
-export default function TimeProgress({ used, total, label, color = "#0052cc" }: Props) {
+export default function TimeProgress({ used, total, label, color = "var(--brand)" }: Props) {
   const pct = total > 0 ? Math.min(100, Math.round((used / total) * 100)) : 0;
   return (
     <div style={{ width: "100%" }}>

@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
+import { APP_NAME } from "@/lib/brand";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import Navbar from "@/components/Navbar";
@@ -163,7 +164,7 @@ function StatCard({ value, label, color = "default" }: {
     default: "#172b4d",
     red:     value > 0 ? "#de350b" : "#97a0af",
     green:   value > 0 ? "#00875a" : "#97a0af",
-    blue:    value > 0 ? "#0052cc" : "#97a0af",
+    blue:    value > 0 ? "var(--brand)" : "#97a0af",
   };
   return (
     <div className="stat-card" style={{ flex: 1, minWidth: 0, cursor: "default" }}>
@@ -193,7 +194,7 @@ function FilterTabs<T extends string>({ tabs, active, onChange }: {
             height: 40, padding: "0 16px", borderRadius: 0, border: "none", cursor: "pointer",
             borderBottom: active === tab.key ? "2px solid #0052cc" : "2px solid transparent",
             marginBottom: -2,
-            color: active === tab.key ? "#0052cc" : "#5e6c84",
+            color: active === tab.key ? "var(--brand)" : "#5e6c84",
             fontWeight: active === tab.key ? 700 : 500,
             fontSize: 13, background: "none",
             transition: "all 0.15s ease",
@@ -202,8 +203,8 @@ function FilterTabs<T extends string>({ tabs, active, onChange }: {
         >
           {tab.label}
           <span style={{
-            background: active === tab.key ? "#deebff" : "#f1f2f4",
-            color: active === tab.key ? "#0052cc" : "#7a869a",
+            background: active === tab.key ? "var(--accent-soft)" : "#f1f2f4",
+            color: active === tab.key ? "var(--brand)" : "#7a869a",
             borderRadius: 10, padding: "1px 7px",
             fontSize: 11, fontWeight: 700,
           }}>
@@ -259,7 +260,7 @@ function AssessmentCard({
   const borderColor =
     isLive     ? "#de350b" :
     isOpen     ? "#00875a" :
-    isUpcoming ? "#0052cc" :
+    isUpcoming ? "var(--brand)" :
                  "#dfe1e6";   // muted border for closed
 
   return (
@@ -355,7 +356,7 @@ function AssessmentCard({
             used={a.attemptsUsed ?? 0}
             total={a.maxAttempts}
             label="Attempts used"
-            color={isOpen ? "#0052cc" : "#97a0af"}
+            color={isOpen ? "var(--brand)" : "#97a0af"}
           />
         </div>
       )}
@@ -400,8 +401,8 @@ function AssessmentCard({
                 transition: "all 0.15s",
               }}
               onMouseEnter={e => {
-                (e.currentTarget as HTMLElement).style.color = "#0052cc";
-                (e.currentTarget as HTMLElement).style.borderColor = "#0052cc";
+                (e.currentTarget as HTMLElement).style.color = "var(--brand)";
+                (e.currentTarget as HTMLElement).style.borderColor = "var(--brand)";
               }}
               onMouseLeave={e => {
                 (e.currentTarget as HTMLElement).style.color = "#5e6c84";
@@ -522,7 +523,7 @@ export default function ExamsTpsPage() {
     <>
       <Navbar />
       <div className="psp-breadcrumb">
-        <Link href="/dashboard">PSP</Link> › <span style={{ color: "var(--text-primary)" }}>Exams &amp; TPs</span>
+        <Link href="/dashboard">{APP_NAME}</Link> › <span style={{ color: "var(--text-primary)" }}>Exams &amp; TPs</span>
       </div>
       <div className="psp-main">
 

@@ -101,9 +101,9 @@ export function TagsInput({ value, onChange }: TagsInputProps) {
               }}
               onMouseEnter={e => {
                 const el = e.currentTarget as HTMLElement;
-                el.style.background  = "#deebff";
-                el.style.color       = "#0052cc";
-                el.style.borderColor = "#0052cc";
+                el.style.background  = "var(--accent-soft)";
+                el.style.color       = "var(--brand)";
+                el.style.borderColor = "var(--brand)";
               }}
               onMouseLeave={e => {
                 const el = e.currentTarget as HTMLElement;

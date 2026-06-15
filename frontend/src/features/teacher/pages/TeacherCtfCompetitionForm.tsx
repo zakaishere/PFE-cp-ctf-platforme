@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
+import { APP_NAME } from "@/lib/brand";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import Navbar from "@/components/Navbar";
@@ -751,7 +752,7 @@ export default function TeacherCtfCompetitionFormPage({ editId, embedded }: { ed
     <>
       <Navbar />
       <div className="psp-breadcrumb">
-        <Link href="/teacher">PSP</Link> ›{" "}
+        <Link href="/teacher">{APP_NAME}</Link> ›{" "}
         <Link href="/teacher/ctf">CTF</Link> ›{" "}
         {isEdit && editId
           ? <><Link href={`/teacher/ctf/${editId}/manage`}>Manage</Link> › <span style={{ color: "var(--text-primary)" }}>Edit</span></>

@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback, useRef } from "react";
+import { APP_NAME } from "@/lib/brand";
 import Link from "next/link";
 import Navbar from "@/components/Navbar";
 import {
@@ -118,7 +119,7 @@ function SortableProblemRow({
         <span className="mgr-drag-handle" {...attributes} {...listeners} onClick={e => e.stopPropagation()}>
           <GripVertical size={14} />
         </span>
-        <span style={{ width: 22, height: 22, background: "#0052cc", color: "white", borderRadius: 3, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 11, fontWeight: 700, flexShrink: 0 }}>
+        <span style={{ width: 22, height: 22, background: "var(--brand)", color: "white", borderRadius: 3, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 11, fontWeight: 700, flexShrink: 0 }}>
           {cp.label}
         </span>
         <span style={{ flex: 1, fontWeight: 600, fontSize: 13, color: "var(--text-primary)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
@@ -446,7 +447,7 @@ export default function CompetitionManagerV2() {
     <>
       <Navbar />
       <div className="psp-breadcrumb">
-        <Link href="/teacher">PSP</Link> › <span style={{ color: "var(--text-primary)" }}>Competitions</span>
+        <Link href="/teacher">{APP_NAME}</Link> › <span style={{ color: "var(--text-primary)" }}>Competitions</span>
       </div>
 
       <div className="mgr-shell">
@@ -530,7 +531,7 @@ export default function CompetitionManagerV2() {
               <div className="mgr-center-body">
                 {detailLoading ? (
                   <div style={{ display: "flex", justifyContent: "center", padding: 60 }}>
-                    <Loader2 size={24} style={{ animation: "spin 1s linear infinite", color: "#0052cc" }} />
+                    <Loader2 size={24} style={{ animation: "spin 1s linear infinite", color: "var(--brand)" }} />
                   </div>
                 ) : !detail ? null : (
                   <>
@@ -649,7 +650,7 @@ export default function CompetitionManagerV2() {
                         </div>
                         {reqLoading ? (
                           <div style={{ display: "flex", justifyContent: "center", padding: 40 }}>
-                            <Loader2 size={20} style={{ animation: "spin 1s linear infinite", color: "#0052cc" }} />
+                            <Loader2 size={20} style={{ animation: "spin 1s linear infinite", color: "var(--brand)" }} />
                           </div>
                         ) : requests.length === 0 ? (
                           <div className="psp-empty" style={{ border: "1px solid var(--border)", borderRadius: 3 }}>
@@ -714,7 +715,7 @@ export default function CompetitionManagerV2() {
                         </div>
                         {sbLoading ? (
                           <div style={{ display: "flex", justifyContent: "center", padding: 40 }}>
-                            <Loader2 size={20} style={{ animation: "spin 1s linear infinite", color: "#0052cc" }} />
+                            <Loader2 size={20} style={{ animation: "spin 1s linear infinite", color: "var(--brand)" }} />
                           </div>
                         ) : scoreboard.length === 0 ? (
                           <div className="psp-empty" style={{ border: "1px solid var(--border)", borderRadius: 3 }}>
@@ -739,7 +740,7 @@ export default function CompetitionManagerV2() {
                                     <td style={{ fontWeight: 700, color: "var(--text-primary)" }}>{i + 1}</td>
                                     <td>{row.studentName || row.teamName || row.studentId?.slice(0, 8)}</td>
                                     <td>{row.solved ?? row.solvedCount ?? "—"}</td>
-                                    <td style={{ textAlign: "right", fontWeight: 600, color: "#0052cc" }}>{row.totalScore ?? row.score ?? 0}</td>
+                                    <td style={{ textAlign: "right", fontWeight: 600, color: "var(--brand)" }}>{row.totalScore ?? row.score ?? 0}</td>
                                     <td style={{ textAlign: "right", color: "var(--text-muted)" }}>{row.penalty ?? 0}</td>
                                   </tr>
                                 ))}
@@ -890,7 +891,7 @@ export default function CompetitionManagerV2() {
               </div>
               <div className="mgr-right-body" style={{ padding: 0 }}>
                 {pickerLoading ? (
-                  <div style={{ display: "flex", justifyContent: "center", padding: 32 }}><Loader2 size={18} style={{ animation: "spin 1s linear infinite", color: "#0052cc" }} /></div>
+                  <div style={{ display: "flex", justifyContent: "center", padding: 32 }}><Loader2 size={18} style={{ animation: "spin 1s linear infinite", color: "var(--brand)" }} /></div>
                 ) : (
                   pickerProblems
                     .filter(p => {
@@ -970,8 +971,8 @@ export default function CompetitionManagerV2() {
                         style={{
                           padding: "8px 6px", borderRadius: 6, cursor: "pointer",
                           border: active ? "2px solid #0052cc" : "1px solid var(--border)",
-                          background: active ? "#deebff" : "var(--bg-primary)",
-                          color: active ? "#0052cc" : "var(--text-primary)",
+                          background: active ? "var(--accent-soft)" : "var(--bg-primary)",
+                          color: active ? "var(--brand)" : "var(--text-primary)",
                           fontWeight: active ? 700 : 500, fontSize: 12,
                         }}
                       >

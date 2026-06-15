@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { APP_NAME } from "@/lib/brand";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import Navbar from "@/components/Navbar";
@@ -71,7 +72,7 @@ function StatCard({
         </div>
         <Link href={createHref} style={{
           display: "inline-flex", alignItems: "center", gap: 4, fontSize: 11,
-          color: "#0052cc", textDecoration: "none", fontWeight: 600,
+          color: "var(--brand)", textDecoration: "none", fontWeight: 600,
         }}>
           <Plus size={11} /> New
         </Link>
@@ -81,7 +82,7 @@ function StatCard({
           <div><span style={{ color: "#00875a", fontWeight: 700 }}>{active} active</span></div>
         )}
         {upcoming !== undefined && (
-          <div><span style={{ color: "#0052cc", fontWeight: 600 }}>{upcoming} upcoming</span></div>
+          <div><span style={{ color: "var(--brand)", fontWeight: 600 }}>{upcoming} upcoming</span></div>
         )}
         <div>{total} total</div>
       </div>
@@ -118,11 +119,11 @@ function ActiveTile({
             {title}
           </div>
           {subtitle && <div style={{ fontSize: 11, color: "var(--text-muted)", marginTop: 2 }}>{subtitle}</div>}
-          {remaining && <div style={{ fontSize: 11, color: "#ff8b00", fontWeight: 500, marginTop: 4 }}>{remaining}</div>}
+          {remaining && <div style={{ fontSize: 11, color: "var(--warn)", fontWeight: 500, marginTop: 4 }}>{remaining}</div>}
         </div>
         <Link href={manageUrl} style={{
           display: "inline-flex", alignItems: "center", gap: 4, fontSize: 11,
-          fontWeight: 600, color: "#0052cc", textDecoration: "none", whiteSpace: "nowrap",
+          fontWeight: 600, color: "var(--brand)", textDecoration: "none", whiteSpace: "nowrap",
         }}>
           Manage <ArrowRight size={11} />
         </Link>
@@ -159,7 +160,7 @@ export default function TeacherOverview() {
     <>
       <Navbar />
       <div className="psp-breadcrumb">
-        <Link href="/teacher">PSP</Link> ›{" "}
+        <Link href="/teacher">{APP_NAME}</Link> ›{" "}
         <span style={{ color: "var(--text-primary)" }}>Dashboard</span>
       </div>
 
@@ -174,7 +175,7 @@ export default function TeacherOverview() {
 
         {loading && (
           <div style={{ display: "flex", justifyContent: "center", padding: 80 }}>
-            <Loader2 size={24} style={{ animation: "spin 1s linear infinite", color: "#0052cc" }} />
+            <Loader2 size={24} style={{ animation: "spin 1s linear infinite", color: "var(--brand)" }} />
           </div>
         )}
 
@@ -183,7 +184,7 @@ export default function TeacherOverview() {
             {/* Stat cards row */}
             <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 14, marginBottom: 28 }}>
               <StatCard
-                icon={<Trophy size={14} color="#ff8b00" />}
+                icon={<Trophy size={14} color="var(--warn)" />}
                 label="Competitions"
                 active={stats?.competitions.active}
                 upcoming={stats?.competitions.upcoming}
@@ -192,7 +193,7 @@ export default function TeacherOverview() {
                 listHref="/teacher/competitions"
               />
               <StatCard
-                icon={<FileText size={14} color="#0052cc" />}
+                icon={<FileText size={14} color="var(--brand)" />}
                 label="Exams"
                 active={stats?.exams.active}
                 upcoming={stats?.exams.upcoming}
@@ -248,7 +249,7 @@ export default function TeacherOverview() {
                     </div>
                     {data.activeCompetitions.map(c => (
                       <ActiveTile key={c.id}
-                        icon={<Trophy size={12} color="#ff8b00" />}
+                        icon={<Trophy size={12} color="var(--warn)" />}
                         status="ACTIVE" title={c.title}
                         subtitle={`${c.mode} · ${c.durationMinutes}min`}
                         remaining={fmtRemaining(c.startTime, c.durationMinutes)}
@@ -265,7 +266,7 @@ export default function TeacherOverview() {
                     </div>
                     {data.activeExams.map(e => (
                       <ActiveTile key={e.id}
-                        icon={<FileText size={12} color="#0052cc" />}
+                        icon={<FileText size={12} color="var(--brand)" />}
                         status="ACTIVE" title={e.title}
                         remaining={fmtRemaining(e.scheduledStartTime, e.durationMinutes)}
                         manageUrl={e.manageUrl}

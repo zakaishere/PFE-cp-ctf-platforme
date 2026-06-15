@@ -83,7 +83,7 @@ export function JoinActionButton({
     return (
       <button disabled className="btn btn-secondary btn-sm" style={{ opacity: 0.9 }}>
         <span style={{
-          width: 6, height: 6, borderRadius: "50%", background: "#ff8b00",
+          width: 6, height: 6, borderRadius: "50%", background: "var(--warn)",
           display: "inline-block", marginRight: 4,
           animation: "badge-pulse 1.2s ease-in-out infinite",
         }} />

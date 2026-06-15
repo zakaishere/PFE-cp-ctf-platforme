@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
+import { APP_NAME } from "@/lib/brand";
 import Link from "next/link";
 import Navbar from "@/components/Navbar";
 import {
@@ -101,7 +102,7 @@ function SortableAssessmentProblemRow({
         <span className="mgr-drag-handle" {...attributes} {...listeners} onClick={e => e.stopPropagation()}>
           <GripVertical size={14} />
         </span>
-        <span style={{ width: 22, height: 22, background: "#0052cc", color: "white", borderRadius: 3, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 11, fontWeight: 700, flexShrink: 0 }}>
+        <span style={{ width: 22, height: 22, background: "var(--brand)", color: "white", borderRadius: 3, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 11, fontWeight: 700, flexShrink: 0 }}>
           {ap.orderIndex != null ? String.fromCharCode(65 + ap.orderIndex) : "?"}
         </span>
         <span style={{ flex: 1, fontWeight: 600, fontSize: 13, color: "var(--text-primary)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
@@ -462,7 +463,7 @@ export default function AssessmentManagerV2() {
     <>
       <Navbar />
       <div className="psp-breadcrumb">
-        <Link href="/teacher">PSP</Link> › <span style={{ color: "var(--text-primary)" }}>Exams & TPs</span>
+        <Link href="/teacher">{APP_NAME}</Link> › <span style={{ color: "var(--text-primary)" }}>Exams & TPs</span>
       </div>
 
       <div className="mgr-shell">
@@ -567,7 +568,7 @@ export default function AssessmentManagerV2() {
               <div className="mgr-center-body">
                 {detailLoading ? (
                   <div style={{ display: "flex", justifyContent: "center", padding: 60 }}>
-                    <Loader2 size={24} style={{ animation: "spin 1s linear infinite", color: "#0052cc" }} />
+                    <Loader2 size={24} style={{ animation: "spin 1s linear infinite", color: "var(--brand)" }} />
                   </div>
                 ) : !detail ? null : (
                   <>
@@ -685,7 +686,7 @@ export default function AssessmentManagerV2() {
                         </div>
                         {reqLoading ? (
                           <div style={{ display: "flex", justifyContent: "center", padding: 40 }}>
-                            <Loader2 size={20} style={{ animation: "spin 1s linear infinite", color: "#0052cc" }} />
+                            <Loader2 size={20} style={{ animation: "spin 1s linear infinite", color: "var(--brand)" }} />
                           </div>
                         ) : requests.length === 0 ? (
                           <div className="psp-empty" style={{ border: "1px solid var(--border)", borderRadius: 3 }}>
@@ -753,7 +754,7 @@ export default function AssessmentManagerV2() {
                         </div>
                         {subLoading ? (
                           <div style={{ display: "flex", justifyContent: "center", padding: 40 }}>
-                            <Loader2 size={20} style={{ animation: "spin 1s linear infinite", color: "#0052cc" }} />
+                            <Loader2 size={20} style={{ animation: "spin 1s linear infinite", color: "var(--brand)" }} />
                           </div>
                         ) : submissions.length === 0 ? (
                           <div className="psp-empty" style={{ border: "1px solid var(--border)", borderRadius: 3 }}>
@@ -784,7 +785,7 @@ export default function AssessmentManagerV2() {
                                           {s.result || s.status || "—"}
                                         </span>
                                       </td>
-                                      <td style={{ textAlign: "right", fontWeight: 600, color: "#0052cc" }}>{s.score ?? "—"}</td>
+                                      <td style={{ textAlign: "right", fontWeight: 600, color: "var(--brand)" }}>{s.score ?? "—"}</td>
                                       <td style={{ fontSize: 11, color: "var(--text-subtle)" }}>{s.timestamp ? fmtDate(s.timestamp) : "—"}</td>
                                       {isExam(selected) && (
                                         <td>
@@ -990,7 +991,7 @@ export default function AssessmentManagerV2() {
               <div className="mgr-right-body" style={{ padding: 0 }}>
                 {pickerLoading ? (
                   <div style={{ display: "flex", justifyContent: "center", padding: 32 }}>
-                    <Loader2 size={18} style={{ animation: "spin 1s linear infinite", color: "#0052cc" }} />
+                    <Loader2 size={18} style={{ animation: "spin 1s linear infinite", color: "var(--brand)" }} />
                   </div>
                 ) : (
                   pickerProblems

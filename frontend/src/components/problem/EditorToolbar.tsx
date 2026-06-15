@@ -86,7 +86,7 @@ export function EditorToolbar({
         disabled={busy}
         style={{
           height: 32, padding: "0 16px",
-          background: submitting ? "#004099" : "#0052cc",
+          background: submitting ? "#004099" : "var(--brand)",
           border: "none",
           borderRadius: 5,
           color: "white",
@@ -98,8 +98,8 @@ export function EditorToolbar({
           boxShadow: "0 1px 3px rgba(0,82,204,0.4)",
           opacity: busy ? 0.7 : 1,
         }}
-        onMouseEnter={e => { if (!busy) e.currentTarget.style.background = "#0065ff"; }}
-        onMouseLeave={e => { e.currentTarget.style.background = submitting ? "#004099" : "#0052cc"; }}
+        onMouseEnter={e => { if (!busy) e.currentTarget.style.background = "var(--brand-2)"; }}
+        onMouseLeave={e => { e.currentTarget.style.background = submitting ? "#004099" : "var(--brand)"; }}
       >
         {submitting ? <><MiniSpinner color="white" /> Judging...</> : <>⚡ Submit</>}
       </button>

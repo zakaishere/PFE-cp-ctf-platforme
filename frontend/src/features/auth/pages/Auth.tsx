@@ -221,7 +221,7 @@ function RegisterForm({ onLogin }: { onLogin: () => void }) {
           catch (e: any) { setError(e.message || "Registration failed"); }
           finally { setLoading(false); }
         })}>
-          <div style={{ background: "#deebff", border: "1px solid #4c9aff", borderRadius: 3, padding: "10px 12px", fontSize: 12, color: "#0747a6", marginBottom: 14 }}>
+          <div style={{ background: "var(--accent-soft)", border: "1px solid #4c9aff", borderRadius: 3, padding: "10px 12px", fontSize: 12, color: "#0747a6", marginBottom: 14 }}>
             Teacher accounts require administrator approval before you can log in.
           </div>
           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>

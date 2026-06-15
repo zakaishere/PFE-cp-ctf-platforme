@@ -46,16 +46,16 @@ const ICONS: Record<ToastType, string> = {
 
 const LEFT_BORDER: Record<ToastType, string> = {
   error:   "#de350b",
-  warning: "#ff8b00",
+  warning: "var(--warn)",
   success: "#00875a",
-  info:    "#0052cc",
+  info:    "var(--brand)",
 };
 
 const TITLE_COLOR: Record<ToastType, string> = {
   error:   "#de350b",
-  warning: "#ff8b00",
+  warning: "var(--warn)",
   success: "#00875a",
-  info:    "#0052cc",
+  info:    "var(--brand)",
 };
 
 export function ToastContainer() {

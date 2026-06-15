@@ -172,7 +172,7 @@ export default function CodeWorkspace({
             onClick={onSubmit}
             disabled={busy}
             style={{
-              background: busy ? "#97a0af" : "#0052cc", color: "white",
+              background: busy ? "#97a0af" : "var(--brand)", color: "white",
               border: "none", borderRadius: 3,
               height: 28, padding: "0 14px", fontSize: 12,
               cursor: busy ? "not-allowed" : "pointer",
@@ -268,15 +268,15 @@ export default function CodeWorkspace({
                     </>
                   ) : r.status === "tle" ? (
                     <>
-                      <XCircle size={14} color="#ff8b00" />
+                      <XCircle size={14} color="var(--warn)" />
                       <span style={{ flex: 1, fontWeight: 500 }}>{label}</span>
-                      <span style={{ color: "#ff8b00", fontSize: 11 }}>TLE</span>
+                      <span style={{ color: "var(--warn)", fontSize: 11 }}>TLE</span>
                     </>
                   ) : r.status === "mle" ? (
                     <>
-                      <XCircle size={14} color="#ff8b00" />
+                      <XCircle size={14} color="var(--warn)" />
                       <span style={{ flex: 1, fontWeight: 500 }}>{label}</span>
-                      <span style={{ color: "#ff8b00", fontSize: 11 }}>MLE</span>
+                      <span style={{ color: "var(--warn)", fontSize: 11 }}>MLE</span>
                     </>
                   ) : r.status === "error" ? (
                     <>
@@ -307,7 +307,7 @@ export default function CodeWorkspace({
               "#ffebe6",
             color:
               verdict === "accepted" ? "#006644" :
-              verdict === "tle" || verdict === "mle" ? "#ff8b00" :
+              verdict === "tle" || verdict === "mle" ? "var(--warn)" :
               "#bf2600",
           }}>
             {verdict === "accepted" ? <CheckCircle2 size={16} /> : <XCircle size={16} />}

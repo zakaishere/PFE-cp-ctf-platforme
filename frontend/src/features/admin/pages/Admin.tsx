@@ -1,13 +1,14 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { APP_NAME } from "@/lib/brand";
 import Link from "next/link";
 import Navbar from "@/components/Navbar";
 import { Users, BookOpen, Clock, ClipboardList, Monitor, AlertTriangle, CheckCircle2, X, Loader2, Server } from "lucide-react";
 import { getPendingTeachers, activateTeacher, rejectTeacher, getLeaderboard, getCTFAdminConfig, updateCTFAdminConfig, getPlatformStats, getAdminHealthMetrics, type PendingTeacher, type LeaderboardEntry, type CTFResourceConfig, type PlatformStats, type AdminHealthMetrics } from "@/lib/api";
 import { LoadingButton } from "@/components/ui/LoadingButton";
 
-const AVATAR_COLORS = ["#0052cc","#6554c0","#00875a","#ff8b00","#ff5630","#36b37e","#00b8d9","#de350b"];
+const AVATAR_COLORS = ["var(--brand)","#6554c0","#00875a","var(--warn)","#ff5630","#36b37e","#00b8d9","#de350b"];
 
 function initials(t: PendingTeacher) {
   return `${t.firstName.charAt(0)}${t.lastName.charAt(0)}`.toUpperCase();
@@ -77,7 +78,7 @@ export default function AdminDashboard() {
     <>
       <Navbar />
       <div className="psp-breadcrumb">
-        <Link href="/admin">PSP</Link> › <span style={{ color: "var(--text-primary)" }}>Admin Dashboard</span>
+        <Link href="/admin">{APP_NAME}</Link> › <span style={{ color: "var(--text-primary)" }}>Admin Dashboard</span>
       </div>
 
       <div className="psp-main">
@@ -121,7 +122,7 @@ export default function AdminDashboard() {
             {/* Pending teachers */}
             <div className="psp-card">
               <div className="psp-card-header">
-                <span className="psp-card-title"><Clock size={13} style={{ display: "inline", marginRight: 5, color: "#ff8b00" }} />Pending Teacher Approvals ({pending.length})</span>
+                <span className="psp-card-title"><Clock size={13} style={{ display: "inline", marginRight: 5, color: "var(--warn)" }} />Pending Teacher Approvals ({pending.length})</span>
                 <button className="psp-btn psp-btn-success psp-btn-sm" onClick={() => pending.forEach((t) => approve(t.id))}>Approve All</button>
               </div>
               <div style={{ padding: 14 }}>
@@ -197,7 +198,7 @@ export default function AdminDashboard() {
                   <span style={{
                     fontSize: 11, fontWeight: 700, padding: "2px 8px", borderRadius: 4,
                     background: health.overall === "OK" ? "rgba(0,135,90,0.12)" : health.overall === "WARN" ? "rgba(255,139,0,0.12)" : "rgba(222,53,11,0.12)",
-                    color: health.overall === "OK" ? "#00875a" : health.overall === "WARN" ? "#ff8b00" : "#de350b",
+                    color: health.overall === "OK" ? "#00875a" : health.overall === "WARN" ? "var(--warn)" : "#de350b",
                   }}>{health.overall}</span>
                 )}
               </div>
@@ -222,7 +223,7 @@ export default function AdminDashboard() {
                     status: health.heap.status,
                   },
                 ] as Array<{ label: string; val: string; status: string }>).map((row, i) => {
-                  const clr = row.status === "OK" ? "#00875a" : row.status === "WARN" ? "#ff8b00" : row.status === "CRITICAL" ? "#de350b" : "var(--text-muted)";
+                  const clr = row.status === "OK" ? "#00875a" : row.status === "WARN" ? "var(--warn)" : row.status === "CRITICAL" ? "#de350b" : "var(--text-muted)";
                   return (
                     <div key={i} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 10 }}>
                       <span style={{ fontSize: 13, color: "var(--text-muted)" }}>{row.label}</span>
@@ -320,7 +321,7 @@ export default function AdminDashboard() {
             <div className="psp-card">
               <div className="psp-card-header">
                 <span className="psp-card-title">Top Students</span>
-                <Link href="/leaderboard" style={{ fontSize: 11, color: "#0052cc" }}>Full Leaderboard</Link>
+                <Link href="/leaderboard" style={{ fontSize: 11, color: "var(--brand)" }}>Full Leaderboard</Link>
               </div>
               {topStudents.slice(0, 5).map((s, i) => {
                 const medals = ["🥇","🥈","🥉"];
@@ -331,7 +332,7 @@ export default function AdminDashboard() {
                     <span style={{ fontSize: 16, width: 20, textAlign: "center" }}>{medals[i] || String(i + 1)}</span>
                     <div style={{ width: 26, height: 26, borderRadius: "50%", background: color, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 9, fontWeight: 700, color: "white" }}>{ini}</div>
                     <span style={{ flex: 1, fontWeight: 500 }}>{s.firstName} {s.lastName}</span>
-                    <span style={{ fontWeight: 700, color: "#0052cc" }}>{s.totalPoints} pts</span>
+                    <span style={{ fontWeight: 700, color: "var(--brand)" }}>{s.totalPoints} pts</span>
                   </div>
                 );
               })}
