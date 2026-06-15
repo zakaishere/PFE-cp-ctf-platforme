@@ -14,11 +14,11 @@ interface DomainStatusBadgeProps {
 
 const STATUS_CONFIG: Record<string, { label: string; fg: string; bg: string; border: string; dot?: boolean }> = {
   UPCOMING:     { label: "UPCOMING",     fg: "#60a5fa", bg: "rgba(96,165,250,0.12)",  border: "rgba(96,165,250,0.35)"  },
-  ACTIVE:       { label: "● ACTIVE",     fg: "#34d399", bg: "rgba(16,185,129,0.12)",  border: "rgba(16,185,129,0.35)", dot: true },
-  LIVE:         { label: "● LIVE",       fg: "#34d399", bg: "rgba(16,185,129,0.12)",  border: "rgba(16,185,129,0.35)", dot: true },
-  OPEN:         { label: "● OPEN",       fg: "#60a5fa", bg: "rgba(96,165,250,0.12)",  border: "rgba(96,165,250,0.35)", dot: true },
-  PAUSED:       { label: "⏸ PAUSED",    fg: "#fbbf24", bg: "rgba(245,158,11,0.12)",  border: "rgba(245,158,11,0.35)"  },
-  FROZEN:       { label: "❄ FROZEN",     fg: "#22d3ee", bg: "rgba(34,211,238,0.12)",  border: "rgba(34,211,238,0.35)"  },
+  ACTIVE:       { label: "ACTIVE",     fg: "#34d399", bg: "rgba(16,185,129,0.12)",  border: "rgba(16,185,129,0.35)", dot: true },
+  LIVE:         { label: "LIVE",       fg: "#34d399", bg: "rgba(16,185,129,0.12)",  border: "rgba(16,185,129,0.35)", dot: true },
+  OPEN:         { label: "OPEN",       fg: "#60a5fa", bg: "rgba(96,165,250,0.12)",  border: "rgba(96,165,250,0.35)", dot: true },
+  PAUSED:       { label: "PAUSED",    fg: "#fbbf24", bg: "rgba(245,158,11,0.12)",  border: "rgba(245,158,11,0.35)"  },
+  FROZEN:       { label: "FROZEN",     fg: "#22d3ee", bg: "rgba(34,211,238,0.12)",  border: "rgba(34,211,238,0.35)"  },
   ENDED:        { label: "ENDED",        fg: "#94a3b8", bg: "rgba(148,163,184,0.12)", border: "rgba(148,163,184,0.3)"  },
   CLOSED:       { label: "CLOSED",       fg: "#94a3b8", bg: "rgba(148,163,184,0.12)", border: "rgba(148,163,184,0.3)"  },
   REGISTRATION: { label: "REG OPEN",     fg: "#a78bfa", bg: "rgba(167,139,250,0.15)", border: "rgba(167,139,250,0.35)" },

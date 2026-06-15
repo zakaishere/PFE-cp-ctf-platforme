@@ -23,7 +23,9 @@ import { useAntiCheat, type ViolationEvent } from "@/hooks/useAntiCheat";
 import { useAuth } from "@/features/auth/contexts/AuthContext";
 import ArenaShell, { type ArenaTab } from "@/features/arena/components/ArenaShell";
 import CPScoreboard from "@/features/competitions/components/CPScoreboard";
-import { Code, Play, ShieldAlert, Trophy } from "lucide-react";
+import { Code, Play, ShieldAlert, Trophy, Medal, Flag, AlertTriangle, X, HardDrive, Clock, Check, Lock } from "lucide-react";
+
+const MEDAL_COLORS = ["#f5c451", "#c7cdd9", "#cd8a52"]; // gold, silver, bronze
 
 const MonacoEditor = dynamic(() => import("@monaco-editor/react"), { ssr: false });
 
@@ -50,13 +52,13 @@ const DEFAULT_CODE: Record<string, string> = {
 };
 
 const DIFF_STYLE: Record<string, { bg: string; text: string }> = {
-  EASY:   { bg: "#e3fcef", text: "#006644" },
-  MEDIUM: { bg: "#fffae6", text: "#974f0c" },
-  HARD:   { bg: "#ffebe6", text: "#bf2600" },
+  EASY:   { bg: "var(--success-soft)", text: "var(--success-ink)" },
+  MEDIUM: { bg: "var(--warn-soft)", text: "var(--warn-ink)" },
+  HARD:   { bg: "var(--danger-soft)", text: "var(--danger-ink)" },
 };
 
 const SOLVE_DOT: Record<string, string> = {
-  SOLVED:    "#00875a",
+  SOLVED:    "var(--success)",
   ATTEMPTED: "var(--warn)",
   UNSOLVED:  "#5e6c84",
 };
@@ -105,9 +107,9 @@ interface ActivityEntry {
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
 function verdictColor(v: string): string {
-  if (v === "AC")  return "#00875a";
-  if (v === "WA")  return "#bf2600";
-  if (v === "TLE" || v === "MLE") return "#974f0c";
+  if (v === "AC")  return "var(--success)";
+  if (v === "WA")  return "var(--danger-ink)";
+  if (v === "TLE" || v === "MLE") return "var(--warn-ink)";
   return "#5e6c84";
 }
 
@@ -154,7 +156,7 @@ function EndOfCompetitionOverlay({
     >
       <div className="text-center max-w-lg px-8 py-10">
         <div className="text-7xl mb-4">
-          {myRank === 1 ? "🥇" : myRank === 2 ? "🥈" : myRank === 3 ? "🥉" : "🏁"}
+          {myRank >= 1 && myRank <= 3 ? <Medal size={64} color={MEDAL_COLORS[myRank-1]} className="mx-auto" /> : <Flag size={64} color="var(--ink-3)" className="mx-auto" />}
         </div>
 
         <h1 className="text-white text-3xl font-black mb-2">Competition Ended!</h1>
@@ -184,7 +186,7 @@ function EndOfCompetitionOverlay({
                 }`}
               >
                 <div className="text-2xl mb-1">
-                  {entry.rank === 1 ? "🥇" : entry.rank === 2 ? "🥈" : "🥉"}
+                  {entry.rank >= 1 && entry.rank <= 3 ? <Medal size={28} color={MEDAL_COLORS[entry.rank-1]} className="mx-auto" /> : null}
                 </div>
                 <div className="text-white text-sm font-bold truncate max-w-[100px]">
                   {mode === "TEAM" ? entry.teamName : `${entry.firstName} ${entry.lastName}`}
@@ -676,7 +678,7 @@ function BriefingScreen({
       fontFamily: "-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif",
     }}>
       <div style={{
-        background: "#172b4d", borderRadius: 10, padding: "32px 36px",
+        background: "var(--bg-2)", borderRadius: 10, padding: "32px 36px",
         maxWidth: 520, width: "100%", boxShadow: "0 16px 40px rgba(0,0,0,0.4)",
       }}>
         <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 18 }}>
@@ -795,8 +797,8 @@ function CPTopBarExtras({
             borderRadius: 3, padding: "3px 10px", cursor: "pointer",
           }}
         >
-          <span style={{ color: "#ff8b8b", fontSize: 11 }}>⚠</span>
-          <span style={{ color: "#ffb8b8", fontSize: 11, fontWeight: 600 }}>
+          <AlertTriangle size={12} color="var(--danger-ink)" />
+          <span style={{ color: "var(--danger-ink)", fontSize: 11, fontWeight: 600 }}>
             {violationCount} violation{violationCount !== 1 ? "s" : ""}
           </span>
         </button>
@@ -809,31 +811,31 @@ function CPTopBarExtras({
       {showViolations && (
         <div style={{
           position: "fixed", top: 44, right: 0, width: 360, height: "calc(100vh - 44px)",
-          background: "#172b4d", borderLeft: "1px solid #253858", zIndex: 9000,
+          background: "var(--bg-2)", borderLeft: "1px solid var(--line)", zIndex: 9000,
           display: "flex", flexDirection: "column", overflowY: "hidden",
           boxShadow: "-4px 0 20px rgba(0,0,0,0.5)",
         }}>
-          <div style={{ padding: "14px 16px", borderBottom: "1px solid #253858", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+          <div style={{ padding: "14px 16px", borderBottom: "1px solid var(--line)", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
             <span style={{ color: "white", fontWeight: 700, fontSize: 13 }}>Your Violations</span>
-            <button onClick={() => setShowViolations(false)} style={{ background: "transparent", border: "none", color: "rgba(255,255,255,0.5)", cursor: "pointer", fontSize: 16 }}>✕</button>
+            <button onClick={() => setShowViolations(false)} style={{ background: "transparent", border: "none", color: "rgba(255,255,255,0.5)", cursor: "pointer", fontSize: 16 }} aria-label="Close"><X size={16} /></button>
           </div>
-          <div style={{ padding: "10px 16px", background: "rgba(222,53,11,0.12)", borderBottom: "1px solid #253858" }}>
-            <p style={{ fontSize: 12, color: "#ffb8b8" }}>⚠ These are logged and visible to the teacher</p>
+          <div style={{ padding: "10px 16px", background: "rgba(222,53,11,0.12)", borderBottom: "1px solid var(--line)" }}>
+            <p style={{ fontSize: 12, color: "var(--danger-ink)", display: "flex", alignItems: "center", gap: 6 }}><AlertTriangle size={12} /> These are logged and visible to the teacher</p>
           </div>
           <div style={{ flex: 1, overflowY: "auto", padding: 16 }}>
             {violationLog.length === 0 ? (
               <p style={{ color: "rgba(255,255,255,0.3)", fontSize: 12 }}>No violations recorded</p>
             ) : violationLog.map((v, i) => (
-              <div key={i} style={{ marginBottom: 10, paddingBottom: 10, borderBottom: "1px solid #253858" }}>
+              <div key={i} style={{ marginBottom: 10, paddingBottom: 10, borderBottom: "1px solid var(--line)" }}>
                 <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 2 }}>
-                  <span style={{ color: "#ff8b8b", fontSize: 12, fontWeight: 600 }}>{v.type.replace(/_/g, " ")}</span>
+                  <span style={{ color: "var(--danger-ink)", fontSize: 12, fontWeight: 600 }}>{v.type.replace(/_/g, " ")}</span>
                   <span style={{ color: "rgba(255,255,255,0.4)", fontSize: 11 }}>{fmtTime(v.timestamp)}</span>
                 </div>
                 {v.details && <p style={{ color: "rgba(255,255,255,0.5)", fontSize: 11 }}>{v.details}</p>}
               </div>
             ))}
           </div>
-          <div style={{ padding: "12px 16px", borderTop: "1px solid #253858" }}>
+          <div style={{ padding: "12px 16px", borderTop: "1px solid var(--line)" }}>
             <p style={{ color: "rgba(255,255,255,0.35)", fontSize: 11, lineHeight: 1.5 }}>
               Violations are reviewed after the competition. Excessive violations may result in disqualification.
             </p>
@@ -859,7 +861,7 @@ function LeftPanel({
   const progressPct = problems.length > 0 ? (solvedCount / problems.length) * 100 : 0;
 
   return (
-    <div style={{ width: 220, background: "#253858", display: "flex", flexDirection: "column", flexShrink: 0, borderRight: "1px solid #344563", overflowY: "auto" }}>
+    <div style={{ width: 220, background: "var(--line)", display: "flex", flexDirection: "column", flexShrink: 0, borderRight: "1px solid #344563", overflowY: "auto" }}>
       <div style={{ padding: 12, borderBottom: "1px solid #344563" }}>
         <div style={{ fontSize: 10, fontWeight: 700, color: "rgba(255,255,255,0.4)", textTransform: "uppercase", letterSpacing: "0.5px", marginBottom: 8 }}>Problems</div>
         {problems.map((p, i) => (
@@ -881,7 +883,7 @@ function LeftPanel({
         <div style={{ fontSize: 10, fontWeight: 700, color: "rgba(255,255,255,0.4)", textTransform: "uppercase", letterSpacing: "0.5px", marginBottom: 6 }}>Progress</div>
         <div style={{ fontSize: 12, color: "rgba(255,255,255,0.65)", marginBottom: 6 }}>{solvedCount} / {problems.length} solved</div>
         <div style={{ background: "#344563", height: 4, borderRadius: 2 }}>
-          <div style={{ background: "#00875a", height: 4, borderRadius: 2, width: `${progressPct}%`, transition: "width 0.3s" }} />
+          <div style={{ background: "var(--success)", height: 4, borderRadius: 2, width: `${progressPct}%`, transition: "width 0.3s" }} />
         </div>
       </div>
 
@@ -936,16 +938,16 @@ function ProblemStatement({ problem }: { problem: ArenaProblem }) {
           {problem.label}. {problem.title}
         </div>
         <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
-          <MetaChip>⏱ {problem.timeLimitMs} ms</MetaChip>
-          <MetaChip>💾 {problem.memoryLimitMb} MB</MetaChip>
+          <MetaChip><Clock size={11} /> {problem.timeLimitMs} ms</MetaChip>
+          <MetaChip><HardDrive size={11} /> {problem.memoryLimitMb} MB</MetaChip>
           <MetaChip style={{ background: diff.bg, color: diff.text }}>{problem.difficultyLevel}</MetaChip>
           <MetaChip>{problem.points} pts</MetaChip>
           {problem.attempts > 0 && (
             <MetaChip style={{
-              background: problem.solveStatus === "SOLVED" ? "#e3fcef" : "#fffae6",
-              color: problem.solveStatus === "SOLVED" ? "#006644" : "#974f0c",
+              background: problem.solveStatus === "SOLVED" ? "var(--success-soft)" : "var(--warn-soft)",
+              color: problem.solveStatus === "SOLVED" ? "var(--success-ink)" : "var(--warn-ink)",
             }}>
-              {problem.solveStatus === "SOLVED" ? "✓ Solved" : `${problem.attempts} attempt${problem.attempts !== 1 ? "s" : ""}`}
+              {problem.solveStatus === "SOLVED" ? <span style={{display:"inline-flex",alignItems:"center",gap:4}}><Check size={11} /> Solved</span> : `${problem.attempts} attempt${problem.attempts !== 1 ? "s" : ""}`}
             </MetaChip>
           )}
         </div>
@@ -976,7 +978,7 @@ function ProblemStatement({ problem }: { problem: ArenaProblem }) {
             <SectionHeader>Hidden Test Cases</SectionHeader>
             {Array.from({ length: problem.hiddenTestCaseCount }).map((_, i) => (
               <div key={i} style={{ background: "var(--bg-secondary)", border: "1px solid var(--border)", borderRadius: 3, padding: "7px 12px", fontSize: 12, color: "var(--text-muted)", display: "flex", alignItems: "center", gap: 6, marginBottom: 5 }}>
-                🔒 Hidden test case {i + 1}
+                <Lock size={12} /> Hidden test case {i + 1}
               </div>
             ))}
           </>
@@ -1007,12 +1009,12 @@ function RightEditorPanel({
   const submitDisabled = judging || running || problem.solveStatus === "SOLVED" || !isFullscreen;
 
   let submitLabel = "Submit";
-  if (problem.solveStatus === "SOLVED") submitLabel = "✓ Solved";
+  if (problem.solveStatus === "SOLVED") submitLabel = "Solved";
   else if (judging) submitLabel = "Judging…";
-  else if (!isFullscreen) submitLabel = "⛔ Fullscreen required";
+  else if (!isFullscreen) submitLabel = "Fullscreen required";
 
   let submitBg = "var(--brand)";
-  if (problem.solveStatus === "SOLVED") submitBg = "#00875a";
+  if (problem.solveStatus === "SOLVED") submitBg = "var(--success)";
   else if (submitDisabled) submitBg = "#97a0af";
 
   return (
@@ -1122,7 +1124,7 @@ function ScoreboardPanel({
                 {scoreboard.map(entry => {
                   const isMe = mode === "SOLO" && entry.studentId === myUserId;
                   return (
-                    <tr key={entry.teamId ?? entry.studentId} style={{ borderBottom: "1px solid #f4f5f7", background: isMe ? "var(--accent-soft)" : "transparent" }}>
+                    <tr key={entry.teamId ?? entry.studentId} style={{ borderBottom: "1px solid var(--line)", background: isMe ? "var(--accent-soft)" : "transparent" }}>
                       <td style={{ padding: "8px 12px", color: "var(--text-muted)", fontWeight: 700 }}>{entry.rank}</td>
                       <td style={{ padding: "8px 12px", color: "var(--text-primary)", fontWeight: 500 }}>
                         {mode === "TEAM" ? entry.teamName : `${entry.firstName} ${entry.lastName}`}
@@ -1131,7 +1133,7 @@ function ScoreboardPanel({
                         <td key={p.label} style={{ padding: "8px 8px", textAlign: "center" }}>
                           {p.verdict ? (
                             <span style={{ color: verdictColor(p.verdict), fontWeight: 700 }}>
-                              {p.verdict === "AC" ? "✓" : "✗"}
+                              {p.verdict === "AC" ? <Check size={14} /> : <X size={14} />}
                             </span>
                           ) : (
                             <span style={{ color: "var(--border)" }}>—</span>
@@ -1158,8 +1160,8 @@ function ScoreboardPanel({
 function JudgeResultBanner({ result }: { result: JudgeResult }) {
   const isPending = result.verdict === "PENDING";
   const isAC      = result.verdict === "AC";
-  const bg    = isPending ? "var(--accent-soft)" : isAC ? "#e3fcef" : "#ffebe6";
-  const color = isPending ? "#0747a6" : isAC ? "#006644"  : "#bf2600";
+  const bg    = isPending ? "var(--accent-soft)" : isAC ? "var(--success-soft)" : "var(--danger-soft)";
+  const color = isPending ? "var(--brand)" : isAC ? "var(--success-ink)"  : "var(--danger-ink)";
 
   return (
     <div style={{ padding: "10px 14px", background: bg, color, fontSize: 13, fontWeight: 600, display: "flex", alignItems: "center", gap: 10, flexShrink: 0 }}>
@@ -1170,7 +1172,7 @@ function JudgeResultBanner({ result }: { result: JudgeResult }) {
         </>
       ) : (
         <>
-          <span>{isAC ? "✓" : "✗"}</span>
+          <span style={{display:"inline-flex"}}>{isAC ? <Check size={15} /> : <X size={15} />}</span>
           <span>{verdictLabel(result.verdict)}</span>
           {result.score > 0 && <span style={{ marginLeft: "auto", fontSize: 12, fontWeight: 500 }}>{result.score} pts</span>}
           {result.executionTimeMs > 0 && <span style={{ fontSize: 11, opacity: 0.7 }}>{result.executionTimeMs} ms</span>}
@@ -1182,11 +1184,11 @@ function JudgeResultBanner({ result }: { result: JudgeResult }) {
 
 function RunResultRow({ result, idx }: { result: RunResult; idx: number }) {
   const [open, setOpen] = useState(false);
-  const icon  = result.passed ? "✓" : result.status === "TIME_OUT" ? "⏱" : "✗";
-  const color = result.passed ? "#006644" : result.status === "TIME_OUT" ? "#974f0c" : "#bf2600";
+  const icon  = result.passed ? <Check size={14} /> : result.status === "TIME_OUT" ? <Clock size={14} /> : <X size={14} />;
+  const color = result.passed ? "var(--success-ink)" : result.status === "TIME_OUT" ? "var(--warn-ink)" : "var(--danger-ink)";
 
   return (
-    <div style={{ borderBottom: "1px solid #f4f5f7" }}>
+    <div style={{ borderBottom: "1px solid var(--line)" }}>
       <div
         onClick={() => setOpen(o => !o)}
         style={{ display: "flex", alignItems: "center", padding: "7px 12px", gap: 8, fontSize: 12, cursor: "pointer" }}
@@ -1202,7 +1204,7 @@ function RunResultRow({ result, idx }: { result: RunResult; idx: number }) {
           <CodeBlock label="Input" selectable>{result.input}</CodeBlock>
           <CodeBlock label="Expected" selectable>{result.expected}</CodeBlock>
           {!result.passed && (
-            <CodeBlock label="Actual" selectable style={{ borderColor: "#ffebe6", background: "var(--red-light)" }}>
+            <CodeBlock label="Actual" selectable style={{ borderColor: "var(--danger-soft)", background: "var(--red-light)" }}>
               {result.actual}
             </CodeBlock>
           )}

@@ -938,7 +938,7 @@ button, a, input, select, textarea, [role="button"] {
   align-items: center;
   gap: 4px;
 }
-.field-error::before { content: '⚠'; font-size: 10px; }
+.field-error::before { content: '!'; font-weight: 800; font-size: 11px; }
 
 .form-field { margin-bottom: 18px; }
 

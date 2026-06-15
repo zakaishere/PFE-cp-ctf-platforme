@@ -3,6 +3,7 @@
 import {
   useState, useRef, forwardRef, useImperativeHandle, useCallback,
 } from "react";
+import { Check, X, Clock, Zap, Package, AlertTriangle, CircleX, CheckCircle2, XCircle, Play } from "lucide-react";
 import { Client as StompClient } from "@stomp/stompjs";
 import SockJS from "sockjs-client";
 import { runCode, submitCode, type RunResult, type RunTestCaseResult } from "@/lib/api";
@@ -128,17 +129,17 @@ function verdictLabel(v: string): string {
 const VERDICT_COLOR: Record<string, string> = {
   ACCEPTED:              "var(--success-ink)",
   WRONG_ANSWER:          "var(--danger-ink)",
-  TIME_LIMIT_EXCEEDED:   "#ffc107",
+  TIME_LIMIT_EXCEEDED:   "var(--warn-ink)",
   RUNTIME_ERROR:         "#c678dd",
   MEMORY_LIMIT_EXCEEDED: "#56b6c2",
 };
 
-const VERDICT_ICON: Record<string, string> = {
-  ACCEPTED:              "✓",
-  WRONG_ANSWER:          "✗",
-  TIME_LIMIT_EXCEEDED:   "⏱",
-  RUNTIME_ERROR:         "💥",
-  MEMORY_LIMIT_EXCEEDED: "📦",
+const VERDICT_ICON: Record<string, React.ReactNode> = {
+  ACCEPTED:              <Check size={14} />,
+  WRONG_ANSWER:          <X size={14} />,
+  TIME_LIMIT_EXCEEDED:   <Clock size={14} />,
+  RUNTIME_ERROR:         <Zap size={14} />,
+  MEMORY_LIMIT_EXCEEDED: <Package size={14} />,
 };
 
 function MiniSpinner({ color = "#888", size = 12 }: { color?: string; size?: number }) {
@@ -216,8 +217,8 @@ function DiffSummary({ expected, actual }: { expected: string; actual: string })
   const a = actual.trim().split("\n");
   if (e.length !== a.length) {
     return (
-      <div style={{ fontSize: 11, color: "var(--danger-ink)", padding: "6px 10px", background: "rgba(255,107,74,0.08)", borderRadius: 4 }}>
-        ⚠ Output has {a.length} line{a.length !== 1 ? "s" : ""}, expected {e.length}
+      <div style={{ fontSize: 11, color: "var(--danger-ink)", padding: "6px 10px", background: "var(--danger-soft)", borderRadius: 4, display: "flex", alignItems: "center", gap: 6 }}>
+        <AlertTriangle size={12} /> Output has {a.length} line{a.length !== 1 ? "s" : ""}, expected {e.length}
       </div>
     );
   }
@@ -240,7 +241,7 @@ function CompilationErrorView({ error }: { error: string }) {
   return (
     <div style={{ padding: 16 }}>
       <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 10, fontSize: 13, fontWeight: 700, color: "var(--danger-ink)" }}>
-        🔴 Compilation Error
+        <CircleX size={15} /> Compilation Error
       </div>
       <pre style={{
         fontFamily: "ui-monospace, Consolas, monospace", fontSize: 12, color: "var(--danger)",
@@ -280,9 +281,9 @@ function TimeLimitView({ timeMs }: { timeMs: number }) {
     <div style={{
       display: "flex", alignItems: "center", gap: 10, padding: "10px 12px",
       background: "rgba(255,193,7,0.08)", border: "1px solid rgba(255,193,7,0.2)",
-      borderRadius: 5, fontSize: 12, color: "#ffc107",
+      borderRadius: 5, fontSize: 12, color: "var(--warn-ink)",
     }}>
-      <span style={{ fontSize: 20 }}>⏱</span>
+      <Clock size={20} />
       <div>
         <div style={{ fontWeight: 700 }}>Time Limit Exceeded</div>
         <div style={{ color: "#888", marginTop: 2 }}>
@@ -334,7 +335,7 @@ function TestCaseRow({ result, rowIndex, isExpanded, onToggle }: {
 }) {
   const verdict = result.verdict || "WRONG_ANSWER";
   const vc = VERDICT_COLOR[verdict] ?? "#888";
-  const vi = VERDICT_ICON[verdict] ?? "✗";
+  const vi = VERDICT_ICON[verdict] ?? <X size={14} />;
   const displayIndex = result.index ?? rowIndex + 1;
 
   return (
@@ -396,10 +397,10 @@ function RunSummaryBar({ result }: { result: RunResult }) {
     <div style={{
       display: "flex", alignItems: "center", gap: 12, padding: "10px 12px", marginBottom: 10,
       borderRadius: 6,
-      background: allPassed ? "rgba(0,135,90,0.1)" : "rgba(222,53,11,0.1)",
-      border: `1px solid ${allPassed ? "rgba(87,217,163,0.2)" : "rgba(255,107,74,0.2)"}`,
+      background: allPassed ? "var(--success-soft)" : "var(--danger-soft)",
+      border: `1px solid ${allPassed ? "var(--success-soft)" : "var(--danger-soft)"}`,
     }}>
-      <span style={{ fontSize: 18, lineHeight: 1 }}>{allPassed ? "✅" : "❌"}</span>
+      <span style={{ lineHeight: 1, color: allPassed ? "var(--success-ink)" : "var(--danger-ink)", display: "inline-flex" }}>{allPassed ? <CheckCircle2 size={18} /> : <XCircle size={18} />}</span>
       <div style={{ flex: 1 }}>
         <div style={{ fontSize: 13, fontWeight: 700, color: allPassed ? "var(--success-ink)" : "var(--danger-ink)" }}>
           {allPassed
@@ -499,7 +500,7 @@ function SubmitResultsView({ status, rows, complete }: {
   if (status === "IDLE") {
     return (
       <div style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", height: "100%", gap: 8, color: "#555", fontSize: 13 }}>
-        <span style={{ fontSize: 24 }}>⚡</span>
+        <Zap size={24} />
         Click <strong style={{ color: "#ccc" }}>Submit</strong> to judge against all test cases
       </div>
     );
@@ -526,7 +527,7 @@ function SubmitResultsView({ status, rows, complete }: {
           background: complete.finalStatus === "ACCEPTED" ? "rgba(0,135,90,0.1)" : "rgba(222,53,11,0.1)",
           border: `1px solid ${complete.finalStatus === "ACCEPTED" ? "rgba(87,217,163,0.2)" : "rgba(255,107,74,0.2)"}`,
         }}>
-          <span style={{ fontSize: 22 }}>{complete.finalStatus === "ACCEPTED" ? "🎉" : "❌"}</span>
+          <span style={{ display: "inline-flex", color: finalColor }}>{complete.finalStatus === "ACCEPTED" ? <CheckCircle2 size={22} /> : <XCircle size={22} />}</span>
           <div style={{ flex: 1 }}>
             <div style={{ fontSize: 14, fontWeight: 700, color: finalColor }}>
               {verdictLabel(complete.finalStatus)}
@@ -586,7 +587,7 @@ function SubmitResultsView({ status, rows, complete }: {
                     display: "flex", alignItems: "center", justifyContent: "center",
                     fontSize: 10, fontWeight: 800, color: rowColor,
                   }}>
-                    {isPending ? <MiniSpinner size={8} /> : isPass ? "✓" : isNotRun ? "–" : "✗"}
+                    {isPending ? <MiniSpinner size={8} /> : isPass ? <Check size={11} /> : isNotRun ? "–" : <X size={11} />}
                   </div>
 
                   <span style={{ fontSize: 12, color: isNotRun ? "#555" : "#aaa", flex: 1 }}>
@@ -844,7 +845,7 @@ export const ResultsPanel = forwardRef<ResultsPanelHandle, ResultsPanelProps>(
                 display: "flex", alignItems: "center", gap: 6,
               }}
             >
-              {tab === "run" ? "▷ Run Results" : "⚡ Submit Results"}
+              {tab === "run" ? <span style={{display:"inline-flex",alignItems:"center",gap:6}}><Play size={12} /> Run Results</span> : <span style={{display:"inline-flex",alignItems:"center",gap:6}}><Zap size={12} /> Submit Results</span>}
               {tab === "run"    && runStatus    === "RUNNING" && <MiniSpinner />}
               {tab === "submit" && submitStatus === "JUDGING" && <MiniSpinner />}
             </button>

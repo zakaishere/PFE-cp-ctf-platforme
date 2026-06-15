@@ -1,5 +1,6 @@
 "use client";
 import { useEffect, useState } from "react";
+import { XCircle, AlertTriangle, CheckCircle2, Info } from "lucide-react";
 
 export type ToastType = "error" | "warning" | "success" | "info";
 
@@ -37,24 +38,24 @@ export const toast = {
   },
 };
 
-const ICONS: Record<ToastType, string> = {
-  error:   "❌",
-  warning: "⚠️",
-  success: "✅",
-  info:    "ℹ️",
+const ICONS: Record<ToastType, React.ReactNode> = {
+  error:   <XCircle size={16} />,
+  warning: <AlertTriangle size={16} />,
+  success: <CheckCircle2 size={16} />,
+  info:    <Info size={16} />,
 };
 
 const LEFT_BORDER: Record<ToastType, string> = {
-  error:   "#de350b",
+  error:   "var(--danger-ink)",
   warning: "var(--warn)",
-  success: "#00875a",
+  success: "var(--success-ink)",
   info:    "var(--brand)",
 };
 
 const TITLE_COLOR: Record<ToastType, string> = {
-  error:   "#de350b",
+  error:   "var(--danger-ink)",
   warning: "var(--warn)",
-  success: "#00875a",
+  success: "var(--success-ink)",
   info:    "var(--brand)",
 };
 
@@ -103,7 +104,7 @@ export function ToastContainer() {
             animation: "psp-slide-in 0.2s cubic-bezier(0.16,1,0.3,1)",
           }}
         >
-          <span style={{ fontSize: 15, flexShrink: 0, marginTop: 1 }}>{ICONS[item.type]}</span>
+          <span style={{ flexShrink: 0, marginTop: 1, color: TITLE_COLOR[item.type], display: "inline-flex" }}>{ICONS[item.type]}</span>
           <div style={{ flex: 1, minWidth: 0 }}>
             <p style={{ fontSize: 13, fontWeight: 700, color: TITLE_COLOR[item.type], margin: 0 }}>
               {item.title}

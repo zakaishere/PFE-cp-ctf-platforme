@@ -10,6 +10,7 @@ import {
   leaveCompetitionTeam,
   getApiBaseUrl,
 } from "@/lib/api";
+import { Trophy, Crown, Copy, Check, AlertTriangle, ClipboardList } from "lucide-react";
 import { toast } from "@/components/ui/PSPToast";
 import { useCountdown } from "@/hooks/useCountdown";
 import { useAuth } from "@/features/auth/contexts/AuthContext";
@@ -305,7 +306,7 @@ export default function CompetitionLobbyPage() {
             if (event.type === "MEMBER_JOINED") {
               const newMember = event.team?.members?.at(-1);
               if (newMember) {
-                toast.success("Teammate joined! 🎉", `${newMember.firstName} ${newMember.lastName} joined your team.`);
+                toast.success("Teammate joined!", `${newMember.firstName} ${newMember.lastName} joined your team.`);
               }
               loadLobby(true);
             } else if (event.type === "MEMBER_LEFT") {
@@ -313,7 +314,7 @@ export default function CompetitionLobbyPage() {
             } else if (event.type === "CAPTAIN_CHANGED") {
               loadLobby(true);
               if (event.team?.captainId === userId) {
-                toast.info("You are now captain 👑", "The previous captain left the team.");
+                toast.info("You are now captain", "The previous captain left the team.");
               }
             }
           } catch { /* ignore */ }
@@ -406,7 +407,7 @@ export default function CompetitionLobbyPage() {
   if (error || !lobby) {
     return (
       <div style={{ padding: 64, textAlign: "center" }}>
-        <div style={{ fontSize: 40, marginBottom: 12 }}>⚠️</div>
+        <AlertTriangle size={40} color="var(--danger)" style={{ margin: "0 auto 12px" }} />
         <div style={{ color: "var(--danger)", fontSize: 14, fontWeight: 600 }}>{error ?? "Competition not found"}</div>
         <Link href="/competitions" style={{ color: "var(--brand)", fontSize: 13, marginTop: 12, display: "inline-block" }}>
           ← Back to Competitions
@@ -535,7 +536,7 @@ export default function CompetitionLobbyPage() {
           width: 32px;
           height: 32px;
           border-radius: 3px;
-          background: #deebff;
+          background: var(--accent-soft);
           color: var(--brand);
           font-weight: 800;
           font-size: 14px;
@@ -582,7 +583,7 @@ export default function CompetitionLobbyPage() {
         .team-row:last-child { border-bottom: none; }
         .team-row-mine {
           border-left: 3px solid var(--brand);
-          background: #f0f5ff;
+          background: var(--accent-soft);
           padding-left: 11px;
         }
         .readiness-bar {
@@ -636,7 +637,7 @@ export default function CompetitionLobbyPage() {
         {/* Left: title + meta */}
         <div>
           <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 8 }}>
-            <span style={{ fontSize: 22 }}>🏆</span>
+            <Trophy size={20} color="var(--warn-ink)" />
             <h1 style={{
               fontSize: 24,
               fontWeight: 800,
@@ -660,7 +661,7 @@ export default function CompetitionLobbyPage() {
                 alignItems: "center",
                 gap: 5,
               }}>
-                <span style={{ animation: "live-blink 1s infinite", color: "#ff9999" }}>●</span>
+                <span style={{ animation: "live-blink 1s infinite", color: "var(--danger)" }}>●</span>
                 Live Now
               </span>
             ) : (
@@ -694,7 +695,7 @@ export default function CompetitionLobbyPage() {
                 Competition is Live!
               </div>
               <div style={{ fontSize: 32, fontWeight: 800, fontFamily: "ui-monospace, monospace", color: "white" }}>
-                🔴 Started
+                <span style={{ width: 7, height: 7, borderRadius: "50%", background: "var(--danger)", display: "inline-block", marginRight: 6 }} />Started
               </div>
             </div>
           ) : (
@@ -740,7 +741,7 @@ export default function CompetitionLobbyPage() {
                     justifyContent: "space-between",
                   }}>
                     <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                      {myTeam.isCaptain && <span style={{ fontSize: 16 }}>👑</span>}
+                      {myTeam.isCaptain && <Crown size={15} color="var(--warn-ink)" />}
                       <span style={{ fontSize: 15, fontWeight: 700, color: "var(--text-primary)" }}>
                         {myTeam.teamName}
                       </span>
@@ -828,9 +829,9 @@ export default function CompetitionLobbyPage() {
                             display: "flex",
                             alignItems: "center",
                             gap: 5,
-                            background: copied ? "var(--success-soft)" : "white",
+                            background: copied ? "var(--success-soft)" : "var(--surface)",
                             color: copied ? "var(--success-ink)" : "var(--brand)",
-                            border: `1px solid ${copied ? "#abf5d1" : "var(--brand)"}`,
+                            border: `1px solid ${copied ? "var(--success)" : "var(--brand)"}`,
                             borderRadius: 3,
                             padding: "6px 14px",
                             fontSize: 12,
@@ -839,7 +840,7 @@ export default function CompetitionLobbyPage() {
                             transition: "all 0.15s",
                           }}
                         >
-                          {copied ? "✓ Copied!" : "📋 Copy Code"}
+                          {copied ? <span style={{display:"inline-flex",alignItems:"center",gap:5}}><Check size={13} /> Copied!</span> : <span style={{display:"inline-flex",alignItems:"center",gap:5}}><Copy size={13} /> Copy Code</span>}
                         </button>
                       </div>
                     </div>
@@ -873,7 +874,7 @@ export default function CompetitionLobbyPage() {
                             fontSize: 10,
                             fontWeight: 700,
                           }}>
-                            {m.isCaptain ? "👑 Captain" : "Member"}
+                            {m.isCaptain ? <span style={{display:"inline-flex",alignItems:"center",gap:4}}><Crown size={12} color="var(--warn-ink)" /> Captain</span> : "Member"}
                           </span>
                           <div style={{ fontSize: 11, color: "var(--ink-3)", marginLeft: 6 }}>
                             {fmtRelative(m.joinedAt)}
@@ -902,15 +903,15 @@ export default function CompetitionLobbyPage() {
                     {/* Readiness indicator */}
                     {memberCount >= maxTeamSize ? (
                       <div className="readiness-bar readiness-ok">
-                        ✓ Team is full and ready to compete!
+                        <Check size={13} style={{ verticalAlign: "-2px", marginRight: 4 }} />Team is full and ready to compete!
                       </div>
                     ) : memberCount >= minTeamSize ? (
                       <div className="readiness-bar readiness-ok">
-                        ✓ Team ready — you can still invite up to {maxTeamSize - memberCount} more member{maxTeamSize - memberCount !== 1 ? "s" : ""}
+                        <Check size={13} style={{ verticalAlign: "-2px", marginRight: 4 }} />Team ready — you can still invite up to {maxTeamSize - memberCount} more member{maxTeamSize - memberCount !== 1 ? "s" : ""}
                       </div>
                     ) : (
                       <div className="readiness-bar readiness-warn">
-                        ⚠ Need at least {minTeamSize} members — invite teammates via code
+                        <AlertTriangle size={13} style={{ verticalAlign: "-2px", marginRight: 4 }} />Need at least {minTeamSize} members — invite teammates via code
                       </div>
                     )}
 
@@ -934,7 +935,7 @@ export default function CompetitionLobbyPage() {
                         marginBottom: 14,
                         padding: "8px 12px",
                         background: "var(--red-light)",
-                        border: "1px solid #ffbdad",
+                        border: "1px solid var(--warn)",
                         borderRadius: 3,
                         fontSize: 12,
                         color: "var(--danger)",
@@ -1046,14 +1047,14 @@ export default function CompetitionLobbyPage() {
               /* ─── Solo mode ─── */
               <div style={{
                 background: "var(--green-light)",
-                border: "1px solid #abf5d1",
+                border: "1px solid var(--success)",
                 borderRadius: 3,
                 padding: "14px 18px",
                 marginBottom: 14,
                 fontSize: 13,
                 color: "var(--success-ink)",
               }}>
-                ✓ You are registered for this competition as a solo competitor.
+                <Check size={13} style={{ verticalAlign: "-2px", marginRight: 4 }} />You are registered for this competition as a solo competitor.
                 You'll be able to enter the arena when it starts.
               </div>
             )}
@@ -1130,7 +1131,7 @@ export default function CompetitionLobbyPage() {
               <div className="lobby-card">
                 <div className="lobby-card-hd">Before You Compete</div>
                 <div style={{ padding: "14px 16px", fontSize: 12, color: "var(--text-muted)", lineHeight: 1.8 }}>
-                  <div style={{ fontWeight: 700, color: "var(--text-primary)", marginBottom: 4 }}>📋 Rules</div>
+                  <div style={{ fontWeight: 700, color: "var(--text-primary)", marginBottom: 4 }}><ClipboardList size={13} style={{ verticalAlign: "-2px", marginRight: 5 }} />Rules</div>
                   {isTeamMode ? (
                     <ul style={{ paddingLeft: 16, marginBottom: 12 }}>
                       <li>This is a team competition. Teams require {minTeamSize}–{maxTeamSize} members.</li>
@@ -1148,7 +1149,7 @@ export default function CompetitionLobbyPage() {
                     <li>The competition runs for {lobby.durationMinutes} minutes.</li>
                     <li>All participants start at exactly the same time.</li>
                   </ul>
-                  <div style={{ fontWeight: 700, color: "var(--text-primary)", marginBottom: 4 }}>🏆 Scoring</div>
+                  <div style={{ fontWeight: 700, color: "var(--text-primary)", marginBottom: 4 }}><Trophy size={13} style={{ verticalAlign: "-2px", marginRight: 5 }} />Scoring</div>
                   <ul style={{ paddingLeft: 16 }}>
                     <li>Each problem has a maximum point value.</li>
                     {lobby.penaltyEnabled && <li>Wrong answer: +{lobby.penaltyMinutes} minute time penalty.</li>}
@@ -1168,14 +1169,14 @@ export default function CompetitionLobbyPage() {
               style={{
                 marginBottom: 14,
                 border: canEnterArena ? "1px solid var(--danger)" : "1px solid var(--border)",
-                background: canEnterArena ? "var(--danger-soft)" : "white",
+                background: canEnterArena ? "var(--danger-soft)" : "var(--surface)",
               }}
             >
               <div className="lobby-card-hd" style={{
                 color: canEnterArena ? "var(--danger)" : "var(--ink)",
                 borderBottomColor: canEnterArena ? "var(--danger-soft)" : "var(--bg-2)",
               }}>
-                {canEnterArena ? "Competition is Live! 🔴" : "Starts In"}
+                {canEnterArena ? "Competition is Live!" : "Starts In"}
               </div>
               <div style={{ padding: "16px" }}>
                 {/* Mini countdown for sidebar */}
@@ -1223,13 +1224,13 @@ export default function CompetitionLobbyPage() {
                     marginTop: 10,
                     padding: "6px 10px",
                     background: "var(--orange-light)",
-                    border: "1px solid #ffe380",
+                    border: "1px solid var(--warn)",
                     borderRadius: 3,
                     fontSize: 11,
                     color: "var(--text-primary)",
                     textAlign: "center",
                   }}>
-                    ⚠ Your team needs {minTeamSize} members minimum
+                    <AlertTriangle size={13} style={{ verticalAlign: "-2px", marginRight: 4 }} />Your team needs {minTeamSize} members minimum
                   </div>
                 )}
 
@@ -1278,7 +1279,7 @@ export default function CompetitionLobbyPage() {
                             fontSize: 9, fontWeight: 700,
                             background: "var(--green-light)", color: "var(--success-ink)",
                             borderRadius: 3, padding: "1px 6px",
-                          }}>Full ✓</span>
+                          }}>Full <Check size={12} style={{ verticalAlign: "-2px" }} /></span>
                         ) : t.memberCount >= minTeamSize ? (
                           <span style={{ fontSize: 9, color: "var(--success)" }}>●</span>
                         ) : (

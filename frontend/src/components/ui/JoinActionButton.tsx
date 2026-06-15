@@ -1,7 +1,10 @@
 "use client";
 
 import { useState } from "react";
+import { Check, X } from "lucide-react";
 import { LoadingButton } from "./LoadingButton";
+
+const ICN = { display: "inline-flex", alignItems: "center", gap: 5 } as const;
 
 type VisibilityMode = "REQUEST_BASED" | "ACCESS_CODE" | "PUBLIC_OPEN" | "MODULE_ONLY" | string;
 type JoinStatus     = "NONE" | "PENDING" | "APPROVED" | "REJECTED" | "NOT_REQUESTED" | string;
@@ -66,14 +69,14 @@ export function JoinActionButton({
     }
     if (isReg) {
       return (
-        <button onClick={() => onAction("lobby", id)} className="btn btn-success btn-md">
-          ✓ Enter Lobby →
+        <button onClick={() => onAction("lobby", id)} className="btn btn-success btn-md" style={ICN}>
+          <Check size={14} /> Enter Lobby →
         </button>
       );
     }
     return (
-      <button disabled className="btn btn-secondary btn-sm" style={{ opacity: 0.7 }}>
-        ✓ Approved — waiting for start
+      <button disabled className="btn btn-secondary btn-sm" style={{ opacity: 0.7, ...ICN }}>
+        <Check size={14} /> Approved — waiting for start
       </button>
     );
   }
@@ -95,8 +98,8 @@ export function JoinActionButton({
   /* ── REJECTED ── */
   if (isRejected) {
     return (
-      <span className="badge badge-red" style={{ padding: "4px 10px" }}>
-        ✗ Request Rejected
+      <span className="badge badge-red" style={{ padding: "4px 10px", ...ICN }}>
+        <X size={12} /> Request Rejected
       </span>
     );
   }
@@ -151,8 +154,9 @@ export function JoinActionButton({
           <button
             className="btn btn-ghost btn-sm"
             onClick={() => { setShowCodeInput(false); setCode(""); }}
+            aria-label="Cancel"
           >
-            ✕
+            <X size={14} />
           </button>
         </div>
       );
