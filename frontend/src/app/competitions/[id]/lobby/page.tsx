@@ -68,11 +68,11 @@ interface LobbyData {
 
 // ─── helpers ─────────────────────────────────────────────────────────────────
 
-const AVATAR_COLORS = ["var(--brand)", "#6554c0", "#00875a", "#ff5630", "var(--warn)"];
+const AVATAR_COLORS = ["var(--brand)", "#6554c0", "var(--success)", "#ff5630", "var(--warn)"];
 const DIFF_COLOR: Record<string, string> = {
-  EASY:   "#00875a",
+  EASY:   "var(--success)",
   MEDIUM: "var(--warn)",
-  HARD:   "#de350b",
+  HARD:   "var(--danger)",
 };
 
 function avatarColor(i: number) { return AVATAR_COLORS[i % AVATAR_COLORS.length]; }
@@ -177,7 +177,7 @@ function InviteCodeInput({
           }}
           onFocus={e => {
             e.currentTarget.style.borderColor = "var(--brand)";
-            e.currentTarget.style.boxShadow = "0 0 0 2px #0052cc33";
+            e.currentTarget.style.boxShadow = "0 0 0 2px var(--accent-ring)";
           }}
           onBlur={e => {
             e.currentTarget.style.borderColor = "var(--border)";
@@ -208,7 +208,7 @@ function CountdownBoxes({ h, m, s, isUrgent, isCritical }: {
   h: string; m: string; s: string;
   isUrgent: boolean; isCritical: boolean;
 }) {
-  const numColor = isCritical ? "#ff5252" : isUrgent ? "#ffc107" : "white";
+  const numColor = isCritical ? "var(--danger-ink)" : isUrgent ? "var(--warn-ink)" : "white";
   const cls = isCritical ? "countdown-critical" : isUrgent ? "countdown-urgent" : "";
 
   return (
@@ -407,7 +407,7 @@ export default function CompetitionLobbyPage() {
     return (
       <div style={{ padding: 64, textAlign: "center" }}>
         <div style={{ fontSize: 40, marginBottom: 12 }}>⚠️</div>
-        <div style={{ color: "#de350b", fontSize: 14, fontWeight: 600 }}>{error ?? "Competition not found"}</div>
+        <div style={{ color: "var(--danger)", fontSize: 14, fontWeight: 600 }}>{error ?? "Competition not found"}</div>
         <Link href="/competitions" style={{ color: "var(--brand)", fontSize: 13, marginTop: 12, display: "inline-block" }}>
           ← Back to Competitions
         </Link>
@@ -425,8 +425,8 @@ export default function CompetitionLobbyPage() {
     : lobby.status;
 
   const heroBg = isLive
-    ? "linear-gradient(135deg, #7d0000 0%, #de350b 60%, #bf2600 100%)"
-    : "linear-gradient(135deg, #172b4d 0%, #0052cc 60%, #0747a6 100%)";
+    ? "linear-gradient(135deg, #2a0f16 0%, var(--danger) 120%)"
+    : "linear-gradient(135deg, #0e1630 0%, #233a82 55%, var(--brand) 120%)";
 
   return (
     <>
@@ -461,7 +461,7 @@ export default function CompetitionLobbyPage() {
           height: 14px;
           width: 160px;
           border-radius: 3px;
-          background: linear-gradient(90deg, #e8e8e8 0%, #d4d4d4 40%, #e8e8e8 80%);
+          background: linear-gradient(90deg, var(--surface) 0%, var(--surface-2) 40%, var(--surface) 80%);
           background-size: 200% 100%;
           animation: shimmer 2s ease-in-out infinite;
           display: inline-block;
@@ -471,7 +471,7 @@ export default function CompetitionLobbyPage() {
         .invite-code-box {
           width: 44px;
           height: 52px;
-          background: #f4f5f7;
+          background: var(--bg-2);
           border: 2px solid var(--border);
           border-radius: 3px;
           display: flex;
@@ -480,14 +480,14 @@ export default function CompetitionLobbyPage() {
           font-size: 22px;
           font-weight: 800;
           font-family: ui-monospace, monospace;
-          color: #0052cc;
+          color: var(--brand);
         }
 
         /* ── enter arena button ── */
         .enter-arena-btn {
           width: 100%;
           height: 44px;
-          background: #de350b;
+          background: var(--danger);
           color: white;
           border: none;
           border-radius: 3px;
@@ -497,10 +497,10 @@ export default function CompetitionLobbyPage() {
           transition: background 0.15s, transform 0.1s;
           animation: arena-pulse 2s ease-in-out infinite;
         }
-        .enter-arena-btn:hover  { background: #bf2600; }
+        .enter-arena-btn:hover  { background: var(--danger-ink); }
         .enter-arena-btn:active { transform: scale(0.98); }
         .enter-arena-btn:disabled {
-          background: #b3bac5;
+          background: var(--ink-3);
           cursor: not-allowed;
           animation: none;
         }
@@ -508,17 +508,17 @@ export default function CompetitionLobbyPage() {
         /* ── lobby layout ── */
         .lobby-grid { display: grid; grid-template-columns: 1fr 320px; gap: 16px; }
         .lobby-card {
-          background: white;
+          background: var(--surface);
           border: 1px solid var(--border);
           border-radius: 3px;
           margin-bottom: 14px;
         }
         .lobby-card-hd {
           padding: 12px 16px;
-          border-bottom: 1px solid #f4f5f7;
+          border-bottom: 1px solid var(--bg-2);
           font-size: 13px;
           font-weight: 700;
-          color: #172b4d;
+          color: var(--ink);
           display: flex;
           align-items: center;
           justify-content: space-between;
@@ -527,7 +527,7 @@ export default function CompetitionLobbyPage() {
           display: flex;
           align-items: center;
           padding: 10px 14px;
-          border-bottom: 1px solid #f4f5f7;
+          border-bottom: 1px solid var(--bg-2);
           gap: 10px;
         }
         .prob-row:last-child { border-bottom: none; }
@@ -536,7 +536,7 @@ export default function CompetitionLobbyPage() {
           height: 32px;
           border-radius: 3px;
           background: #deebff;
-          color: #0052cc;
+          color: var(--brand);
           font-weight: 800;
           font-size: 14px;
           display: flex;
@@ -556,7 +556,7 @@ export default function CompetitionLobbyPage() {
           align-items: center;
           gap: 10px;
           padding: 8px 0;
-          border-bottom: 1px solid #f4f5f7;
+          border-bottom: 1px solid var(--bg-2);
         }
         .member-row:last-child { border-bottom: none; }
         .mem-av {
@@ -573,7 +573,7 @@ export default function CompetitionLobbyPage() {
         }
         .team-row {
           padding: 8px 14px;
-          border-bottom: 1px solid #f4f5f7;
+          border-bottom: 1px solid var(--bg-2);
           font-size: 12px;
           display: flex;
           justify-content: space-between;
@@ -581,7 +581,7 @@ export default function CompetitionLobbyPage() {
         }
         .team-row:last-child { border-bottom: none; }
         .team-row-mine {
-          border-left: 3px solid #0052cc;
+          border-left: 3px solid var(--brand);
           background: #f0f5ff;
           padding-left: 11px;
         }
@@ -592,8 +592,8 @@ export default function CompetitionLobbyPage() {
           font-size: 12px;
           font-weight: 500;
         }
-        .readiness-ok   { background: #e3fcef; color: #006644; }
-        .readiness-warn { background: #fffae6; color: #974f0c; }
+        .readiness-ok   { background: var(--success-soft); color: var(--success-ink); }
+        .readiness-warn { background: var(--warn-soft); color: var(--warn-ink); }
 
         /* ── animations ── */
         @keyframes pulse-num {
@@ -728,13 +728,13 @@ export default function CompetitionLobbyPage() {
               myTeam ? (
                 /* ─── State B/C: in a team ─── */
                 <div className="lobby-card" style={{
-                  border: "2px solid #0052cc",
+                  border: "2px solid var(--brand)",
                   marginBottom: 14,
                 }}>
                   {/* Header */}
                   <div style={{
                     padding: "14px 20px",
-                    borderBottom: "1px solid #e8ecf0",
+                    borderBottom: "1px solid var(--line)",
                     display: "flex",
                     alignItems: "center",
                     justifyContent: "space-between",
@@ -745,8 +745,8 @@ export default function CompetitionLobbyPage() {
                         {myTeam.teamName}
                       </span>
                       <span style={{
-                        background: myTeam.isCaptain ? "var(--accent-soft)" : "#f4f5f7",
-                        color: myTeam.isCaptain ? "var(--brand)" : "#5e6c84",
+                        background: myTeam.isCaptain ? "var(--accent-soft)" : "var(--bg-2)",
+                        color: myTeam.isCaptain ? "var(--brand)" : "var(--ink-2)",
                         borderRadius: 3,
                         padding: "1px 8px",
                         fontSize: 10,
@@ -763,7 +763,7 @@ export default function CompetitionLobbyPage() {
                           onClick={handleLeaveTeam}
                           disabled={teamAction === "leaving"}
                           style={{
-                            background: "#de350b", color: "white",
+                            background: "var(--danger)", color: "white",
                             border: "none", borderRadius: 3,
                             padding: "3px 10px", fontSize: 11, fontWeight: 700,
                             cursor: "pointer",
@@ -795,12 +795,12 @@ export default function CompetitionLobbyPage() {
                           cursor: "pointer",
                         }}
                         onMouseOver={e => {
-                          (e.target as HTMLButtonElement).style.borderColor = "#de350b";
-                          (e.target as HTMLButtonElement).style.color = "#de350b";
+                          (e.target as HTMLButtonElement).style.borderColor = "var(--danger)";
+                          (e.target as HTMLButtonElement).style.color = "var(--danger)";
                         }}
                         onMouseOut={e => {
                           (e.target as HTMLButtonElement).style.borderColor = "var(--border)";
-                          (e.target as HTMLButtonElement).style.color = "#5e6c84";
+                          (e.target as HTMLButtonElement).style.color = "var(--ink-2)";
                         }}
                       >
                         Leave Team
@@ -812,7 +812,7 @@ export default function CompetitionLobbyPage() {
                     {/* Invite code section */}
                     <div style={{
                       background: "var(--bg-secondary)",
-                      border: "1px solid #e8ecf0",
+                      border: "1px solid var(--line)",
                       borderRadius: 3,
                       padding: "14px 16px",
                       marginBottom: 16,
@@ -828,8 +828,8 @@ export default function CompetitionLobbyPage() {
                             display: "flex",
                             alignItems: "center",
                             gap: 5,
-                            background: copied ? "#e3fcef" : "white",
-                            color: copied ? "#006644" : "var(--brand)",
+                            background: copied ? "var(--success-soft)" : "white",
+                            color: copied ? "var(--success-ink)" : "var(--brand)",
                             border: `1px solid ${copied ? "#abf5d1" : "var(--brand)"}`,
                             borderRadius: 3,
                             padding: "6px 14px",
@@ -866,8 +866,8 @@ export default function CompetitionLobbyPage() {
                             {m.firstName} {m.lastName}
                           </div>
                           <span style={{
-                            background: m.isCaptain ? "var(--accent-soft)" : "#f4f5f7",
-                            color: m.isCaptain ? "var(--brand)" : "#5e6c84",
+                            background: m.isCaptain ? "var(--accent-soft)" : "var(--bg-2)",
+                            color: m.isCaptain ? "var(--brand)" : "var(--ink-2)",
                             borderRadius: 3,
                             padding: "1px 7px",
                             fontSize: 10,
@@ -875,7 +875,7 @@ export default function CompetitionLobbyPage() {
                           }}>
                             {m.isCaptain ? "👑 Captain" : "Member"}
                           </span>
-                          <div style={{ fontSize: 11, color: "#b3bac5", marginLeft: 6 }}>
+                          <div style={{ fontSize: 11, color: "var(--ink-3)", marginLeft: 6 }}>
                             {fmtRelative(m.joinedAt)}
                           </div>
                         </div>
@@ -915,7 +915,7 @@ export default function CompetitionLobbyPage() {
                     )}
 
                     {teamError && (
-                      <div style={{ marginTop: 10, fontSize: 12, color: "#de350b" }}>{teamError}</div>
+                      <div style={{ marginTop: 10, fontSize: 12, color: "var(--danger)" }}>{teamError}</div>
                     )}
                   </div>
                 </div>
@@ -937,7 +937,7 @@ export default function CompetitionLobbyPage() {
                         border: "1px solid #ffbdad",
                         borderRadius: 3,
                         fontSize: 12,
-                        color: "#de350b",
+                        color: "var(--danger)",
                       }}>
                         {teamError}
                       </div>
@@ -964,7 +964,7 @@ export default function CompetitionLobbyPage() {
                           style={{
                             width: "100%",
                             height: 40,
-                            background: !teamNameInput.trim() || teamAction !== "idle" ? "#b3bac5" : "var(--brand)",
+                            background: !teamNameInput.trim() || teamAction !== "idle" ? "var(--ink-3)" : "var(--brand)",
                             color: "white",
                             border: "none",
                             borderRadius: 3,
@@ -1016,7 +1016,7 @@ export default function CompetitionLobbyPage() {
                             width: "100%",
                             height: 40,
                             background: "var(--bg-primary)",
-                            color: codeInput.replace(/ /g, "").length < 6 ? "#b3bac5" : "var(--brand)",
+                            color: codeInput.replace(/ /g, "").length < 6 ? "var(--ink-3)" : "var(--brand)",
                             border: `1px solid ${codeInput.replace(/ /g, "").length < 6 ? "var(--border)" : "var(--brand)"}`,
                             borderRadius: 3,
                             fontSize: 13,
@@ -1051,7 +1051,7 @@ export default function CompetitionLobbyPage() {
                 padding: "14px 18px",
                 marginBottom: 14,
                 fontSize: 13,
-                color: "#006644",
+                color: "var(--success-ink)",
               }}>
                 ✓ You are registered for this competition as a solo competitor.
                 You'll be able to enter the arena when it starts.
@@ -1085,8 +1085,8 @@ export default function CompetitionLobbyPage() {
                         )}
                       </div>
                       <span className="diff-badge" style={{
-                        background: (DIFF_COLOR[p.difficultyLevel] ?? "#5e6c84") + "22",
-                        color: DIFF_COLOR[p.difficultyLevel] ?? "#5e6c84",
+                        background: (DIFF_COLOR[p.difficultyLevel] ?? "var(--ink-2)") + "22",
+                        color: DIFF_COLOR[p.difficultyLevel] ?? "var(--ink-2)",
                       }}>
                         {p.difficultyLevel}
                       </span>
@@ -1117,7 +1117,7 @@ export default function CompetitionLobbyPage() {
                     padding: "8px 14px",
                     fontSize: 11,
                     color: "var(--text-muted)",
-                    borderTop: "1px solid #f4f5f7",
+                    borderTop: "1px solid var(--bg-2)",
                   }}>
                     Total: {totalPts.toLocaleString()} points available
                   </div>
@@ -1167,13 +1167,13 @@ export default function CompetitionLobbyPage() {
               className="lobby-card"
               style={{
                 marginBottom: 14,
-                border: canEnterArena ? "1px solid #de350b" : "1px solid var(--border)",
-                background: canEnterArena ? "#fff5f5" : "white",
+                border: canEnterArena ? "1px solid var(--danger)" : "1px solid var(--border)",
+                background: canEnterArena ? "var(--danger-soft)" : "white",
               }}
             >
               <div className="lobby-card-hd" style={{
-                color: canEnterArena ? "#de350b" : "#172b4d",
-                borderBottomColor: canEnterArena ? "#ffd5cc" : "#f4f5f7",
+                color: canEnterArena ? "var(--danger)" : "var(--ink)",
+                borderBottomColor: canEnterArena ? "var(--danger-soft)" : "var(--bg-2)",
               }}>
                 {canEnterArena ? "Competition is Live! 🔴" : "Starts In"}
               </div>
@@ -1185,7 +1185,7 @@ export default function CompetitionLobbyPage() {
                       fontFamily: "ui-monospace, monospace",
                       fontSize: 32,
                       fontWeight: 800,
-                      color: countdown.isCritical ? "#de350b" : countdown.isUrgent ? "var(--warn)" : "#172b4d",
+                      color: countdown.isCritical ? "var(--danger)" : countdown.isUrgent ? "var(--warn)" : "var(--ink)",
                       textAlign: "center",
                       padding: "8px 0 4px",
                       letterSpacing: 2,
@@ -1256,7 +1256,7 @@ export default function CompetitionLobbyPage() {
                     <div key={t.teamId} className={`team-row ${t.isMyTeam ? "team-row-mine" : ""}`}>
                       <span style={{
                         fontWeight: t.isMyTeam ? 700 : 400,
-                        color: t.isMyTeam ? "var(--brand)" : "#172b4d",
+                        color: t.isMyTeam ? "var(--brand)" : "var(--ink)",
                         fontFamily: t.isMyTeam ? "inherit" : "ui-monospace, monospace",
                         letterSpacing: t.isMyTeam ? "normal" : "1px",
                       }}>
@@ -1276,11 +1276,11 @@ export default function CompetitionLobbyPage() {
                         {maxTeamSize && t.memberCount >= maxTeamSize ? (
                           <span style={{
                             fontSize: 9, fontWeight: 700,
-                            background: "var(--green-light)", color: "#006644",
+                            background: "var(--green-light)", color: "var(--success-ink)",
                             borderRadius: 3, padding: "1px 6px",
                           }}>Full ✓</span>
                         ) : t.memberCount >= minTeamSize ? (
-                          <span style={{ fontSize: 9, color: "#00875a" }}>●</span>
+                          <span style={{ fontSize: 9, color: "var(--success)" }}>●</span>
                         ) : (
                           <span style={{ fontSize: 9, color: "var(--warn)" }}>●</span>
                         )}
