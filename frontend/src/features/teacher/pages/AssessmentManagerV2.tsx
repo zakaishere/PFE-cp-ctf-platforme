@@ -193,6 +193,9 @@ export default function AssessmentManagerV2() {
     scheduledStartTime: "", durationMinutes: 90,
     deadline: "", maxAttempts: 3,
   });
+  // Fields from the design that the backend doesn't accept yet — rendered but
+  // NOT sent (kept out of the create payload). See backend follow-ups.
+  const [pendingFields, setPendingFields] = useState({ passingScore: 60, tpAttemptDurationMin: 0 });
   const [modules, setModules]         = useState<ModuleOption[]>([]);
   const [creating, setCreating]       = useState(false);
 
@@ -1027,76 +1030,106 @@ export default function AssessmentManagerV2() {
       {/* Create Assessment Modal */}
       {createOpen && (
         <div className="psp-modal-overlay" onClick={() => setCreateOpen(false)}>
-          <div className="psp-modal" style={{ maxWidth: 520 }} onClick={e => e.stopPropagation()}>
+          <div className="psp-modal" style={{ maxWidth: 560 }} onClick={e => e.stopPropagation()}>
             <div className="psp-modal-header">
-              <span style={{ fontSize: 16, fontWeight: 600 }}>
+              <span style={{ fontSize: 16, fontWeight: 700, display: "flex", alignItems: "center", gap: 8 }}>
+                {createType === "exam" ? <FileText size={16} color="var(--brand)" /> : <FlaskConical size={16} color="var(--success)" />}
                 {createType === "exam" ? "New Live Exam" : "New Open TP"}
               </span>
-              <button onClick={() => setCreateOpen(false)} style={{ background: "none", border: "none", fontSize: 18, cursor: "pointer", color: "var(--text-muted)" }}><X size={18} /></button>
+              <button onClick={() => setCreateOpen(false)} style={{ background: "none", border: "none", cursor: "pointer", color: "var(--text-muted)" }}><X size={18} /></button>
             </div>
-            <div className="psp-modal-body" style={{ display: "flex", flexDirection: "column", gap: 14 }}>
-              <div>
-                <label className="psp-form-label">Title *</label>
-                <input className="psp-form-input" value={createForm.title}
-                  onChange={e => setCreateForm(f => ({ ...f, title: e.target.value }))} />
-              </div>
-              <div>
-                <label className="psp-form-label">Description</label>
-                <textarea className="psp-form-textarea" value={createForm.description}
-                  onChange={e => setCreateForm(f => ({ ...f, description: e.target.value }))}
-                  style={{ minHeight: 70 }} />
-              </div>
-              <div>
-                <label className="psp-form-label">Module</label>
-                <select className="psp-form-select" value={createForm.moduleId}
-                  onChange={e => setCreateForm(f => ({ ...f, moduleId: e.target.value }))}>
-                  <option value="">Select module…</option>
-                  {modules.map(m => <option key={m.id} value={m.id}>{m.name}</option>)}
-                </select>
-              </div>
-              <div>
-                <label className="psp-form-label">Visibility</label>
-                <select className="psp-form-select" value={createForm.visibilityMode}
-                  onChange={e => setCreateForm(f => ({ ...f, visibilityMode: e.target.value }))}>
-                  <option value="MODULE_ONLY">Module Only</option>
-                  <option value="REQUEST_BASED">Request Based</option>
-                  <option value="ACCESS_CODE">Access Code</option>
-                </select>
-              </div>
-              {createForm.visibilityMode === "ACCESS_CODE" && (
+            <div className="psp-modal-body" style={{ display: "flex", flexDirection: "column", gap: 18 }}>
+              {/* ── Section: Basics ── */}
+              <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+                <div className="section-title" style={{ marginBottom: 0 }}>Basics</div>
                 <div>
-                  <label className="psp-form-label">Access Code</label>
-                  <input className="psp-form-input" value={createForm.strictAccessCode}
-                    onChange={e => setCreateForm(f => ({ ...f, strictAccessCode: e.target.value }))} />
+                  <label className="psp-form-label">Title *</label>
+                  <input className="psp-form-input" autoFocus value={createForm.title}
+                    onChange={e => setCreateForm(f => ({ ...f, title: e.target.value }))} placeholder={createType === "exam" ? "e.g. Midterm — Data Structures" : "e.g. Lab 3 — Recursion"} />
                 </div>
-              )}
-              {createType === "exam" ? (
-                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
-                  <div>
-                    <label className="psp-form-label">Start Date & Time</label>
-                    <input type="datetime-local" className="psp-form-input" value={createForm.scheduledStartTime}
-                      onChange={e => setCreateForm(f => ({ ...f, scheduledStartTime: e.target.value }))} />
-                  </div>
-                  <div>
-                    <label className="psp-form-label">Duration (mins)</label>
-                    <input type="number" className="psp-form-input" value={createForm.durationMinutes}
-                      onChange={e => setCreateForm(f => ({ ...f, durationMinutes: parseInt(e.target.value) || 90 }))} />
-                  </div>
+                <div>
+                  <label className="psp-form-label">Description</label>
+                  <textarea className="psp-form-textarea" value={createForm.description}
+                    onChange={e => setCreateForm(f => ({ ...f, description: e.target.value }))}
+                    style={{ minHeight: 64 }} />
                 </div>
-              ) : (
-                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
-                  <div>
-                    <label className="psp-form-label">Deadline</label>
-                    <input type="datetime-local" className="psp-form-input" value={createForm.deadline}
-                      onChange={e => setCreateForm(f => ({ ...f, deadline: e.target.value }))} />
-                  </div>
-                  <div>
-                    <label className="psp-form-label">Max Attempts</label>
-                    <input type="number" className="psp-form-input" value={createForm.maxAttempts}
-                      onChange={e => setCreateForm(f => ({ ...f, maxAttempts: parseInt(e.target.value) || 3 }))} />
-                  </div>
+                <div>
+                  <label className="psp-form-label">Module</label>
+                  <select className="psp-form-select" value={createForm.moduleId}
+                    onChange={e => setCreateForm(f => ({ ...f, moduleId: e.target.value }))}>
+                    <option value="">Select module…</option>
+                    {modules.map(m => <option key={m.id} value={m.id}>{m.name}</option>)}
+                  </select>
                 </div>
-              )}
+              </div>
+
+              {/* ── Section: Schedule & access ── */}
+              <div style={{ display: "flex", flexDirection: "column", gap: 12, borderTop: "1px solid var(--line)", paddingTop: 16 }}>
+                <div className="section-title" style={{ marginBottom: 0 }}>Schedule &amp; access</div>
+                {createType === "exam" ? (
+                  <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
+                    <div>
+                      <label className="psp-form-label">Start date &amp; time</label>
+                      <input type="datetime-local" className="psp-form-input" value={createForm.scheduledStartTime}
+                        onChange={e => setCreateForm(f => ({ ...f, scheduledStartTime: e.target.value }))} />
+                    </div>
+                    <div>
+                      <label className="psp-form-label">Duration (mins)</label>
+                      <input type="number" className="psp-form-input" value={createForm.durationMinutes}
+                        onChange={e => setCreateForm(f => ({ ...f, durationMinutes: parseInt(e.target.value) || 90 }))} />
+                    </div>
+                  </div>
+                ) : (
+                  <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
+                    <div>
+                      <label className="psp-form-label">Deadline</label>
+                      <input type="datetime-local" className="psp-form-input" value={createForm.deadline}
+                        onChange={e => setCreateForm(f => ({ ...f, deadline: e.target.value }))} />
+                    </div>
+                    <div>
+                      <label className="psp-form-label">Max attempts</label>
+                      <input type="number" className="psp-form-input" value={createForm.maxAttempts}
+                        onChange={e => setCreateForm(f => ({ ...f, maxAttempts: parseInt(e.target.value) || 3 }))} />
+                    </div>
+                  </div>
+                )}
+                <div>
+                  <label className="psp-form-label">Visibility</label>
+                  <select className="psp-form-select" value={createForm.visibilityMode}
+                    onChange={e => setCreateForm(f => ({ ...f, visibilityMode: e.target.value }))}>
+                    <option value="MODULE_ONLY">Module only</option>
+                    <option value="REQUEST_BASED">Request based</option>
+                    <option value="ACCESS_CODE">Access code</option>
+                  </select>
+                </div>
+                {createForm.visibilityMode === "ACCESS_CODE" && (
+                  <div>
+                    <label className="psp-form-label">Access code</label>
+                    <input className="psp-form-input" value={createForm.strictAccessCode}
+                      onChange={e => setCreateForm(f => ({ ...f, strictAccessCode: e.target.value }))} placeholder="Students enter this code to join" />
+                  </div>
+                )}
+              </div>
+
+              {/* ── Section: Grading (fields pending backend support) ── */}
+              <div style={{ display: "flex", flexDirection: "column", gap: 12, borderTop: "1px solid var(--line)", paddingTop: 16 }}>
+                <div className="section-title" style={{ marginBottom: 0 }}>Grading</div>
+                {createType === "exam" ? (
+                  <div>
+                    <label className="psp-form-label">Passing score (%)</label>
+                    <input type="number" min={0} max={100} className="psp-form-input" value={pendingFields.passingScore}
+                      onChange={e => setPendingFields(f => ({ ...f, passingScore: parseInt(e.target.value) || 0 }))} />
+                    <div className="hint">Pass/fail threshold. Not yet enforced by the backend — see follow-ups.</div>
+                  </div>
+                ) : (
+                  <div>
+                    <label className="psp-form-label">Attempt duration (mins, optional)</label>
+                    <input type="number" min={0} className="psp-form-input" value={pendingFields.tpAttemptDurationMin}
+                      onChange={e => setPendingFields(f => ({ ...f, tpAttemptDurationMin: parseInt(e.target.value) || 0 }))} placeholder="0 = no limit" />
+                    <div className="hint">Per-attempt time limit. Not yet enforced by the backend — see follow-ups.</div>
+                  </div>
+                )}
+              </div>
             </div>
             <div className="psp-modal-footer">
               <button className="psp-btn psp-btn-secondary" onClick={() => setCreateOpen(false)}>Cancel</button>
