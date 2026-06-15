@@ -1,8 +1,10 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
-import { Snowflake, Loader2 } from "lucide-react";
+import { Snowflake, Loader2, Check, X as XIcon, Droplet, Medal } from "lucide-react";
 import { getFullScoreboard, type FullScoreboard, type ScoreboardProblemCell } from "@/lib/api";
+
+const MEDAL_COLORS = ["#f5c451", "#c7cdd9", "#cd8a52"]; // gold, silver, bronze
 
 interface CPScoreboardProps {
   competitionId: string;
@@ -72,11 +74,11 @@ export default function CPScoreboard({
             {board.scoringMode}
           </span>
         </span>
-        <span style={{ display: "inline-flex", alignItems: "center", gap: 5, fontSize: 11, color: pulse ? "#00875a" : "var(--text-muted)", transition: "color 0.4s" }}>
+        <span style={{ display: "inline-flex", alignItems: "center", gap: 5, fontSize: 11, color: pulse ? "var(--success)" : "var(--text-muted)", transition: "color 0.4s" }}>
           <span style={{
             width: 7, height: 7, borderRadius: "50%",
-            background: pulse ? "#22c55e" : "#97a0af",
-            boxShadow: pulse ? "0 0 0 3px rgba(34,197,94,0.2)" : "none",
+            background: pulse ? "var(--success)" : "var(--ink-3)",
+            boxShadow: pulse ? "0 0 0 3px var(--success-soft)" : "none",
             transition: "all 0.4s",
           }} />
           Live
@@ -86,8 +88,8 @@ export default function CPScoreboard({
       {/* Freeze banner */}
       {board.frozen && (
         <div style={{
-          background: "rgba(255,139,0,0.12)", borderBottom: "1px solid rgba(255,139,0,0.4)",
-          padding: "8px 16px", fontSize: 12, color: "#974f0c", fontWeight: 600,
+          background: "var(--warn-soft)", borderBottom: "1px solid var(--warn)",
+          padding: "8px 16px", fontSize: 12, color: "var(--warn-ink)", fontWeight: 600,
           display: "flex", alignItems: "center", gap: 8, flexShrink: 0,
         }}>
           <Snowflake size={14} />
@@ -129,7 +131,7 @@ export default function CPScoreboard({
               const isMe = myParticipantId != null && row.participantId === myParticipantId;
               return (
                 <tr key={row.participantId} style={{
-                  borderBottom: "1px solid #f4f5f7",
+                  borderBottom: "1px solid var(--line)",
                   background: isMe ? "var(--accent-soft)" : "transparent",
                 }}>
                   <td style={tdSticky(0, 36, isMe)}>
@@ -173,21 +175,23 @@ function Cell({ cell, mode, maxPoints, rated }: {
     return <span style={{ color: "var(--border)" }}>—</span>;
   }
 
-  const blood = cell.firstBlood ? <span title="First blood" style={{ marginLeft: 2 }}>🩸</span> : null;
+  const blood = cell.firstBlood
+    ? <Droplet size={11} fill="var(--danger)" color="var(--danger)" style={{ marginLeft: 3, verticalAlign: "-1px" }} aria-label="First blood" />
+    : null;
 
   if (mode === "ICPC") {
     if (cell.solved) {
       return (
-        <span style={{ color: "#00875a", fontWeight: 700 }}>
-          ✓{cell.wrongAttempts > 0 ? ` ${cell.wrongAttempts}` : ""}{blood}
+        <span style={{ color: "var(--success-ink)", fontWeight: 700, display: "inline-flex", alignItems: "center", gap: 2 }}>
+          <Check size={13} />{cell.wrongAttempts > 0 ? ` ${cell.wrongAttempts}` : ""}{blood}
         </span>
       );
     }
-    return <span style={{ color: "#de350b", fontWeight: 600 }}>✗ {cell.wrongAttempts}</span>;
+    return <span style={{ color: "var(--danger-ink)", fontWeight: 600, display: "inline-flex", alignItems: "center", gap: 2 }}><XIcon size={12} /> {cell.wrongAttempts}</span>;
   }
 
   // PARTIAL / RATED — show score
-  const solvedColor = cell.solved ? "#00875a" : "var(--text-primary)";
+  const solvedColor = cell.solved ? "var(--success-ink)" : "var(--text-primary)";
   if (rated) {
     return (
       <span style={{ color: solvedColor, fontWeight: cell.solved ? 700 : 500 }}>
@@ -200,14 +204,15 @@ function Cell({ cell, mode, maxPoints, rated }: {
   // PARTIAL
   return (
     <span style={{ color: solvedColor, fontWeight: cell.solved ? 700 : 500 }}>
-      {cell.score}/{maxPoints}{cell.solved ? " ✓" : ""}{blood}
+      <span style={{ display: "inline-flex", alignItems: "center", gap: 2 }}>
+        {cell.score}/{maxPoints}{cell.solved ? <Check size={12} /> : null}{blood}
+      </span>
     </span>
   );
 }
 
 function RankBadge({ rank }: { rank: number }) {
-  const medal = rank === 1 ? "🥇" : rank === 2 ? "🥈" : rank === 3 ? "🥉" : null;
-  if (medal) return <span style={{ fontSize: 14 }}>{medal}</span>;
+  if (rank <= 3) return <Medal size={15} color={MEDAL_COLORS[rank - 1]} aria-label={`Rank ${rank}`} />;
   return <span style={{ color: "var(--text-muted)", fontWeight: 700 }}>{rank}</span>;
 }
 
