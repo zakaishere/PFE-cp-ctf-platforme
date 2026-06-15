@@ -1,5 +1,5 @@
 'use client';
-import { createContext, useContext, useEffect, useState } from 'react';
+import { createContext, useContext, useEffect } from 'react';
 
 type Theme = 'light' | 'dark';
 
@@ -10,32 +10,25 @@ interface ThemeContextValue {
 }
 
 const ThemeContext = createContext<ThemeContextValue>({
-  theme:       'light',
+  theme:       'dark',
   toggleTheme: () => {},
-  isDark:      false,
+  isDark:      true,
 });
 
+// Algora is a dark-only theme. The provider keeps the same API (so any
+// useTheme() consumer keeps working) but is permanently locked to dark.
 export function ThemeProvider({ children }: { children: React.ReactNode }) {
-  const [theme, setTheme] = useState<Theme>(() => {
-    try {
-      const saved = localStorage.getItem('psp-theme') as Theme;
-      if (saved === 'dark' || saved === 'light') return saved;
-      if (window.matchMedia('(prefers-color-scheme: dark)').matches) return 'dark';
-    } catch {}
-    return 'light';
-  });
+  const theme: Theme = 'dark';
 
   useEffect(() => {
-    document.documentElement.setAttribute('data-theme', theme);
-    try { localStorage.setItem('psp-theme', theme); } catch {}
-  }, [theme]);
+    document.documentElement.setAttribute('data-theme', 'dark');
+    try { localStorage.setItem('psp-theme', 'dark'); } catch {}
+  }, []);
 
-  function toggleTheme() {
-    setTheme(t => t === 'light' ? 'dark' : 'light');
-  }
+  function toggleTheme() { /* no-op: dark-only theme */ }
 
   return (
-    <ThemeContext.Provider value={{ theme, toggleTheme, isDark: theme === 'dark' }}>
+    <ThemeContext.Provider value={{ theme, toggleTheme, isDark: true }}>
       {children}
     </ThemeContext.Provider>
   );

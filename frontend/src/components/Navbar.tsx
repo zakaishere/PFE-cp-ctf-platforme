@@ -5,15 +5,15 @@ import Link from "next/link";
 import { useRouter, usePathname } from "next/navigation";
 import {
   Home, ClipboardList, Trophy, Code2, BarChart2,
-  Bell, HelpCircle, Settings, LogOut, User, Flag,
+  Bell, LogOut, User, Flag, Search,
 } from "lucide-react";
 import {
   DropdownMenu, DropdownMenuContent, DropdownMenuItem,
   DropdownMenuSeparator, DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { useAuth } from "@/features/auth/contexts/AuthContext";
-import { useTheme } from "@/contexts/ThemeContext";
 import { getCtfCompetitions } from "@/lib/api";
+import { APP_NAME, APP_MARK } from "@/lib/brand";
 
 // 60-second cached check for an active CTF competition
 const CTF_CACHE_KEY = "psp_ctf_has_active_v1";
@@ -45,56 +45,29 @@ function useHasActiveCtf(enabled: boolean) {
 }
 
 const studentLinks = [
-  { href: "/dashboard",    label: "Dashboard",    icon: <Home size={14} />,         exact: true },
-  { href: "/assessments",  label: "Exams & TPs",  icon: <ClipboardList size={14} /> },
-  { href: "/competitions", label: "Competitions", icon: <Trophy size={14} /> },
-  { href: "/ctf",          label: "CTF",          icon: <Flag size={14} /> },
-  { href: "/problems",     label: "Problems",     icon: <Code2 size={14} /> },
-  { href: "/leaderboard",  label: "Leaderboard",  icon: <BarChart2 size={14} /> },
+  { href: "/dashboard",    label: "Dashboard",    icon: <Home size={17} />,         exact: true },
+  { href: "/assessments",  label: "Exams & TPs",  icon: <ClipboardList size={17} /> },
+  { href: "/competitions", label: "Competitions", icon: <Trophy size={17} /> },
+  { href: "/ctf",          label: "CTF",          icon: <Flag size={17} /> },
+  { href: "/problems",     label: "Problems",     icon: <Code2 size={17} /> },
+  { href: "/leaderboard",  label: "Leaderboard",  icon: <BarChart2 size={17} /> },
 ];
 
 const teacherLinks = [
-  { href: "/teacher",                  label: "Dashboard",     icon: <Home size={14} />,         exact: true },
-  { href: "/teacher/exams",            label: "Exams & TPs",   icon: <ClipboardList size={14} /> },
-  { href: "/teacher/competitions",     label: "Competitions",  icon: <Trophy size={14} /> },
-  { href: "/teacher/problems",         label: "Problems",      icon: <Code2 size={14} /> },
-  { href: "/teacher/ctf",              label: "CTF",           icon: <Flag size={14} /> },
-  { href: "/leaderboard",              label: "Leaderboard",   icon: <BarChart2 size={14} /> },
+  { href: "/teacher",                  label: "Dashboard",     icon: <Home size={17} />,         exact: true },
+  { href: "/teacher/exams",            label: "Exams & TPs",   icon: <ClipboardList size={17} /> },
+  { href: "/teacher/competitions",     label: "Competitions",  icon: <Trophy size={17} /> },
+  { href: "/teacher/problems",         label: "Problems",      icon: <Code2 size={17} /> },
+  { href: "/teacher/ctf",              label: "CTF",           icon: <Flag size={17} /> },
+  { href: "/leaderboard",              label: "Leaderboard",   icon: <BarChart2 size={17} /> },
 ];
 
 const adminLinks = [
-  { href: "/admin",                    label: "Dashboard",     icon: <Home size={14} />,         exact: true },
-  { href: "/teacher/competitions",     label: "Competitions",  icon: <Trophy size={14} /> },
-  { href: "/teacher/problems",         label: "Problems",      icon: <Code2 size={14} /> },
-  { href: "/leaderboard",              label: "Leaderboard",   icon: <BarChart2 size={14} /> },
+  { href: "/admin",                    label: "Dashboard",     icon: <Home size={17} />,         exact: true },
+  { href: "/teacher/competitions",     label: "Competitions",  icon: <Trophy size={17} /> },
+  { href: "/teacher/problems",         label: "Problems",      icon: <Code2 size={17} /> },
+  { href: "/leaderboard",              label: "Leaderboard",   icon: <BarChart2 size={17} /> },
 ];
-
-function ThemeToggle() {
-  const { isDark, toggleTheme } = useTheme();
-  return (
-    <button
-      onClick={toggleTheme}
-      title={isDark ? "Switch to light mode" : "Switch to dark mode"}
-      className="psp-nav-btn"
-      style={{
-        background: isDark ? "rgba(76,154,255,0.1)" : "rgba(255,255,255,0.12)",
-        border: isDark ? "1px solid rgba(76,154,255,0.2)" : "1px solid rgba(255,255,255,0.2)",
-        color: isDark ? "#4c9aff" : "white",
-      }}
-    >
-      {isDark ? (
-        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-          <circle cx="12" cy="12" r="4"/>
-          <path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M4.93 19.07l1.41-1.41M17.66 6.34l1.41-1.41"/>
-        </svg>
-      ) : (
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-          <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/>
-        </svg>
-      )}
-    </button>
-  );
-}
 
 export default function Navbar() {
   const pathname = usePathname();
@@ -118,112 +91,105 @@ export default function Navbar() {
     ? email.charAt(0).toUpperCase()
     : "U";
 
-  const avatarColor =
-    role === "ADMIN"   ? "#6554c0" :
-    role === "TEACHER" ? "#00875a" :
-    "#ff5630";
+  const roleLabel =
+    role === "ADMIN" ? "Admin" : role === "TEACHER" ? "Teacher" : "Student";
+
+  const avatarBg =
+    role === "ADMIN"   ? "linear-gradient(135deg, #9b8cff, #6d5ce8)" :
+    role === "TEACHER" ? "linear-gradient(135deg, #4cd49b, #2dbd80)" :
+    "linear-gradient(135deg, #f0a93c, #e8607e)";
 
   return (
-    <nav className="psp-navbar">
-      <Link href="/" className="psp-nav-logo">
-        <div className="psp-nav-logo-box">P</div>
-        PSP Platform
+    <nav className="anav">
+      <Link href="/" className="anav-logo">
+        <span className="anav-mark">{APP_MARK}</span>
+        {APP_NAME}
       </Link>
 
       {isAuthenticated ? (
         <>
-          {links.map((l) => (
-            <Link
-              key={l.href}
-              href={l.href}
-              className={`psp-nav-link${isActive(l.href, l.exact) ? " active" : ""}`}
-              style={{ position: "relative" }}
-            >
-              {l.icon}
-              {l.label}
-              {l.href === "/ctf" && hasActiveCtf && (
-                <span
-                  title="Live competition"
-                  style={{
-                    position: "absolute",
-                    top: 6, right: 4,
-                    width: 7, height: 7, borderRadius: "50%",
-                    background: "#22c55e",
-                    boxShadow: "0 0 0 2px rgba(34,197,94,0.3)",
-                    animation: "ctf-nav-pulse 1.5s ease-in-out infinite",
-                  }}
-                />
-              )}
-            </Link>
-          ))}
-
-          <div className="psp-nav-right">
-            <ThemeToggle />
-            <button className="psp-nav-btn" title="Notifications">
-              <Bell size={14} />
-            </button>
-            <button className="psp-nav-btn" title="Settings">
-              <Settings size={14} />
-            </button>
-            <button className="psp-nav-btn" title="Help">
-              <HelpCircle size={14} />
-            </button>
-
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <div
-                  className="psp-avatar"
-                  style={{ background: avatarColor, cursor: "pointer" }}
-                  title={firstName || email || "Account"}
-                >
-                  {initials}
-                </div>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end" className="w-48">
-                <div className="px-3 py-2">
-                  <p className="text-sm font-semibold text-[#172b4d]">{firstName || "User"}</p>
-                  <p className="text-xs text-[#5e6c84] truncate">{email}</p>
-                </div>
-                <DropdownMenuSeparator />
-                <DropdownMenuItem className="cursor-pointer text-sm">
-                  <User className="mr-2 h-3.5 w-3.5" /> Profile
-                </DropdownMenuItem>
-                <DropdownMenuSeparator />
-                <DropdownMenuItem
-                  className="cursor-pointer text-sm text-red-600 focus:text-red-600"
-                  onClick={() => { logout(); router.push("/"); }}
-                >
-                  <LogOut className="mr-2 h-3.5 w-3.5" /> Log out
-                </DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
+          <div className="anav-links">
+            {links.map((l) => (
+              <Link
+                key={l.href}
+                href={l.href}
+                className={`anav-link${isActive(l.href, l.exact) ? " active" : ""}`}
+              >
+                {l.icon}
+                <span>{l.label}</span>
+                {l.href === "/ctf" && hasActiveCtf && (
+                  <span
+                    title="Live competition"
+                    style={{
+                      width: 7, height: 7, borderRadius: "50%",
+                      background: "var(--success)",
+                      boxShadow: "0 0 0 2px var(--success-soft)",
+                      animation: "ctf-nav-pulse 1.5s ease-in-out infinite",
+                    }}
+                  />
+                )}
+              </Link>
+            ))}
           </div>
+
+          <div className="anav-spacer" />
+
+          <div className="anav-search">
+            <Search />
+            <input placeholder="Search…" aria-label="Search" />
+          </div>
+
+          <button className="anav-iconbtn" title="Notifications" aria-label="Notifications">
+            <Bell />
+            <span className="dot" />
+          </button>
+
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <div className="anav-me" title={firstName || email || "Account"}>
+                <span className="anav-av" style={{ background: avatarBg }}>{initials}</span>
+                <span className="anav-meta">
+                  <span className="anav-nm">{firstName || "User"}</span>
+                  <span className="anav-rl">{roleLabel}</span>
+                </span>
+              </div>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="w-48">
+              <div className="px-3 py-2">
+                <p className="text-sm font-semibold" style={{ color: "var(--ink)" }}>{firstName || "User"}</p>
+                <p className="text-xs truncate" style={{ color: "var(--ink-3)" }}>{email}</p>
+              </div>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem className="cursor-pointer text-sm">
+                <User className="mr-2 h-3.5 w-3.5" /> Profile
+              </DropdownMenuItem>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem
+                className="cursor-pointer text-sm"
+                style={{ color: "var(--danger-ink)" }}
+                onClick={() => { logout(); router.push("/"); }}
+              >
+                <LogOut className="mr-2 h-3.5 w-3.5" /> Log out
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
         </>
       ) : (
         <>
-          <Link href="/#features" className="psp-nav-link">Features</Link>
-          <Link href="/#how" className="psp-nav-link">How it works</Link>
-          <Link href="/leaderboard" className="psp-nav-link">Leaderboard</Link>
-          <div className="psp-nav-right">
-            <Link href="/auth"
-              className="psp-nav-link"
-              style={{ border: "1.5px solid rgba(255,255,255,0.45)", borderRadius: 3, height: 32, padding: "0 14px" }}
-            >
-              Sign In
-            </Link>
-            <Link href="/auth"
-              className="psp-nav-link"
-              style={{ background: "var(--bg-primary)", color: "#0052cc", borderRadius: 3, height: 32, padding: "0 14px", fontWeight: 700, marginLeft: 4 }}
-            >
-              Get Started
-            </Link>
+          <div className="anav-links">
+            <Link href="/#features" className="anav-link"><span>Features</span></Link>
+            <Link href="/#how" className="anav-link"><span>How it works</span></Link>
+            <Link href="/leaderboard" className="anav-link"><span>Leaderboard</span></Link>
           </div>
+          <div className="anav-spacer" />
+          <Link href="/auth" className="btn btn-secondary btn-sm">Sign In</Link>
+          <Link href="/auth" className="btn btn-primary btn-sm">Get Started</Link>
         </>
       )}
       <style jsx global>{`
         @keyframes ctf-nav-pulse {
-          0%, 100% { opacity: 1; box-shadow: 0 0 0 2px rgba(34,197,94,0.3); }
-          50%      { opacity: 0.55; box-shadow: 0 0 0 4px rgba(34,197,94,0.12); }
+          0%, 100% { opacity: 1; }
+          50%      { opacity: 0.5; }
         }
       `}</style>
     </nav>

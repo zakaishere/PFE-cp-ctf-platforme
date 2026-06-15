@@ -68,6 +68,7 @@
 
   --r: 13px; --r-sm: 9px;
   --radius: 13px;   /* shadcn primitives consume this */
+  --nav-h: 62px;    /* top navbar height (layout offsets reference this) */
 
   /* ── Legacy PSP aliases → Algora (do not hardcode hex in components) ── */
   --bg-primary:     var(--bg);         /* page background */
@@ -308,7 +309,7 @@
     display: flex;
     align-items: center;
     gap: 6px;
-    margin-top: 48px;
+    margin-top: var(--nav-h, 62px);
     font-size: 12px;
     color: var(--text-muted);
   }
@@ -591,7 +592,7 @@
     display: grid;
     grid-template-columns: 260px 1fr 300px;
     gap: 0;
-    height: calc(100vh - 88px); /* navbar 48px + breadcrumb 40px */
+    height: calc(100vh - (var(--nav-h, 62px) + 40px)); /* navbar + breadcrumb 40px */
     overflow: hidden;
   }
   @media (max-width: 1023px) {
@@ -2083,4 +2084,85 @@ body,
   --border: 222 30% 17%;          /* --line   #1e2638 */
   --input: 222 30% 17%;
   --ring: 228 91% 67%;
+}
+
+/* ================================================================
+   ALGORA TOP NAVBAR — sticky, blurred, 62px, pill links
+   Self-contained (.anav*) so it doesn't inherit the legacy
+   .psp-nav underline-tab cascade. Consumes Algora tokens only.
+   ================================================================ */
+.anav {
+  position: sticky; top: 0; z-index: 100;
+  height: var(--nav-h, 62px);
+  display: flex; align-items: center; gap: 8px;
+  padding: 0 24px;
+  background: color-mix(in srgb, var(--bg-2) 82%, transparent);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border-bottom: 1px solid var(--line);
+}
+.anav-logo {
+  display: flex; align-items: center; gap: 10px;
+  font-weight: 700; font-size: 16px; color: var(--ink);
+  margin-right: 18px; white-space: nowrap;
+}
+.anav-mark {
+  width: 30px; height: 30px; border-radius: 9px;
+  background: linear-gradient(150deg, var(--brand), #9db0ff);
+  display: grid; place-items: center;
+  color: #0a0e18; font-family: var(--font-mono), monospace;
+  font-weight: 700; font-size: 13px; flex-shrink: 0;
+}
+.anav-links { display: flex; align-items: center; gap: 2px; }
+.anav-link {
+  display: flex; align-items: center; gap: 8px;
+  padding: 8px 13px; border-radius: 9px;
+  color: var(--ink-2); font-weight: 500; font-size: 13.5px;
+  cursor: pointer; white-space: nowrap; position: relative;
+}
+.anav-link svg { width: 17px; height: 17px; color: var(--ink-3); }
+.anav-link:hover { background: var(--surface); color: var(--ink); }
+.anav-link:hover svg { color: var(--ink-2); }
+.anav-link.active { background: var(--accent-soft); color: var(--brand-2); }
+.anav-link.active svg { color: var(--brand); }
+.anav-spacer { flex: 1; }
+.anav-search {
+  display: flex; align-items: center; gap: 9px;
+  background: var(--bg-2); border: 1px solid var(--line);
+  border-radius: 10px; padding: 8px 12px; width: 230px; color: var(--ink-3);
+}
+.anav-search svg { width: 16px; height: 16px; flex-shrink: 0; }
+.anav-search input {
+  border: none; outline: none; background: none;
+  font-family: var(--font-sans); font-size: 13px; color: var(--ink); width: 100%;
+}
+.anav-search input::placeholder { color: var(--ink-3); }
+.anav-iconbtn {
+  width: 38px; height: 38px; border-radius: 10px;
+  border: 1px solid var(--line); background: var(--bg-2);
+  display: grid; place-items: center; color: var(--ink-2);
+  cursor: pointer; position: relative;
+}
+.anav-iconbtn:hover { background: var(--surface); color: var(--ink); }
+.anav-iconbtn svg { width: 18px; height: 18px; }
+.anav-iconbtn .dot {
+  position: absolute; top: 8px; right: 9px;
+  width: 7px; height: 7px; border-radius: 50%;
+  background: var(--brand); border: 2px solid var(--bg-2);
+}
+.anav-me {
+  display: flex; align-items: center; gap: 9px;
+  padding: 5px 6px 5px 5px; border-radius: 10px; cursor: pointer;
+}
+.anav-me:hover { background: var(--surface); }
+.anav-av {
+  width: 32px; height: 32px; border-radius: 9px;
+  display: grid; place-items: center;
+  color: #1a1206; font-weight: 700; font-size: 12px; flex-shrink: 0;
+}
+.anav-nm { font-weight: 600; font-size: 13px; line-height: 1.15; color: var(--ink); }
+.anav-rl { font-size: 11px; color: var(--ink-3); }
+@media (max-width: 860px) {
+  .anav-search, .anav-me .anav-meta { display: none; }
+  .anav-link span { display: none; }
 }
