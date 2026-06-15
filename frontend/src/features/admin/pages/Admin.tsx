@@ -8,7 +8,7 @@ import { Users, BookOpen, Clock, ClipboardList, Monitor, AlertTriangle, CheckCir
 import { getPendingTeachers, activateTeacher, rejectTeacher, getLeaderboard, getCTFAdminConfig, updateCTFAdminConfig, getPlatformStats, getAdminHealthMetrics, type PendingTeacher, type LeaderboardEntry, type CTFResourceConfig, type PlatformStats, type AdminHealthMetrics } from "@/lib/api";
 import { LoadingButton } from "@/components/ui/LoadingButton";
 
-const AVATAR_COLORS = ["var(--brand)","#6554c0","#00875a","var(--warn)","#ff5630","#36b37e","#00b8d9","#de350b"];
+const AVATAR_COLORS = ["var(--brand)","#6554c0","var(--success)","var(--warn)","#ff5630","#36b37e","#00b8d9","var(--danger)"];
 
 function initials(t: PendingTeacher) {
   return `${t.firstName.charAt(0)}${t.lastName.charAt(0)}`.toUpperCase();
@@ -130,7 +130,7 @@ export default function AdminDashboard() {
                   <div className="psp-empty"><Loader2 size={24} style={{ margin: "0 auto 8px", animation: "spin 1s linear infinite" }} /><div>Loading…</div></div>
                 ) : pending.length === 0 ? (
                   <div className="psp-empty">
-                    <CheckCircle2 size={32} color="#00875a" style={{ margin: "0 auto 8px" }} />
+                    <CheckCircle2 size={32} color="var(--success)" style={{ margin: "0 auto 8px" }} />
                     <div className="psp-empty-title">All clear!</div>
                     <div>No pending approvals.</div>
                   </div>
@@ -151,10 +151,10 @@ export default function AdminDashboard() {
                       </div>
                     </div>
                     <div style={{ display: "flex", gap: 6, flexShrink: 0 }}>
-                      <button onClick={() => approve(t.id)} disabled={isActing} style={{ background: "var(--green-light)", color: "#006644", border: "1px solid #57d9a3", borderRadius: 3, height: 30, padding: "0 14px", fontSize: 12, fontWeight: 600, cursor: isActing ? "not-allowed" : "pointer", display: "flex", alignItems: "center", gap: 4 }}>
+                      <button onClick={() => approve(t.id)} disabled={isActing} style={{ background: "var(--green-light)", color: "var(--success-ink)", border: "1px solid var(--success-ink)", borderRadius: 3, height: 30, padding: "0 14px", fontSize: 12, fontWeight: 600, cursor: isActing ? "not-allowed" : "pointer", display: "flex", alignItems: "center", gap: 4 }}>
                         {isActing ? <Loader2 size={12} /> : <CheckCircle2 size={12} />} Approve
                       </button>
-                      <button onClick={() => setRejectTarget(t.id)} disabled={isActing} style={{ background: "var(--red-light)", color: "#de350b", border: "1px solid #ff8f73", borderRadius: 3, height: 30, padding: "0 14px", fontSize: 12, fontWeight: 600, cursor: isActing ? "not-allowed" : "pointer", display: "flex", alignItems: "center", gap: 4 }}>
+                      <button onClick={() => setRejectTarget(t.id)} disabled={isActing} style={{ background: "var(--red-light)", color: "var(--danger)", border: "1px solid var(--danger)", borderRadius: 3, height: 30, padding: "0 14px", fontSize: 12, fontWeight: 600, cursor: isActing ? "not-allowed" : "pointer", display: "flex", alignItems: "center", gap: 4 }}>
                         <X size={12} /> Reject
                       </button>
                     </div>
@@ -198,7 +198,7 @@ export default function AdminDashboard() {
                   <span style={{
                     fontSize: 11, fontWeight: 700, padding: "2px 8px", borderRadius: 4,
                     background: health.overall === "OK" ? "rgba(0,135,90,0.12)" : health.overall === "WARN" ? "rgba(255,139,0,0.12)" : "rgba(222,53,11,0.12)",
-                    color: health.overall === "OK" ? "#00875a" : health.overall === "WARN" ? "var(--warn)" : "#de350b",
+                    color: health.overall === "OK" ? "var(--success)" : health.overall === "WARN" ? "var(--warn)" : "var(--danger)",
                   }}>{health.overall}</span>
                 )}
               </div>
@@ -223,7 +223,7 @@ export default function AdminDashboard() {
                     status: health.heap.status,
                   },
                 ] as Array<{ label: string; val: string; status: string }>).map((row, i) => {
-                  const clr = row.status === "OK" ? "#00875a" : row.status === "WARN" ? "var(--warn)" : row.status === "CRITICAL" ? "#de350b" : "var(--text-muted)";
+                  const clr = row.status === "OK" ? "var(--success)" : row.status === "WARN" ? "var(--warn)" : row.status === "CRITICAL" ? "var(--danger)" : "var(--text-muted)";
                   return (
                     <div key={i} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 10 }}>
                       <span style={{ fontSize: 13, color: "var(--text-muted)" }}>{row.label}</span>
@@ -246,7 +246,7 @@ export default function AdminDashboard() {
               <div className="psp-card-body">
                 {([
                   { label: "Total Users",        val: stats ? String((stats.activeTeachers ?? 0) + (stats.totalStudents ?? 0)) : "…" },
-                  { label: "Active Live Exams",  val: stats ? `${stats.activeLiveExams}${stats.activeLiveExams > 0 ? " ongoing" : ""}` : "…", color: stats && stats.activeLiveExams > 0 ? "#de350b" : undefined },
+                  { label: "Active Live Exams",  val: stats ? `${stats.activeLiveExams}${stats.activeLiveExams > 0 ? " ongoing" : ""}` : "…", color: stats && stats.activeLiveExams > 0 ? "var(--danger)" : undefined },
                   { label: "Open TPs",           val: stats ? String(stats.openTps) : "…" },
                   { label: "Problems in Bank",   val: stats ? String(stats.totalProblems) : "…" },
                   { label: "Competitions",       val: stats ? String(stats.totalCompetitions) : "…" },
@@ -328,7 +328,7 @@ export default function AdminDashboard() {
                 const color = AVATAR_COLORS[i % AVATAR_COLORS.length];
                 const ini = `${s.firstName.charAt(0)}${s.lastName.charAt(0)}`.toUpperCase();
                 return (
-                  <div key={s.studentId} style={{ display: "flex", alignItems: "center", gap: 10, padding: "9px 14px", borderBottom: i < 4 ? "1px solid #f4f5f7" : "none", fontSize: 12 }}>
+                  <div key={s.studentId} style={{ display: "flex", alignItems: "center", gap: 10, padding: "9px 14px", borderBottom: i < 4 ? "1px solid var(--bg-2)" : "none", fontSize: 12 }}>
                     <span style={{ fontSize: 16, width: 20, textAlign: "center" }}>{medals[i] || String(i + 1)}</span>
                     <div style={{ width: 26, height: 26, borderRadius: "50%", background: color, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 9, fontWeight: 700, color: "white" }}>{ini}</div>
                     <span style={{ flex: 1, fontWeight: 500 }}>{s.firstName} {s.lastName}</span>
