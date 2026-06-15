@@ -8,6 +8,7 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Eye, EyeOff, CheckCircle2, RefreshCw, ArrowLeft, Loader2 } from "lucide-react";
 import { useAuth } from "@/features/auth/contexts/AuthContext";
+import { APP_NAME, APP_MARK } from "@/lib/brand";
 import {
   registerStudent, registerTeacher, forgotPassword, resetPassword,
   verifyEmail, resendVerification,
@@ -108,14 +109,14 @@ function LoginForm({ onForgot, onRegister }: { onForgot: () => void; onRegister:
       {error && <div style={{ background: "var(--red-light)", border: "1px solid #ff8f73", color: "#bf2600", borderRadius: 3, padding: "8px 12px", fontSize: 12, marginBottom: 14 }}>{error}</div>}
       <FInput label="Email address" type="email" placeholder="you@university.ma" error={errors.email?.message} {...register("email")} />
       <FInput label="Password" type="password" placeholder="Enter your password" error={errors.password?.message} {...register("password")} />
-      <a onClick={onForgot} style={{ display: "block", textAlign: "right", fontSize: 12, color: "#0052cc", marginBottom: 16, cursor: "pointer" }}>Forgot password?</a>
+      <a onClick={onForgot} style={{ display: "block", textAlign: "right", fontSize: 12, color: "var(--brand)", marginBottom: 16, cursor: "pointer" }}>Forgot password?</a>
       <FBtn loading={loading} type="submit">Sign In</FBtn>
       <div style={{ display: "flex", alignItems: "center", gap: 12, margin: "20px 0", color: "var(--text-muted)", fontSize: 12 }}>
         <div style={{ flex: 1, borderTop: "1px solid var(--border)" }} /> or <div style={{ flex: 1, borderTop: "1px solid var(--border)" }} />
       </div>
       <div style={{ textAlign: "center", fontSize: 13, color: "var(--text-muted)" }}>
         Don&apos;t have an account?{" "}
-        <a onClick={onRegister} style={{ color: "#0052cc", cursor: "pointer", fontWeight: 500 }}>Create one</a>
+        <a onClick={onRegister} style={{ color: "var(--brand)", cursor: "pointer", fontWeight: 500 }}>Create one</a>
       </div>
     </form>
   );
@@ -138,7 +139,7 @@ function EmailVerifyStep({ email, role, onBack }: { email: string; role: "studen
       <div style={{ fontSize: 13, color: "var(--text-muted)", marginBottom: 20 }}>
         {role === "teacher" ? "Your account is pending admin approval. You'll be notified once activated." : "You can now sign in."}
       </div>
-      <button onClick={onBack} style={{ color: "#0052cc", background: "none", border: "none", cursor: "pointer", fontSize: 13, display: "flex", alignItems: "center", gap: 4, margin: "0 auto" }}>
+      <button onClick={onBack} style={{ color: "var(--brand)", background: "none", border: "none", cursor: "pointer", fontSize: 13, display: "flex", alignItems: "center", gap: 4, margin: "0 auto" }}>
         <ArrowLeft size={13} /> Back to Sign In
       </button>
     </div>
@@ -183,7 +184,7 @@ function RegisterForm({ onLogin }: { onLogin: () => void }) {
       <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", border: "1px solid var(--border)", borderRadius: 3, marginBottom: 20, overflow: "hidden" }}>
         {(["student", "teacher"] as const).map((r) => (
           <button key={r} type="button" onClick={() => setRoleTab(r)}
-            style={{ padding: 10, textAlign: "center", fontSize: 13, fontWeight: 600, cursor: "pointer", color: roleTab === r ? "white" : "#5e6c84", background: roleTab === r ? "#0052cc" : "var(--bg-primary)", border: "none", display: "flex", alignItems: "center", justifyContent: "center", gap: 6 }}>
+            style={{ padding: 10, textAlign: "center", fontSize: 13, fontWeight: 600, cursor: "pointer", color: roleTab === r ? "white" : "#5e6c84", background: roleTab === r ? "var(--brand)" : "var(--bg-primary)", border: "none", display: "flex", alignItems: "center", justifyContent: "center", gap: 6 }}>
             {r === "student" ? "Student" : "Teacher"}
           </button>
         ))}
@@ -238,7 +239,7 @@ function RegisterForm({ onLogin }: { onLogin: () => void }) {
       )}
       <div style={{ textAlign: "center", fontSize: 13, color: "var(--text-muted)", marginTop: 16 }}>
         Already have an account?{" "}
-        <a onClick={onLogin} style={{ color: "#0052cc", cursor: "pointer", fontWeight: 500 }}>Sign in</a>
+        <a onClick={onLogin} style={{ color: "var(--brand)", cursor: "pointer", fontWeight: 500 }}>Sign in</a>
       </div>
     </div>
   );
@@ -262,7 +263,7 @@ function ForgotFlow({ onBack }: { onBack: () => void }) {
       </div>
       <div style={{ fontSize: 14, color: "var(--text-primary)", fontWeight: 600, marginBottom: 8 }}>Password reset!</div>
       <div style={{ fontSize: 13, color: "var(--text-muted)", marginBottom: 20 }}>You can now sign in with your new password.</div>
-      <button onClick={onBack} style={{ color: "#0052cc", background: "none", border: "none", cursor: "pointer", fontSize: 13, display: "flex", alignItems: "center", gap: 4, margin: "0 auto" }}>
+      <button onClick={onBack} style={{ color: "var(--brand)", background: "none", border: "none", cursor: "pointer", fontSize: 13, display: "flex", alignItems: "center", gap: 4, margin: "0 auto" }}>
         <ArrowLeft size={13} /> Back to Sign In
       </button>
     </div>
@@ -315,29 +316,29 @@ export default function AuthPage() {
   const [mode, setMode] = useState<Mode>("login");
 
   return (
-    <div style={{ fontFamily: "-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif", background: "var(--bg-secondary)", color: "var(--text-primary)", minHeight: "100vh", display: "flex", flexDirection: "column" }}>
+    <div style={{ background: "var(--bg)", color: "var(--text-primary)", minHeight: "100vh", display: "flex", flexDirection: "column" }}>
       {/* Top bar */}
-      <div style={{ background: "#0052cc", height: 48, display: "flex", alignItems: "center", padding: "0 24px" }}>
-        <Link href="/" style={{ display: "flex", alignItems: "center", gap: 8, color: "white", fontWeight: 700, fontSize: 15, textDecoration: "none" }}>
-          <div style={{ width: 24, height: 24, background: "rgba(255,255,255,0.9)", borderRadius: 4, display: "flex", alignItems: "center", justifyContent: "center", color: "#0052cc", fontWeight: 900, fontSize: 12 }}>P</div>
-          PSP Platform
+      <div style={{ background: "var(--bg-2)", height: "var(--nav-h, 62px)", display: "flex", alignItems: "center", padding: "0 24px", borderBottom: "1px solid var(--line)" }}>
+        <Link href="/" style={{ display: "flex", alignItems: "center", gap: 10, color: "var(--ink)", fontWeight: 700, fontSize: 16, textDecoration: "none" }}>
+          <div style={{ width: 30, height: 30, background: "linear-gradient(150deg, var(--brand), #9db0ff)", borderRadius: 9, display: "flex", alignItems: "center", justifyContent: "center", color: "#0a0e18", fontFamily: "var(--font-mono), monospace", fontWeight: 700, fontSize: 13 }}>{APP_MARK}</div>
+          {APP_NAME}
         </Link>
       </div>
 
       {/* Card */}
       <div style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center", padding: "40px 16px" }}>
-        <div style={{ background: "var(--bg-primary)", border: "1px solid var(--border)", borderRadius: 3, width: "100%", maxWidth: mode === "register" ? 480 : 400, padding: 32 }}>
+        <div style={{ background: "var(--surface)", border: "1px solid var(--line)", borderRadius: "var(--r)", width: "100%", maxWidth: mode === "register" ? 480 : 400, padding: 32 }}>
           {mode === "forgot" ? (
             <ForgotFlow onBack={() => setMode("login")} />
           ) : (
             <>
               <div style={{ textAlign: "center", marginBottom: 24 }}>
-                <div style={{ width: 48, height: 48, background: "#0052cc", borderRadius: 8, display: "flex", alignItems: "center", justifyContent: "center", margin: "0 auto 12px", color: "white", fontWeight: 900, fontSize: 22 }}>P</div>
+                <div style={{ width: 48, height: 48, background: "linear-gradient(150deg, var(--brand), #9db0ff)", borderRadius: 12, display: "flex", alignItems: "center", justifyContent: "center", margin: "0 auto 12px", color: "#0a0e18", fontFamily: "var(--font-mono), monospace", fontWeight: 700, fontSize: 22 }}>{APP_MARK}</div>
                 <div style={{ fontSize: 20, fontWeight: 700, color: "var(--text-primary)" }}>
                   {mode === "login" ? "Welcome back" : "Create your account"}
                 </div>
                 <div style={{ fontSize: 13, color: "var(--text-muted)", marginTop: 4 }}>
-                  {mode === "login" ? "Sign in to your PSP account" : "Join the PSP Platform"}
+                  {mode === "login" ? `Sign in to your ${APP_NAME} account` : `Join ${APP_NAME}`}
                 </div>
               </div>
 
