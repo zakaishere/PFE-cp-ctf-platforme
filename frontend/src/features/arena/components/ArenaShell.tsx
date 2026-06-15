@@ -135,7 +135,7 @@ export default function ArenaShell({
     return (
       <div style={{
         height: "100vh", display: "flex", alignItems: "center", justifyContent: "center",
-        background: "#172b4d", flexDirection: "column", gap: 12,
+        background: "var(--bg-2)", flexDirection: "column", gap: 12,
         fontFamily: "-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif",
       }}>
         <Loader2 size={28} style={{ animation: "spin 1s linear infinite", color: "var(--brand)" }} />
@@ -149,7 +149,7 @@ export default function ArenaShell({
     return (
       <div style={{
         height: "100vh", display: "flex", alignItems: "center", justifyContent: "center",
-        background: "#172b4d", flexDirection: "column", gap: 12,
+        background: "var(--bg-2)", flexDirection: "column", gap: 12,
         fontFamily: "-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif",
       }}>
         <div style={{ fontSize: 36 }}>🔒</div>
@@ -196,8 +196,8 @@ export default function ArenaShell({
 
       {isEnded && (
         <div style={{
-          background: "var(--red-light)", borderBottom: "1px solid #ff8f73",
-          padding: "7px 16px", fontSize: 13, color: "#bf2600",
+          background: "var(--red-light)", borderBottom: "1px solid var(--danger)",
+          padding: "7px 16px", fontSize: 13, color: "var(--danger-ink)",
           fontWeight: 600, display: "flex", alignItems: "center", gap: 8, flexShrink: 0,
         }}>
           <AlertTriangle size={14} /> {endedMessage}
@@ -233,8 +233,8 @@ function TopBar({ title, backHref, backLabel, remainingSeconds, isEnded, extras 
 
   return (
     <div style={{
-      background: "#172b4d", height: 44, display: "flex", alignItems: "center",
-      padding: "0 16px", gap: 16, flexShrink: 0, borderBottom: "1px solid #253858",
+      background: "var(--bg-2)", height: 44, display: "flex", alignItems: "center",
+      padding: "0 16px", gap: 16, flexShrink: 0, borderBottom: "1px solid var(--line)",
     }}>
       <div style={{
         display: "flex", alignItems: "center", gap: 6,
@@ -260,13 +260,13 @@ function TopBar({ title, backHref, backLabel, remainingSeconds, isEnded, extras 
         {showTimer && (
           <span style={{
             fontFamily: "ui-monospace, monospace", fontSize: 15, fontWeight: 700,
-            color: isEnded ? "#97a0af" : isUrgent ? "#de350b" : "var(--warn)",
+            color: isEnded ? "var(--ink-3)" : isUrgent ? "var(--danger)" : "var(--warn)",
           }}>
             {isEnded ? "00:00:00" : timerStr}
           </span>
         )}
         <Link href={backHref} style={{
-          background: "#de350b", color: "white", border: "none", borderRadius: 3,
+          background: "var(--danger)", color: "white", border: "none", borderRadius: 3,
           padding: "0 12px", height: 28, fontSize: 12, fontWeight: 600,
           cursor: "pointer", display: "flex", alignItems: "center", textDecoration: "none",
         }}>
@@ -284,7 +284,7 @@ function NavTabs({ tabs, activeKey, onSelect }: {
 }) {
   return (
     <nav style={{
-      background: "#0f172a", borderBottom: "1px solid #253858",
+      background: "var(--bg)", borderBottom: "1px solid var(--line)",
       display: "flex", alignItems: "center",
       padding: "0 12px", gap: 4, flexShrink: 0, height: 38,
     }}>
@@ -296,10 +296,10 @@ function NavTabs({ tabs, activeKey, onSelect }: {
             type="button"
             onClick={() => onSelect(t.key)}
             style={{
-              background: active ? "#1e293b" : "transparent",
-              color: active ? "#f8fafc" : "#94a3b8",
+              background: active ? "var(--surface-2)" : "transparent",
+              color: active ? "var(--ink)" : "var(--ink-2)",
               border: "none",
-              borderBottom: active ? "2px solid #0052cc" : "2px solid transparent",
+              borderBottom: active ? "2px solid var(--brand)" : "2px solid transparent",
               borderRadius: "4px 4px 0 0",
               padding: "0 12px", height: 36,
               display: "inline-flex", alignItems: "center", gap: 6,

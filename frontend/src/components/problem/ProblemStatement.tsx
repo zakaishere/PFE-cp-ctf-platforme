@@ -146,7 +146,7 @@ function DescriptionTab({ problem }: { problem: ProblemDetailDTO }) {
               background: "rgba(76,154,255,0.08)",
               border: "1px solid rgba(76,154,255,0.2)",
               borderRadius: 5,
-              fontSize: 11, color: "#4c9aff", fontWeight: 600,
+              fontSize: 11, color: "var(--brand-2)", fontWeight: 600,
             }}>
               {problem.category}
             </span>
@@ -302,9 +302,9 @@ function ConstraintChip({ icon, label }: { icon: string; label: string }) {
 
 function DifficultyBadgeLight({ difficulty }: { difficulty: string }) {
   const config: Record<string, { color: string; bg: string; text: string }> = {
-    EASY:   { color: "#57d9a3", bg: "rgba(87,217,163,0.1)",  text: "Easy"   },
+    EASY:   { color: "var(--success-ink)", bg: "rgba(87,217,163,0.1)",  text: "Easy"   },
     MEDIUM: { color: "#ffc107", bg: "rgba(255,193,7,0.1)",   text: "Medium" },
-    HARD:   { color: "#ff6b4a", bg: "rgba(255,107,74,0.1)",  text: "Hard"   },
+    HARD:   { color: "var(--danger-ink)", bg: "rgba(255,107,74,0.1)",  text: "Hard"   },
   };
   const c = config[difficulty] ?? { color: "#888", bg: "rgba(136,136,136,0.1)", text: difficulty };
   return (
@@ -381,7 +381,7 @@ function SubmissionsTab({
         alignItems: "center",
         gap: 6,
       }}>
-        <span style={{ color: "#4c9aff" }}>💡</span>
+        <span style={{ color: "var(--brand-2)" }}>💡</span>
         Click any submission to load its code into the editor
       </div>
 
@@ -416,7 +416,7 @@ function SubmissionsTab({
                   borderBottom: "1px solid var(--border-subtle)",
                   cursor: isLoading ? "wait" : "pointer",
                   background: isLoaded ? "rgba(76,154,255,0.07)" : "transparent",
-                  borderLeft: isLoaded ? "3px solid #4c9aff" : "3px solid transparent",
+                  borderLeft: isLoaded ? "3px solid var(--brand-2)" : "3px solid transparent",
                   transition: "background 0.1s, border-color 0.1s",
                 }}
                 onMouseEnter={e => {
@@ -432,14 +432,14 @@ function SubmissionsTab({
                     {isLoading && (
                       <svg width="12" height="12" viewBox="0 0 24 24" fill="none"
                         style={{ animation: "spin 0.8s linear infinite", flexShrink: 0 }}>
-                        <circle cx="12" cy="12" r="10" stroke="#4c9aff"
+                        <circle cx="12" cy="12" r="10" stroke="var(--brand-2)"
                           strokeWidth="3" strokeDasharray="30 70" />
                       </svg>
                     )}
                     {isLoaded && !isLoading && (
                       <span style={{
                         fontSize: 10, fontWeight: 700,
-                        color: "#4c9aff",
+                        color: "var(--brand-2)",
                         background: "rgba(76,154,255,0.12)",
                         padding: "1px 6px",
                         borderRadius: 3,
@@ -472,8 +472,8 @@ function SubmissionsTab({
 
 function StatusBadge({ status }: { status: string }) {
   const config: Record<string, { color: string; bg: string; label: string }> = {
-    ACCEPTED:              { color: "#57d9a3", bg: "rgba(87,217,163,0.1)",  label: "Accepted"      },
-    WRONG_ANSWER:          { color: "#ff6b4a", bg: "rgba(255,107,74,0.1)",  label: "Wrong Answer"  },
+    ACCEPTED:              { color: "var(--success-ink)", bg: "rgba(87,217,163,0.1)",  label: "Accepted"      },
+    WRONG_ANSWER:          { color: "var(--danger-ink)", bg: "rgba(255,107,74,0.1)",  label: "Wrong Answer"  },
     TIME_LIMIT_EXCEEDED:   { color: "#ffc107", bg: "rgba(255,193,7,0.1)",   label: "Time Limit"    },
     RUNTIME_ERROR:         { color: "#c678dd", bg: "rgba(198,120,221,0.1)", label: "Runtime Error" },
     COMPILATION_ERROR:     { color: "#888",    bg: "rgba(136,136,136,0.1)", label: "Compile Error" },

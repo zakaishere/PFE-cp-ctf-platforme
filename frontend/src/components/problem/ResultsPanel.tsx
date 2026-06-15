@@ -126,8 +126,8 @@ function verdictLabel(v: string): string {
 }
 
 const VERDICT_COLOR: Record<string, string> = {
-  ACCEPTED:              "#57d9a3",
-  WRONG_ANSWER:          "#ff6b4a",
+  ACCEPTED:              "var(--success-ink)",
+  WRONG_ANSWER:          "var(--danger-ink)",
   TIME_LIMIT_EXCEEDED:   "#ffc107",
   RUNTIME_ERROR:         "#c678dd",
   MEMORY_LIMIT_EXCEEDED: "#56b6c2",
@@ -175,14 +175,14 @@ function IOBlock({ label, value, highlight = false, diff }: {
     ok: "transparent", wrong: "rgba(255,107,74,0.15)", extra: "rgba(255,193,7,0.1)", missing: "rgba(198,120,221,0.1)",
   };
   const textColor: Record<LineDiff["type"], string> = {
-    ok: "#ccc", wrong: "#ff6b4a", extra: "#ffc107", missing: "#c678dd",
+    ok: "#ccc", wrong: "var(--danger-ink)", extra: "#ffc107", missing: "#c678dd",
   };
 
   return (
     <div style={{ border: `1px solid ${highlight ? "rgba(255,107,74,0.3)" : "#333"}`, borderRadius: 5, overflow: "hidden" }}>
       <div style={{
         padding: "5px 10px", background: "#2d2d2d",
-        fontSize: 10, fontWeight: 700, color: highlight ? "#ff6b4a" : "#666",
+        fontSize: 10, fontWeight: 700, color: highlight ? "var(--danger-ink)" : "#666",
         textTransform: "uppercase", letterSpacing: "0.5px", borderBottom: "1px solid #333",
       }}>
         {label}
@@ -216,7 +216,7 @@ function DiffSummary({ expected, actual }: { expected: string; actual: string })
   const a = actual.trim().split("\n");
   if (e.length !== a.length) {
     return (
-      <div style={{ fontSize: 11, color: "#ff6b4a", padding: "6px 10px", background: "rgba(255,107,74,0.08)", borderRadius: 4 }}>
+      <div style={{ fontSize: 11, color: "var(--danger-ink)", padding: "6px 10px", background: "rgba(255,107,74,0.08)", borderRadius: 4 }}>
         ⚠ Output has {a.length} line{a.length !== 1 ? "s" : ""}, expected {e.length}
       </div>
     );
@@ -224,7 +224,7 @@ function DiffSummary({ expected, actual }: { expected: string; actual: string })
   const first = e.findIndex((l, i) => l !== a[i]);
   if (first >= 0) {
     return (
-      <div style={{ fontSize: 11, color: "#ff6b4a", padding: "6px 10px", background: "rgba(255,107,74,0.08)", borderRadius: 4 }}>
+      <div style={{ fontSize: 11, color: "var(--danger-ink)", padding: "6px 10px", background: "rgba(255,107,74,0.08)", borderRadius: 4 }}>
         First difference on line {first + 1}: expected{" "}
         <code style={{ background: "#333", padding: "1px 4px", borderRadius: 3 }}>{e[first]}</code>
         , got <code style={{ background: "#333", padding: "1px 4px", borderRadius: 3 }}>{a[first]}</code>
@@ -239,11 +239,11 @@ function DiffSummary({ expected, actual }: { expected: string; actual: string })
 function CompilationErrorView({ error }: { error: string }) {
   return (
     <div style={{ padding: 16 }}>
-      <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 10, fontSize: 13, fontWeight: 700, color: "#ff6b4a" }}>
+      <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 10, fontSize: 13, fontWeight: 700, color: "var(--danger-ink)" }}>
         🔴 Compilation Error
       </div>
       <pre style={{
-        fontFamily: "ui-monospace, Consolas, monospace", fontSize: 12, color: "#ff8f6b",
+        fontFamily: "ui-monospace, Consolas, monospace", fontSize: 12, color: "var(--danger)",
         background: "rgba(255,107,74,0.08)", border: "1px solid rgba(255,107,74,0.2)",
         borderRadius: 5, padding: "12px 14px", margin: 0, whiteSpace: "pre-wrap",
         wordBreak: "break-all", lineHeight: 1.7, maxHeight: 300, overflow: "auto",
@@ -401,7 +401,7 @@ function RunSummaryBar({ result }: { result: RunResult }) {
     }}>
       <span style={{ fontSize: 18, lineHeight: 1 }}>{allPassed ? "✅" : "❌"}</span>
       <div style={{ flex: 1 }}>
-        <div style={{ fontSize: 13, fontWeight: 700, color: allPassed ? "#57d9a3" : "#ff6b4a" }}>
+        <div style={{ fontSize: 13, fontWeight: 700, color: allPassed ? "var(--success-ink)" : "var(--danger-ink)" }}>
           {allPassed
             ? `All ${total} test case${total === 1 ? "" : "s"} passed`
             : stoppedAt != null
@@ -506,12 +506,12 @@ function SubmitResultsView({ status, rows, complete }: {
   }
 
   const verdictColor: Record<string, string> = {
-    ACCEPTED:              "#57d9a3",
-    WRONG_ANSWER:          "#ff6b4a",
+    ACCEPTED:              "var(--success-ink)",
+    WRONG_ANSWER:          "var(--danger-ink)",
     RUNTIME_ERROR:         "#c678dd",
     TIME_OUT:              "#ffc107",
     MEMORY_LIMIT_EXCEEDED: "#56b6c2",
-    COMPILATION_ERROR:     "#ff6b4a",
+    COMPILATION_ERROR:     "var(--danger-ink)",
   };
 
   const finalColor = complete ? (verdictColor[complete.finalStatus] ?? "#888") : "#888";
@@ -537,7 +537,7 @@ function SubmitResultsView({ status, rows, complete }: {
               </div>
             )}
             {complete.errorMessage && (
-              <pre style={{ fontSize: 11, color: "#ff8f6b", margin: "6px 0 0", whiteSpace: "pre-wrap", wordBreak: "break-all" }}>
+              <pre style={{ fontSize: 11, color: "var(--danger)", margin: "6px 0 0", whiteSpace: "pre-wrap", wordBreak: "break-all" }}>
                 {complete.errorMessage}
               </pre>
             )}
@@ -555,9 +555,9 @@ function SubmitResultsView({ status, rows, complete }: {
             const canExpand  = !isPending && !isNotRun;
             const isExpanded = expanded === i;
             const rowColor   = isPending ? "#888"
-              : isPass    ? "#57d9a3"
+              : isPass    ? "var(--success-ink)"
               : isNotRun  ? "#444"
-              : VERDICT_COLOR[r.status] ?? "#ff6b4a";
+              : VERDICT_COLOR[r.status] ?? "var(--danger-ink)";
 
             return (
               <div key={i} style={{
@@ -628,15 +628,15 @@ function SubmitResultsView({ status, rows, complete }: {
                             Hidden test case — input and expected output are not shown.
                           </div>
                           {r.actualOutput != null && (
-                            <OutputBlock label="Your Output" value={r.actualOutput} accent={isPass ? "#57d9a3" : "#ff6b4a"} />
+                            <OutputBlock label="Your Output" value={r.actualOutput} accent={isPass ? "var(--success-ink)" : "var(--danger-ink)"} />
                           )}
                         </>
                       ) : (
                         <>
                           {r.inputData != null && <OutputBlock label="Input" value={r.inputData} />}
-                          {r.expectedOutput != null && <OutputBlock label="Expected Output" value={r.expectedOutput} accent="#57d9a3" />}
+                          {r.expectedOutput != null && <OutputBlock label="Expected Output" value={r.expectedOutput} accent="var(--success-ink)" />}
                           {r.actualOutput != null && (
-                            <OutputBlock label="Your Output" value={r.actualOutput} accent={isPass ? "#57d9a3" : "#ff6b4a"} />
+                            <OutputBlock label="Your Output" value={r.actualOutput} accent={isPass ? "var(--success-ink)" : "var(--danger-ink)"} />
                           )}
                         </>
                       )}
@@ -837,8 +837,8 @@ export const ResultsPanel = forwardRef<ResultsPanelHandle, ResultsPanelProps>(
               style={{
                 padding: "0 16px", height: 38,
                 background: "transparent", border: "none",
-                borderBottom: activeTab === tab ? "2px solid #0052cc" : "2px solid transparent",
-                color: activeTab === tab ? "#4c9aff" : "#888",
+                borderBottom: activeTab === tab ? "2px solid var(--brand)" : "2px solid transparent",
+                color: activeTab === tab ? "var(--brand-2)" : "#888",
                 fontSize: 12, fontWeight: activeTab === tab ? 700 : 500,
                 cursor: "pointer", fontFamily: "inherit", transition: "all 0.12s",
                 display: "flex", alignItems: "center", gap: 6,

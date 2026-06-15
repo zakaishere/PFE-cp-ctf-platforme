@@ -19,9 +19,9 @@ import ArenaShell, { type ArenaTab } from "@/features/arena/components/ArenaShel
 import { type ViolationEvent } from "@/hooks/useAntiCheat";
 
 const DIFF_STYLE: Record<string, { bg: string; color: string }> = {
-  EASY:   { bg: "#e3fcef", color: "#006644" },
-  MEDIUM: { bg: "#fffae6", color: "#974f0c" },
-  HARD:   { bg: "#ffebe6", color: "#bf2600" },
+  EASY:   { bg: "var(--success-soft)", color: "var(--success-ink)" },
+  MEDIUM: { bg: "var(--warn-soft)", color: "var(--warn-ink)" },
+  HARD:   { bg: "var(--danger-soft)", color: "var(--danger-ink)" },
 };
 
 type Verdict = WorkspaceVerdict;
@@ -109,7 +109,7 @@ export default function Arena({ examId, mode = "exam" }: ArenaProps) {
   const solvedCount = examRoom?.problems.filter((p) => p.solvedByCurrentUser).length ?? 0;
 
   const diff      = activeProblem?.difficulty ?? "";
-  const diffStyle = DIFF_STYLE[diff] ?? { bg: "#f4f5f7", color: "var(--text-muted)" };
+  const diffStyle = DIFF_STYLE[diff] ?? { bg: "var(--surface-2)", color: "var(--text-muted)" };
   const diffLabel = diff ? diff.charAt(0) + diff.slice(1).toLowerCase() : "";
   const visibleCount = activeProblem?.visibleTestCases.length ?? 0;
   const hiddenCount  = activeProblem?.hiddenTestCaseCount ?? 0;
@@ -201,7 +201,7 @@ export default function Arena({ examId, mode = "exam" }: ArenaProps) {
     <div style={{ display: "flex", flex: 1, overflow: "hidden" }}>
 
       {/* Left: problem list + progress */}
-      <div style={{ width: 240, background: "#253858", display: "flex", flexDirection: "column", flexShrink: 0, borderRight: "1px solid #344563" }}>
+      <div style={{ width: 240, background: "var(--line)", display: "flex", flexDirection: "column", flexShrink: 0, borderRight: "1px solid var(--ink-2)" }}>
           <div style={{ padding: 12, flex: 1, overflowY: "auto" }}>
             <div style={{ fontSize: 10, fontWeight: 700, color: "rgba(255,255,255,0.4)", textTransform: "uppercase", letterSpacing: 0.5, marginBottom: 8 }}>
               Problems
@@ -223,7 +223,7 @@ export default function Arena({ examId, mode = "exam" }: ArenaProps) {
                 >
                   <div style={{
                     width: 8, height: 8, borderRadius: "50%", flexShrink: 0,
-                    background: p.solvedByCurrentUser ? "#00875a" : "#97a0af",
+                    background: p.solvedByCurrentUser ? "var(--success)" : "var(--ink-3)",
                   }} />
                   <div style={{ fontSize: 12, color: "rgba(255,255,255,0.85)", fontWeight: 500, flex: 1 }}>
                     {p.label}. {p.title}
@@ -234,19 +234,19 @@ export default function Arena({ examId, mode = "exam" }: ArenaProps) {
             )}
           </div>
 
-          <div style={{ padding: 12, borderTop: "1px solid #344563" }}>
+          <div style={{ padding: 12, borderTop: "1px solid var(--ink-2)" }}>
             <div style={{ fontSize: 10, fontWeight: 700, color: "rgba(255,255,255,0.4)", textTransform: "uppercase", letterSpacing: 0.5, marginBottom: 6 }}>Progress</div>
             <div style={{ fontSize: 12, color: "rgba(255,255,255,0.65)" }}>{solvedCount} / {problems.length} solved</div>
-            <div style={{ background: "#344563", height: 4, borderRadius: 2, marginTop: 6 }}>
+            <div style={{ background: "var(--ink-2)", height: 4, borderRadius: 2, marginTop: 6 }}>
               <div style={{ background: "var(--brand)", height: 4, borderRadius: 2, width: problems.length > 0 ? `${(solvedCount / problems.length) * 100}%` : "0%" }} />
             </div>
           </div>
 
-          <div style={{ padding: "8px 12px", borderTop: "1px solid #344563" }}>
+          <div style={{ padding: "8px 12px", borderTop: "1px solid var(--ink-2)" }}>
             <div style={{ fontSize: 11, color: "rgba(255,255,255,0.4)", marginBottom: 2, display: "flex", alignItems: "center", gap: 4 }}>
               <AlertTriangle size={11} /> Anti-cheat active
             </div>
-            <div style={{ fontSize: 11, color: tabSwitches > 0 ? "#de350b" : "rgba(255,255,255,0.4)" }}>
+            <div style={{ fontSize: 11, color: tabSwitches > 0 ? "var(--danger)" : "rgba(255,255,255,0.4)" }}>
               Tab switches: {tabSwitches}
             </div>
           </div>
@@ -280,7 +280,7 @@ export default function Arena({ examId, mode = "exam" }: ArenaProps) {
                     {activeProblem.points} pts
                   </span>
                   {activeProblem.solvedByCurrentUser && (
-                    <span style={{ display: "flex", alignItems: "center", gap: 4, background: "var(--green-light)", border: "1px solid var(--border)", borderRadius: 3, padding: "2px 8px", fontSize: 11, color: "#006644", fontWeight: 600 }}>
+                    <span style={{ display: "flex", alignItems: "center", gap: 4, background: "var(--green-light)", border: "1px solid var(--border)", borderRadius: 3, padding: "2px 8px", fontSize: 11, color: "var(--success-ink)", fontWeight: 600 }}>
                       <CheckCircle2 size={10} /> Solved
                     </span>
                   )}
@@ -400,11 +400,11 @@ function BriefingScreen({
   return (
     <div style={{
       height: "100vh", display: "flex", alignItems: "center", justifyContent: "center",
-      background: "#0d1426", color: "#f8fafc",
+      background: "var(--bg)", color: "var(--ink)",
       fontFamily: "-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif",
     }}>
       <div style={{
-        background: "#172b4d", borderRadius: 10, padding: "32px 36px",
+        background: "var(--bg-2)", borderRadius: 10, padding: "32px 36px",
         maxWidth: 480, width: "100%", boxShadow: "0 16px 40px rgba(0,0,0,0.4)",
       }}>
         <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 18 }}>
@@ -414,7 +414,7 @@ function BriefingScreen({
             color: "white", fontWeight: 900, fontSize: 16,
           }}>P</div>
           <div>
-            <div style={{ fontSize: 11, color: "#94a3b8", textTransform: "uppercase", letterSpacing: 0.6 }}>
+            <div style={{ fontSize: 11, color: "var(--ink-2)", textTransform: "uppercase", letterSpacing: 0.6 }}>
               Entering arena
             </div>
             <div style={{ fontSize: 17, fontWeight: 700 }}>{title}</div>
@@ -432,9 +432,9 @@ function BriefingScreen({
             borderRadius: 6, padding: "10px 12px", marginBottom: 18,
             display: "flex", gap: 10, alignItems: "flex-start",
           }}>
-            <ShieldAlert size={16} color="#f87171" style={{ flexShrink: 0, marginTop: 2 }} />
-            <div style={{ fontSize: 12, lineHeight: 1.55, color: "#fecaca" }}>
-              <strong style={{ color: "#fee2e2" }}>Anti-cheat is active.</strong>{" "}
+            <ShieldAlert size={16} color="var(--danger-ink)" style={{ flexShrink: 0, marginTop: 2 }} />
+            <div style={{ fontSize: 12, lineHeight: 1.55, color: "var(--danger-soft)" }}>
+              <strong style={{ color: "var(--danger-soft)" }}>Anti-cheat is active.</strong>{" "}
               Fullscreen is required. Tab switches, copy/paste outside the editor,
               dev-tools shortcuts, and right-click are logged as violations.
             </div>
@@ -447,7 +447,7 @@ function BriefingScreen({
           disabled={isEnded}
           style={{
             width: "100%", height: 42,
-            background: isEnded ? "#475569" : "var(--brand)",
+            background: isEnded ? "var(--line-strong)" : "var(--brand)",
             color: "white", border: "none", borderRadius: 6,
             fontSize: 14, fontWeight: 700,
             cursor: isEnded ? "not-allowed" : "pointer",
@@ -460,7 +460,7 @@ function BriefingScreen({
 
         <div style={{ textAlign: "center", marginTop: 12 }}>
           <Link href="/assessments" style={{
-            fontSize: 12, color: "#94a3b8", textDecoration: "none",
+            fontSize: 12, color: "var(--ink-2)", textDecoration: "none",
           }}>
             ← Back to Exams &amp; TPs
           </Link>
@@ -477,10 +477,10 @@ function Stat({ label, value }: { label: string; value: string }) {
       border: "1px solid rgba(255,255,255,0.08)",
       borderRadius: 6, padding: "10px 12px",
     }}>
-      <div style={{ fontSize: 10, color: "#94a3b8", textTransform: "uppercase", letterSpacing: 0.6 }}>
+      <div style={{ fontSize: 10, color: "var(--ink-2)", textTransform: "uppercase", letterSpacing: 0.6 }}>
         {label}
       </div>
-      <div style={{ fontSize: 16, fontWeight: 700, color: "#f8fafc", marginTop: 2 }}>
+      <div style={{ fontSize: 16, fontWeight: 700, color: "var(--ink)", marginTop: 2 }}>
         {value}
       </div>
     </div>

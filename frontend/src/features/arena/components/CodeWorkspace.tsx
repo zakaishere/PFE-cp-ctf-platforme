@@ -172,7 +172,7 @@ export default function CodeWorkspace({
             onClick={onSubmit}
             disabled={busy}
             style={{
-              background: busy ? "#97a0af" : "var(--brand)", color: "white",
+              background: busy ? "var(--ink-3)" : "var(--brand)", color: "white",
               border: "none", borderRadius: 3,
               height: 28, padding: "0 14px", fontSize: 12,
               cursor: busy ? "not-allowed" : "pointer",
@@ -216,7 +216,7 @@ export default function CodeWorkspace({
           </span>
           {verdict === "pending" && (
             <span style={{
-              fontSize: 11, color: "#0747a6",
+              fontSize: 11, color: "var(--brand)",
               display: "flex", alignItems: "center", gap: 4,
             }}>
               <Loader2 size={11} style={{ animation: "spin 1s linear infinite" }} />
@@ -246,7 +246,7 @@ export default function CodeWorkspace({
                   key={i}
                   style={{
                     display: "flex", alignItems: "center",
-                    padding: "7px 12px", borderBottom: "1px solid #f4f5f7",
+                    padding: "7px 12px", borderBottom: "1px solid var(--surface-2)",
                     gap: 8, fontSize: 12,
                   }}
                 >
@@ -260,7 +260,7 @@ export default function CodeWorkspace({
                     </span>
                   ) : r.status === "pass" ? (
                     <>
-                      <CheckCircle2 size={14} color="#00875a" />
+                      <CheckCircle2 size={14} color="var(--success)" />
                       <span style={{ flex: 1, fontWeight: 500 }}>{label}</span>
                       <span style={{ color: "var(--text-muted)", fontSize: 11 }}>
                         {r.executionTimeMs ? `${r.executionTimeMs} ms` : "OK"}
@@ -280,15 +280,15 @@ export default function CodeWorkspace({
                     </>
                   ) : r.status === "error" ? (
                     <>
-                      <XCircle size={14} color="#de350b" />
+                      <XCircle size={14} color="var(--danger)" />
                       <span style={{ flex: 1, fontWeight: 500 }}>{label}</span>
-                      <span style={{ color: "#de350b", fontSize: 11 }}>RE</span>
+                      <span style={{ color: "var(--danger)", fontSize: 11 }}>RE</span>
                     </>
                   ) : (
                     <>
-                      <XCircle size={14} color="#de350b" />
+                      <XCircle size={14} color="var(--danger)" />
                       <span style={{ flex: 1, fontWeight: 500 }}>{label}</span>
-                      <span style={{ color: "#de350b", fontSize: 11 }}>WA</span>
+                      <span style={{ color: "var(--danger)", fontSize: 11 }}>WA</span>
                     </>
                   )}
                 </div>
@@ -302,13 +302,13 @@ export default function CodeWorkspace({
             padding: "10px 14px", fontSize: 13, fontWeight: 600,
             display: "flex", alignItems: "center", gap: 8,
             background:
-              verdict === "accepted" ? "#e3fcef" :
-              verdict === "tle" || verdict === "mle" ? "#fffae6" :
-              "#ffebe6",
+              verdict === "accepted" ? "var(--success-soft)" :
+              verdict === "tle" || verdict === "mle" ? "var(--warn-soft)" :
+              "var(--danger-soft)",
             color:
-              verdict === "accepted" ? "#006644" :
+              verdict === "accepted" ? "var(--success-ink)" :
               verdict === "tle" || verdict === "mle" ? "var(--warn)" :
-              "#bf2600",
+              "var(--danger-ink)",
           }}>
             {verdict === "accepted" ? <CheckCircle2 size={16} /> : <XCircle size={16} />}
             {verdict === "accepted" ? "Accepted — All test cases passed" :

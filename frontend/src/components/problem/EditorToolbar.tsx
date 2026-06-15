@@ -86,7 +86,7 @@ export function EditorToolbar({
         disabled={busy}
         style={{
           height: 32, padding: "0 16px",
-          background: submitting ? "#004099" : "var(--brand)",
+          background: submitting ? "var(--brand)" : "var(--brand)",
           border: "none",
           borderRadius: 5,
           color: "white",
@@ -99,7 +99,7 @@ export function EditorToolbar({
           opacity: busy ? 0.7 : 1,
         }}
         onMouseEnter={e => { if (!busy) e.currentTarget.style.background = "var(--brand-2)"; }}
-        onMouseLeave={e => { e.currentTarget.style.background = submitting ? "#004099" : "var(--brand)"; }}
+        onMouseLeave={e => { e.currentTarget.style.background = submitting ? "var(--brand)" : "var(--brand)"; }}
       >
         {submitting ? <><MiniSpinner color="white" /> Judging...</> : <>⚡ Submit</>}
       </button>
@@ -131,7 +131,7 @@ function LanguageDropdown({
           height: 32,
           padding: "0 28px 0 12px",
           background: "#2d2d2d",
-          border: `1px solid ${open ? "#4c9aff" : "#444"}`,
+          border: `1px solid ${open ? "var(--brand-2)" : "#444"}`,
           borderRadius: 6,
           color: "#e0e0e0",
           fontSize: 13,
@@ -183,7 +183,7 @@ function LanguageDropdown({
                 padding: "9px 14px",
                 fontSize: 13,
                 fontWeight: lang.value === value ? 700 : 400,
-                color: lang.value === value ? "#4c9aff" : "#ccc",
+                color: lang.value === value ? "var(--brand-2)" : "#ccc",
                 cursor: "pointer",
                 background: lang.value === value ? "rgba(76,154,255,0.1)" : "transparent",
                 transition: "background 0.1s",
@@ -203,7 +203,7 @@ function LanguageDropdown({
               {lang.label}
               {lang.value === value && (
                 <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
-                  <path d="M2 6l3 3 5-5" stroke="#4c9aff" strokeWidth="1.5"
+                  <path d="M2 6l3 3 5-5" stroke="var(--brand-2)" strokeWidth="1.5"
                     strokeLinecap="round" strokeLinejoin="round" />
                 </svg>
               )}
