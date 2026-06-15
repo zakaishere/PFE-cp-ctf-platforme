@@ -36,56 +36,79 @@
   --card-shadow:         0 1px 3px rgba(9,30,66,0.08);
 }
 
-/* ── DARK THEME ──────────────────────────────────────────── */
+/* ── DARK THEME — "Algora" deep-navy palette (single accent) ──────────
+   This is the platform's one and only theme. Every legacy PSP token below
+   is remapped onto an Algora token so the whole app recolors from here.
+   ──────────────────────────────────────────────────────────────────── */
 [data-theme="dark"] {
 
-  /* ── Backgrounds (slate palette) ────────────────────── */
-  --bg-primary:     #0F172A;
-  --bg-secondary:   #1E293B;
-  --bg-tertiary:    #1E293B;
-  --bg-hover:       #334155;
-  --bg-elevated:    #1E293B;
-  --bg-navbar:      #0F172A;
+  /* ── Algora source tokens (the single source of truth) ─────────── */
+  --bg:          #080b14;   /* app background, deepest */
+  --bg-2:        #0b0f1b;   /* inputs, recessed areas, table headers */
+  --surface:     #111726;   /* cards, panels */
+  --surface-2:   #161d2f;   /* hover, raised rows */
+  --line:        #1e2638;   /* hairline borders */
+  --line-strong: #2a3346;   /* stronger borders, button outlines */
 
-  /* ── Borders ─────────────────────────────────────────── */
-  --border:         #334155;
-  --border-subtle:  #1E293B;
-  --border-strong:  #475569;
+  --ink:   #e9edf7;         /* primary text */
+  --ink-2: #98a1ba;         /* secondary text */
+  --ink-3: #5e6880;         /* tertiary / muted */
 
-  /* ── Text ────────────────────────────────────────────── */
-  --text-primary:   #F8FAFC;
-  --text-secondary: #94A3B8;
-  --text-muted:     #64748B;
-  --text-subtle:    #475569;
+  --brand:       #5d7cf7;   /* single brand accent — used platform-wide */
+  --brand-2:     #7a93ff;   /* accent hover / active text on dark */
+  --accent-soft: rgba(93,124,247,.13);
+  --accent-ring: rgba(93,124,247,.32);
 
-  /* ── Blue accent ─────────────────────────────────────── */
-  --blue:           #3B82F6;
-  --blue-hover:     #60A5FA;
-  --blue-light:     rgba(59,130,246,0.15);
-  --blue-border:    rgba(59,130,246,0.3);
+  --success:#2dbd80;  --success-soft:rgba(45,189,128,.13);  --success-ink:#4cd49b;
+  --warn:   #e0a23c;  --warn-soft:rgba(224,162,60,.13);     --warn-ink:#eeb866;
+  --danger: #f0697e;  --danger-soft:rgba(240,105,126,.13);  --danger-ink:#ff8497;
 
-  /* ── Status colors ───────────────────────────────────── */
-  --green:          #22C55E;
-  --green-light:    rgba(34,197,94,0.12);
-  --red:            #EF4444;
-  --red-light:      rgba(239,68,68,0.1);
-  --orange:         #F59E0B;
-  --orange-light:   rgba(245,158,11,0.12);
-  --purple:         #A855F7;
-  --purple-light:   rgba(168,85,247,0.12);
+  /* difficulty text */
+  --easy:#4cd49b; --medium:#eeb866; --hard:#ff8497;
 
-  /* ── Badge backgrounds ───────────────────────────────── */
-  --badge-bg:       #374151;
-  --badge-text:     #E2E8F0;
+  --r: 13px; --r-sm: 9px;
+  --radius: 13px;   /* shadcn primitives consume this */
 
-  /* ── Shadows ─────────────────────────────────────────── */
-  --card-shadow:    0 1px 3px rgba(0,0,0,0.5), 0 0 0 1px rgba(51,65,85,0.5);
+  /* ── Legacy PSP aliases → Algora (do not hardcode hex in components) ── */
+  --bg-primary:     var(--bg);         /* page background */
+  --bg-secondary:   var(--surface);    /* cards / panels */
+  --bg-tertiary:    var(--bg-2);        /* recessed / table headers / inputs */
+  --bg-hover:       var(--surface-2);   /* hover / raised rows */
+  --bg-elevated:    var(--surface);     /* dropdowns / popovers */
+  --bg-navbar:      var(--bg-2);
 
-  /* ── Navbar ──────────────────────────────────────────── */
-  --navbar-bg:           #0F172A;
-  --navbar-border:       #334155;
-  --navbar-text:         rgba(248,250,252,0.7);
-  --navbar-text-active:  #F8FAFC;
+  --border:         var(--line);
+  --border-subtle:  #161d2f;
+  --border-strong:  var(--line-strong);
+
+  --text-primary:   var(--ink);
+  --text-secondary: var(--ink-2);
+  --text-muted:     var(--ink-3);
+  --text-subtle:    #4a5269;
+
+  --blue:           var(--brand);
+  --blue-hover:     var(--brand-2);
+  --blue-light:     var(--accent-soft);
+  --blue-border:    var(--accent-ring);
+
+  --green:          var(--success-ink);
+  --green-light:    var(--success-soft);
+  --red:            var(--danger-ink);
+  --red-light:      var(--danger-soft);
+  --orange:         var(--warn-ink);
+  --orange-light:   var(--warn-soft);
+  --purple:         var(--brand);       /* single accent — no stray purple */
+  --purple-light:   var(--accent-soft);
+
+  --badge-bg:       var(--surface-2);
+  --badge-text:     var(--ink-2);
+
+  --card-shadow:    0 1px 2px rgba(0,0,0,.45), 0 0 0 1px var(--line);
+
+  --navbar-bg:           var(--bg-2);
+  --navbar-border:       var(--line);
+  --navbar-text:         var(--ink-2);
+  --navbar-text-active:  var(--ink);
 }
 
 @keyframes spin { to { transform: rotate(360deg); } }
@@ -167,10 +190,18 @@
   }
 
   body {
-    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    font-family: var(--font-sans), system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
     background: var(--bg);
     color: var(--text);
     font-size: 13px;
+    letter-spacing: -0.01em;
+  }
+
+  /* Mono for numbers, timers, IDs, code, scores */
+  .mono,
+  .font-mono,
+  code, pre, kbd, samp {
+    font-family: var(--font-mono), ui-monospace, 'SF Mono', Menlo, Consolas, monospace;
   }
 }
 
@@ -2031,25 +2062,25 @@ body,
 /* ── btn-secondary hover: drop hardcoded light border ── */
 [data-theme="dark"] .btn-secondary:hover:not(:disabled) { border-color: var(--border); }
 
-/* ── shadcn / radix-ui HSL tokens for dark mode ── */
+/* ── shadcn / radix-ui HSL tokens — Algora dark (matches the hex tokens above) ── */
 [data-theme="dark"] {
-  --background: 215 41% 9%;
-  --foreground: 210 40% 98%;
-  --card: 215 41% 11%;
-  --card-foreground: 210 40% 98%;
-  --popover: 215 41% 11%;
-  --popover-foreground: 210 40% 98%;
-  --primary: 216 92% 60%;
+  --background: 225 43% 5%;       /* --bg     #080b14 */
+  --foreground: 223 47% 94%;      /* --ink    #e9edf7 */
+  --card: 223 38% 11%;            /* --surface #111726 */
+  --card-foreground: 223 47% 94%;
+  --popover: 223 38% 11%;
+  --popover-foreground: 223 47% 94%;
+  --primary: 228 91% 67%;         /* --brand  #5d7cf7 */
   --primary-foreground: 0 0% 100%;
-  --secondary: 215 28% 17%;
-  --secondary-foreground: 210 40% 98%;
-  --muted: 215 28% 17%;
-  --muted-foreground: 217 20% 55%;
-  --accent: 215 28% 17%;
-  --accent-foreground: 210 40% 98%;
-  --destructive: 0 72% 51%;
+  --secondary: 223 36% 14%;       /* --surface-2 #161d2f */
+  --secondary-foreground: 223 47% 94%;
+  --muted: 223 36% 14%;
+  --muted-foreground: 224 20% 66%; /* --ink-2 #98a1ba */
+  --accent: 223 36% 14%;
+  --accent-foreground: 223 47% 94%;
+  --destructive: 351 82% 68%;     /* --danger #f0697e */
   --destructive-foreground: 0 0% 100%;
-  --border: 215 28% 20%;
-  --input: 215 28% 20%;
-  --ring: 216 92% 60%;
+  --border: 222 30% 17%;          /* --line   #1e2638 */
+  --input: 222 30% 17%;
+  --ring: 228 91% 67%;
 }
