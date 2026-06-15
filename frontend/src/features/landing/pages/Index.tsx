@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useRef } from "react";
 import Link from "next/link";
+import { APP_NAME, APP_MARK } from "@/lib/brand";
 import {
   Shield, Zap, Timer, Trophy, ClipboardList, Lock,
   GraduationCap, BookOpen, KeyRound, CheckCircle2,
@@ -114,7 +115,7 @@ function TerminalWindow() {
         <span className={verdict ? "text-emerald-400" : "text-zinc-500"}>
           {verdict ? "● Accepted" : "● Running…"}
         </span>
-        <span className="text-zinc-600">python3 · Docker · PSP v2.4</span>
+        <span className="text-zinc-600">python3 · Docker · {APP_NAME} v2.4</span>
       </div>
     </div>
   );
@@ -226,9 +227,9 @@ export default function LandingPage() {
         <Link href="/" className="flex items-center gap-2.5 no-underline">
           <div
             className="w-7 h-7 rounded-md flex items-center justify-center font-black text-sm text-white"
-            style={{ background: "linear-gradient(135deg,#6366f1,#4f46e5)" }}
-          >P</div>
-          <span className="font-bold text-[15px] text-slate-100">PSP Platform</span>
+            style={{ background: "linear-gradient(135deg,#5d7cf7,#7a93ff)" }}
+          >{APP_MARK}</div>
+          <span className="font-bold text-[15px] text-slate-100">{APP_NAME}</span>
         </Link>
 
         <div className="hidden md:flex items-center gap-1 ml-8">
@@ -392,7 +393,7 @@ export default function LandingPage() {
               Everything you need for coding assessments
             </h2>
             <p className="text-slate-400 text-[15px]">
-              From live proctored exams to open CTF competitions — PSP handles every scenario.
+              From live proctored exams to open CTF competitions — {APP_NAME} handles every scenario.
             </p>
           </div>
 
@@ -720,7 +721,7 @@ export default function LandingPage() {
               className="inline-block text-[11px] font-bold psp-mono uppercase tracking-widest mb-3 px-2 py-1 rounded"
               style={{ color: "#a78bfa", background: "rgba(167,139,250,0.08)" }}
             >
-              Who uses PSP
+              Who uses {APP_NAME}
             </div>
             <h2 className="text-4xl font-extrabold text-slate-100 tracking-tight mb-3">
               Built for every role
@@ -829,12 +830,12 @@ export default function LandingPage() {
         <div className="flex items-center gap-2.5">
           <div
             className="w-6 h-6 rounded-md flex items-center justify-center font-black text-xs text-white"
-            style={{ background: "linear-gradient(135deg,#6366f1,#4f46e5)" }}
-          >P</div>
-          <span className="font-bold text-[14px] text-slate-300">PSP Platform</span>
+            style={{ background: "linear-gradient(135deg,#5d7cf7,#7a93ff)" }}
+          >{APP_MARK}</div>
+          <span className="font-bold text-[14px] text-slate-300">{APP_NAME}</span>
         </div>
         <div className="text-[12px] text-slate-600">
-          © 2026 PSP — University Problem Solving Platform · PFE Project
+          © 2026 {APP_NAME} — University Problem Solving Platform · PFE Project
         </div>
         <div className="flex items-center gap-4">
           {["Features", "How it works"].map(link => (
