@@ -4,12 +4,7 @@ import { useState, useEffect, useCallback } from "react";
 import { APP_NAME } from "@/lib/brand";
 import Link from "next/link";
 import Navbar from "@/components/Navbar";
-import {
-  BookOpen, Plus, Calendar, Timer, FileText, Loader2,
-  GripVertical, ChevronDown, ChevronUp, X, Settings,
-  Search, AlertTriangle, CheckCircle2, Trash2, Users,
-  FlaskConical, Lock, Unlock, RefreshCw,
-} from "lucide-react";
+import { BookOpen, Plus, Calendar, Timer, FileText, Loader2, GripVertical, ChevronDown, ChevronUp, X, Settings, Search, AlertTriangle, CheckCircle2, Trash2, Users, FlaskConical, Lock, Unlock, RefreshCw, Check } from "lucide-react";
 import {
   DndContext, closestCenter, KeyboardSensor, PointerSensor, useSensor, useSensors,
   DragEndEvent,
@@ -728,7 +723,7 @@ export default function AssessmentManagerV2() {
                                     </>
                                   ) : (
                                     <span className={`psp-badge ${r.status === "APPROVED" ? "b-pass" : "b-hard"}`} style={{ flexShrink: 0 }}>
-                                      {r.status === "APPROVED" ? "✓ Approved" : "✕ Rejected"}
+                                      {r.status === "APPROVED" ? <span style={{display:"inline-flex",alignItems:"center",gap:4}}><Check size={12} /> Approved</span> : <span style={{display:"inline-flex",alignItems:"center",gap:4}}><X size={12} /> Rejected</span>}
                                     </span>
                                   )}
                                 </div>
@@ -901,7 +896,7 @@ export default function AssessmentManagerV2() {
                           </div>
                         </div>
                         <div className="mgr-danger">
-                          <div className="mgr-danger-title">⚠ Danger Zone</div>
+                          <div className="mgr-danger-title" style={{display:"flex",alignItems:"center",gap:6}}><AlertTriangle size={13} /> Danger Zone</div>
                           <div style={{ display: "flex", gap: 10 }}>
                             {isExam(selected) && !detail.isClosed && (
                               <button className="psp-btn psp-btn-danger psp-btn-sm" onClick={handleClose}>Close Exam</button>

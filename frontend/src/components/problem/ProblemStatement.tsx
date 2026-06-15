@@ -1,6 +1,6 @@
 "use client";
 
-import { Lock, Lightbulb, ChevronDown } from "lucide-react";
+import { Lock, Lightbulb, ChevronDown, Clock, HardDrive, Inbox } from "lucide-react";
 import { useState } from "react";
 import type { ProblemDetailDTO, VisibleTestCaseDTO, MySubmissionDTO } from "@/lib/api";
 import { getMySubmissions } from "@/lib/api";
@@ -161,8 +161,8 @@ function DescriptionTab({ problem }: { problem: ProblemDetailDTO }) {
 
       {/* Constraint chips */}
       <div style={{ display: "flex", gap: 6, marginBottom: 20, flexWrap: "wrap" }}>
-        <ConstraintChip icon="⏱" label={`${problem.timeLimitMs} ms`} />
-        <ConstraintChip icon="💾" label={`${problem.memoryLimitMb} MB`} />
+        <ConstraintChip icon={<Clock size={13} />} label={`${problem.timeLimitMs} ms`} />
+        <ConstraintChip icon={<HardDrive size={13} />} label={`${problem.memoryLimitMb} MB`} />
       </div>
 
       <div style={{ height: 1, background: "var(--border-subtle)", marginBottom: 20 }} />
@@ -284,7 +284,7 @@ function TopicTags({ tags }: { tags: string[] }) {
   );
 }
 
-function ConstraintChip({ icon, label }: { icon: string; label: string }) {
+function ConstraintChip({ icon, label }: { icon: React.ReactNode; label: string }) {
   return (
     <span style={{
       display: "inline-flex", alignItems: "center", gap: 5,
@@ -357,7 +357,7 @@ function SubmissionsTab({
   if (!submissions || submissions.length === 0) {
     return (
       <div style={{ padding: 48, textAlign: "center", color: "var(--text-muted)" }}>
-        <div style={{ fontSize: 36, marginBottom: 12 }}>📭</div>
+        <Inbox size={32} color="var(--ink-3)" style={{ marginBottom: 12 }} />
         <div style={{ fontSize: 15, fontWeight: 600, color: "var(--text-secondary)", marginBottom: 6 }}>
           No submissions yet
         </div>
@@ -381,7 +381,7 @@ function SubmissionsTab({
         alignItems: "center",
         gap: 6,
       }}>
-        <span style={{ color: "var(--brand-2)" }}>💡</span>
+        <Lightbulb size={14} color="var(--brand-2)" />
         Click any submission to load its code into the editor
       </div>
 

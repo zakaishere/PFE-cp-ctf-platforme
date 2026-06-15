@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
-import { AlertTriangle, ChevronLeft, Loader2 } from "lucide-react";
+import { AlertTriangle, ChevronLeft, Loader2, Lock } from "lucide-react";
 import { FullscreenGate } from "@/components/arena/FullscreenGate";
 import { useAntiCheat, type ViolationEvent } from "@/hooks/useAntiCheat";
 
@@ -152,7 +152,7 @@ export default function ArenaShell({
         background: "var(--bg-2)", flexDirection: "column", gap: 12,
         fontFamily: "-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif",
       }}>
-        <div style={{ fontSize: 36 }}>🔒</div>
+        <Lock size={32} color="var(--ink-3)" />
         <div style={{ fontWeight: 700, fontSize: 16, color: "white" }}>Access Denied</div>
         <div style={{
           fontSize: 13, color: "rgba(255,255,255,0.55)",

@@ -4,10 +4,7 @@ import { useState, useEffect } from "react";
 import { APP_NAME } from "@/lib/brand";
 import Link from "next/link";
 import Navbar from "@/components/Navbar";
-import {
-  Plus, Search, Edit2, Trash2, Eye, EyeOff, Flag,
-  ChevronLeft, ChevronRight, Shield, Trophy,
-} from "lucide-react";
+import { Plus, Search, Edit2, Trash2, Eye, EyeOff, Flag, ChevronLeft, ChevronRight, Shield, Trophy, X } from "lucide-react";
 import { toast } from "@/components/ui/PSPToast";
 import {
   getTeacherCTFChallenges,
@@ -286,7 +283,7 @@ const TeacherCTF = () => {
           <div className="psp-modal" style={{ width: 400 }}>
             <div className="psp-modal-header">
               <span style={{ fontSize: 15, fontWeight: 600, color: "var(--text-primary)" }}>Delete challenge?</span>
-              <button style={iconBtn} onClick={() => setDeleteId(null)}>✕</button>
+              <button style={iconBtn} onClick={() => setDeleteId(null)} aria-label="Close"><X size={16} /></button>
             </div>
             <div className="psp-modal-body" style={{ fontSize: 13, color: "var(--text-secondary)" }}>
               If students have already solved this challenge it will be hidden (soft-deleted). Otherwise it will be permanently removed.

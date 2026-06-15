@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useRef } from "react";
+import { Check } from "lucide-react";
 import { APP_NAME } from "@/lib/brand";
 import Link from "next/link";
 import Navbar from "@/components/Navbar";
@@ -90,7 +91,7 @@ export default function ProblemsPage() {
                   <td className="td-muted">{idx + 1}</td>
                   <td>
                     {p.solvedByCurrentUser
-                      ? <span style={{ color: "#00875a", fontWeight: 700 }}>✓</span>
+                      ? <Check size={14} color="var(--success-ink)" />
                       : <span style={{ color: "var(--border)" }}>○</span>}
                   </td>
                   <td>

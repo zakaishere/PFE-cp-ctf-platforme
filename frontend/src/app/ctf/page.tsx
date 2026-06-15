@@ -5,9 +5,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import Navbar from "@/components/Navbar";
 import { LoadingButton } from "@/components/ui/LoadingButton";
-import {
-  KeyRound, ArrowRight, Trophy, Clock, Zap, Users, AlertCircle, X,
-} from "lucide-react";
+import { KeyRound, ArrowRight, Trophy, Clock, Zap, Users, AlertCircle, X, Lock, Unlock } from "lucide-react";
 import {
   getCtfCompetitions,
   joinCtfByAccessCode,
@@ -331,7 +329,7 @@ function CompetitionCard({ comp }: { comp: CTFCompetitionDTO }) {
             paddingTop: 14, marginTop: 14, borderTop: "1px solid #1e293b",
           }}>
             <span style={{ fontSize: 12, color: "#64748b" }}>
-              {comp.visibility === "ACCESS_CODE" ? "🔒 Access code" : "🔓 Open to all"}
+              {comp.visibility === "ACCESS_CODE" ? <span style={{display:"inline-flex",alignItems:"center",gap:4}}><Lock size={12} /> Access code</span> : <span style={{display:"inline-flex",alignItems:"center",gap:4}}><Unlock size={12} /> Open to all</span>}
             </span>
             <span style={{ display: "inline-flex", alignItems: "center", gap: 4, fontSize: 13, fontWeight: 700, color: "#6366f1" }}>
               Enter Competition <ArrowRight size={14} />

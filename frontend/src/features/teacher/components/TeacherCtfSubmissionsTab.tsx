@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { Download } from "lucide-react";
+import { Download, AlertTriangle } from "lucide-react";
 import { toast } from "@/components/ui/PSPToast";
 import {
   getTeacherCtfSubmissions, downloadTeacherCtfExport,
@@ -111,7 +111,7 @@ export default function TeacherCtfSubmissionsTab({ competitionId }: Props) {
                         fontSize: 11, fontWeight: 700, color: "#a78bfa",
                         background: "rgba(167,139,250,0.12)", border: "1px solid rgba(167,139,250,0.3)",
                         borderRadius: 3, padding: "2px 7px",
-                      }}>⚠ CHEAT</span>
+                      }}><AlertTriangle size={11} style={{verticalAlign:"-1px",marginRight:3}} />CHEAT</span>
                     ) : (
                       <span style={{
                         fontSize: 11, fontWeight: 700,

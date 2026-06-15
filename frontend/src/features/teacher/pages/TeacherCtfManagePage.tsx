@@ -535,7 +535,7 @@ function SidebarEndConfirm({
       borderRadius: 6, padding: 10, marginBottom: 6,
     }}>
       <p style={{ fontSize: 12, color: "#fca5a5", margin: "0 0 6px", lineHeight: 1.4 }}>
-        ⚠ This ends the competition immediately. Type the competition name to confirm.
+        This ends the competition immediately. Type the competition name to confirm.
       </p>
       <input
         className="input"

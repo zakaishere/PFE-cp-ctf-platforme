@@ -94,7 +94,7 @@ const HeroSection = () => {
               </pre>
               {/* Status bar */}
               <div className="flex items-center justify-between px-4 py-2 border-t border-white/5 text-xs text-muted-foreground">
-                <span className="text-green-400">✓ All tests passed</span>
+                <span className="text-green-400">All tests passed</span>
                 <span>Runtime: 4ms</span>
               </div>
             </div>

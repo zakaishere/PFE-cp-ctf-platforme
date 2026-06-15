@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useRef, useEffect, useCallback } from "react";
+import { Copy } from "lucide-react";
 import dynamic from "next/dynamic";
 import { Language, getTemplate, monacoLang } from "@/lib/codeTemplates";
 import { useVerticalResize } from "@/hooks/useVerticalResize";
@@ -110,7 +111,7 @@ export function EditorPanel({
           color: "#8899b4",
           flexShrink: 0,
         }}>
-          <span style={{ color: "#4c9aff" }}>📋</span>
+          <Copy size={14} color="var(--brand-2)" />
           <span>Viewing past submission</span>
           <button
             onClick={() => { onCodeChange(getTemplate(language)); onClearSub(); }}

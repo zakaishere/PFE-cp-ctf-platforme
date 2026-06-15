@@ -1,11 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
-import {
-  Users, ChevronDown, ChevronRight, Shield, ShieldOff,
-  AlertTriangle, RefreshCw, CheckCircle,
-  XCircle, Zap, Activity, Eye, Copy, Check,
-} from "lucide-react";
+import { Users, ChevronDown, ChevronRight, Shield, ShieldOff, AlertTriangle, RefreshCw, CheckCircle, XCircle, Zap, Activity, Eye, Copy, Check, X } from "lucide-react";
 import { toast } from "@/components/ui/PSPToast";
 import {
   getTeacherCtfTeams, disqualifyTeacherCtfTeam, getTeacherCtfSubmissions,
@@ -168,7 +164,7 @@ function SubRow({
             background: "rgba(167,139,250,0.14)", color: "#a78bfa",
             border: "1px solid rgba(167,139,250,0.3)",
           }}>
-            ⚠ CHEAT
+            <AlertTriangle size={11} style={{verticalAlign:"-1px",marginRight:3}} />CHEAT
           </span>
         ) : isSpam ? (
           <span style={{
@@ -435,7 +431,7 @@ function TeamExpandedPanel({
                       {m.pointsContributed != null && ` · ${m.pointsContributed}pts`}
                       {wrongCount > 0 && (
                         <span style={{ color: isSpammed ? "#f59e0b" : "#f87171", marginLeft: 4 }}>
-                          · {wrongCount}✗
+                          · {wrongCount}<X size={11} style={{verticalAlign:"-1px"}} />
                         </span>
                       )}
                     </div>
@@ -779,7 +775,7 @@ export default function TeacherCtfTeamsTab({ competitionId }: Props) {
               padding: "10px 12px", borderRadius: 6,
               background: "rgba(239,68,68,0.06)", border: "1px solid rgba(239,68,68,0.2)",
             }}>
-              ⚠ This will remove the team from the scoreboard and mark them as disqualified.
+              This will remove the team from the scoreboard and mark them as disqualified.
               This action cannot be undone.
             </div>
             <label style={{ display: "block", fontSize: 11, fontWeight: 600, color: "var(--text-muted)", marginBottom: 5 }}>

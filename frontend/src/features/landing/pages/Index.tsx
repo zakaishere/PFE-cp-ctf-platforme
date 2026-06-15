@@ -94,7 +94,7 @@ function TerminalWindow() {
                   animation: "psp-glow-in 0.4s ease-out",
                 }}
               >
-                ✓ VERDICT: ACCEPTED
+                VERDICT: ACCEPTED
               </div>
             );
           }

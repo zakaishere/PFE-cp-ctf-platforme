@@ -10,7 +10,7 @@ import {
   leaveCompetitionTeam,
   getApiBaseUrl,
 } from "@/lib/api";
-import { Trophy, Crown, Copy, Check, AlertTriangle, ClipboardList } from "lucide-react";
+import { Trophy, Crown, Copy, Check, AlertTriangle, ClipboardList, Clock } from "lucide-react";
 import { toast } from "@/components/ui/PSPToast";
 import { useCountdown } from "@/hooks/useCountdown";
 import { useAuth } from "@/features/auth/contexts/AuthContext";
@@ -1144,7 +1144,7 @@ export default function CompetitionLobbyPage() {
                       <li>Work independently on all problems.</li>
                     </ul>
                   )}
-                  <div style={{ fontWeight: 700, color: "var(--text-primary)", marginBottom: 4 }}>⏱ Timing</div>
+                  <div style={{ fontWeight: 700, color: "var(--text-primary)", marginBottom: 4 }}><Clock size={13} style={{verticalAlign:"-2px",marginRight:5}} />Timing</div>
                   <ul style={{ paddingLeft: 16, marginBottom: 12 }}>
                     <li>The competition runs for {lobby.durationMinutes} minutes.</li>
                     <li>All participants start at exactly the same time.</li>

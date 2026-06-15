@@ -4,12 +4,7 @@ import { useState, useEffect, useCallback, useRef } from "react";
 import { APP_NAME } from "@/lib/brand";
 import Link from "next/link";
 import Navbar from "@/components/Navbar";
-import {
-  Trophy, Plus, Calendar, Timer, Users, Lock, Unlock, Flame, Loader2,
-  GripVertical, ChevronDown, ChevronUp, Copy, Check, X, Settings,
-  BarChart2, Search, AlertTriangle, CheckCircle2, RefreshCw, Trash2,
-  ChevronLeft, ChevronRight, FileText, ListChecks,
-} from "lucide-react";
+import { Trophy, Plus, Calendar, Timer, Users, Lock, Unlock, Flame, Loader2, GripVertical, ChevronDown, ChevronUp, Copy, Check, X, Settings, BarChart2, Search, AlertTriangle, CheckCircle2, RefreshCw, Trash2, ChevronLeft, ChevronRight, FileText, ListChecks } from "lucide-react";
 import {
   DndContext, closestCenter, KeyboardSensor, PointerSensor, useSensor, useSensors,
   DragEndEvent,
@@ -692,7 +687,7 @@ export default function CompetitionManagerV2() {
                                     </>
                                   ) : (
                                     <span className={`psp-badge ${r.status === "APPROVED" ? "b-pass" : "b-hard"}`} style={{ flexShrink: 0 }}>
-                                      {r.status === "APPROVED" ? "✓ Approved" : "✕ Rejected"}
+                                      {r.status === "APPROVED" ? <span style={{display:"inline-flex",alignItems:"center",gap:4}}><Check size={12} /> Approved</span> : <span style={{display:"inline-flex",alignItems:"center",gap:4}}><X size={12} /> Rejected</span>}
                                     </span>
                                   )}
                                 </div>
@@ -805,7 +800,7 @@ export default function CompetitionManagerV2() {
                           </div>
                         </div>
                         <div className="mgr-danger">
-                          <div className="mgr-danger-title">⚠ Danger Zone</div>
+                          <div className="mgr-danger-title" style={{display:"flex",alignItems:"center",gap:6}}><AlertTriangle size={13} /> Danger Zone</div>
                           <div style={{ display: "flex", gap: 10 }}>
                             {detail.status !== "ENDED" && (
                               <button className="psp-btn psp-btn-danger psp-btn-sm">Cancel Competition</button>

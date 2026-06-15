@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { AlertTriangle, Check, Ban, Download, Copy, Search, ChevronDown } from "lucide-react";
+import { AlertTriangle, Check, Ban, Download, Copy, Search, ChevronDown, User, Mail } from "lucide-react";
 import { toast } from "@/components/ui/PSPToast";
 import {
   getTeacherCtfCheats,
@@ -248,7 +248,7 @@ function CheatCard({ r, busy, onDismiss, onDisqualify }: {
           background: "rgba(239,68,68,0.12)", border: "1px solid rgba(239,68,68,0.3)",
           borderRadius: 3, padding: "1px 6px",
         }}>
-          🚨 Cross-Team Flag
+          <span style={{display:"inline-flex",alignItems:"center",gap:4}}><AlertTriangle size={14} /> Cross-Team Flag</span>
         </span>
         {r.challengeCategory && (
           <span style={{
@@ -287,13 +287,13 @@ function CheatCard({ r, busy, onDismiss, onDisqualify }: {
           </div>
           {r.submittingUserName && (
             <div style={{ display: "flex", alignItems: "center", gap: 5, fontSize: 12, marginBottom: 3 }}>
-              <span>👤</span>
+              <User size={13} />
               <span style={{ color: "var(--text)", fontWeight: 600 }}>{r.submittingUserName}</span>
             </div>
           )}
           {r.submittingUserEmail && (
             <div style={{ display: "flex", alignItems: "center", gap: 5, fontSize: 11, color: "var(--text-muted)", marginBottom: 4 }}>
-              <span>📧</span>
+              <Mail size={13} />
               <span>{r.submittingUserEmail}</span>
             </div>
           )}
@@ -361,7 +361,7 @@ function CheatCard({ r, busy, onDismiss, onDisqualify }: {
       {/* Row 5: dismissed info or action buttons */}
       {r.dismissed ? (
         <div style={{ fontSize: 11, color: "var(--text-muted)", fontStyle: "italic" }}>
-          ✓ Dismissed{r.dismissedByUsername ? ` by ${r.dismissedByUsername}` : ""}
+          <Check size={12} style={{verticalAlign:"-2px",marginRight:3}} />Dismissed{r.dismissedByUsername ? ` by ${r.dismissedByUsername}` : ""}
         </div>
       ) : (
         <div style={{ display: "flex", gap: 8, alignItems: "center" }}>

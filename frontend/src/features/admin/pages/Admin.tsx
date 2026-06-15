@@ -4,7 +4,7 @@ import { useState, useEffect } from "react";
 import { APP_NAME } from "@/lib/brand";
 import Link from "next/link";
 import Navbar from "@/components/Navbar";
-import { Users, BookOpen, Clock, ClipboardList, Monitor, AlertTriangle, CheckCircle2, X, Loader2, Server } from "lucide-react";
+import { Users, BookOpen, Clock, ClipboardList, Monitor, AlertTriangle, CheckCircle2, X, Loader2, Server, Medal } from "lucide-react";
 import { getPendingTeachers, activateTeacher, rejectTeacher, getLeaderboard, getCTFAdminConfig, updateCTFAdminConfig, getPlatformStats, getAdminHealthMetrics, type PendingTeacher, type LeaderboardEntry, type CTFResourceConfig, type PlatformStats, type AdminHealthMetrics } from "@/lib/api";
 import { LoadingButton } from "@/components/ui/LoadingButton";
 
@@ -324,12 +324,12 @@ export default function AdminDashboard() {
                 <Link href="/leaderboard" style={{ fontSize: 11, color: "var(--brand)" }}>Full Leaderboard</Link>
               </div>
               {topStudents.slice(0, 5).map((s, i) => {
-                const medals = ["🥇","🥈","🥉"];
+                const MEDAL_COLORS = ["#f5c451", "#c7cdd9", "#cd8a52"];
                 const color = AVATAR_COLORS[i % AVATAR_COLORS.length];
                 const ini = `${s.firstName.charAt(0)}${s.lastName.charAt(0)}`.toUpperCase();
                 return (
                   <div key={s.studentId} style={{ display: "flex", alignItems: "center", gap: 10, padding: "9px 14px", borderBottom: i < 4 ? "1px solid var(--bg-2)" : "none", fontSize: 12 }}>
-                    <span style={{ fontSize: 16, width: 20, textAlign: "center" }}>{medals[i] || String(i + 1)}</span>
+                    <span style={{ width: 20, textAlign: "center", display: "inline-flex", justifyContent: "center" }}>{i < 3 ? <Medal size={15} color={MEDAL_COLORS[i]} /> : i + 1}</span>
                     <div style={{ width: 26, height: 26, borderRadius: "50%", background: color, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 9, fontWeight: 700, color: "white" }}>{ini}</div>
                     <span style={{ flex: 1, fontWeight: 500 }}>{s.firstName} {s.lastName}</span>
                     <span style={{ fontWeight: 700, color: "var(--brand)" }}>{s.totalPoints} pts</span>

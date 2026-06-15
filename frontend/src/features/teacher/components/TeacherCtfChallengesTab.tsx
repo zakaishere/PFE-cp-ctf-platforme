@@ -1,13 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
-import {
-  Plus, Eye, EyeOff, Edit2, Flag, Lightbulb, X, Trash2, AlertCircle,
-  Server, FileText, Cpu, HardDrive, Network, Terminal, Globe, Box,
-  Info, Copy, Check, ChevronRight, UploadCloud, FileArchive, BookOpen,
-  Search, Filter, Download, Zap, Square, RefreshCw, ExternalLink,
-  ChevronDown, SlidersHorizontal, Droplets,
-} from "lucide-react";
+import { Plus, Eye, EyeOff, Edit2, Flag, Lightbulb, X, Trash2, AlertCircle, Server, FileText, Cpu, HardDrive, Network, Terminal, Globe, Box, Info, Copy, Check, ChevronRight, UploadCloud, FileArchive, BookOpen, Search, Filter, Download, Zap, Square, RefreshCw, ExternalLink, ChevronDown, SlidersHorizontal, Droplets, AlertTriangle } from "lucide-react";
 import { toast } from "@/components/ui/PSPToast";
 import {
   getTeacherCtfCompetitionChallenges,
@@ -993,7 +987,7 @@ function LibraryPickerPanel({
                         background: buildReady ? "rgba(34,197,94,0.1)" : "rgba(148,163,184,0.12)",
                         color: buildReady ? "#4ade80" : "#94a3b8",
                       }}>
-                        {buildReady ? "Docker ✓" : "Docker – no image"}
+                        {buildReady ? "Docker ready" : "Docker – no image"}
                       </span>
                     )}
                   </div>
@@ -1002,7 +996,7 @@ function LibraryPickerPanel({
                   </div>
                   <div style={{ fontSize: 11, color: "var(--text-muted)", marginTop: 2 }}>
                     {c.basePoints} pts · used {c.useCount}×
-                    {buildPending && <span style={{ color: "#f59e0b", marginLeft: 6 }}>⚠ image not built yet</span>}
+                    {buildPending && <span style={{ color: "#f59e0b", marginLeft: 6 }}><AlertTriangle size={11} style={{verticalAlign:"-1px",marginRight:3}} />image not built yet</span>}
                   </div>
                 </div>
                 <button

@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useRef, useEffect } from "react";
+import { Zap } from "lucide-react";
 import { LANGUAGES, Language } from "@/lib/codeTemplates";
 
 interface EditorToolbarProps {
@@ -101,7 +102,7 @@ export function EditorToolbar({
         onMouseEnter={e => { if (!busy) e.currentTarget.style.background = "var(--brand-2)"; }}
         onMouseLeave={e => { e.currentTarget.style.background = submitting ? "var(--brand)" : "var(--brand)"; }}
       >
-        {submitting ? <><MiniSpinner color="white" /> Judging...</> : <>⚡ Submit</>}
+        {submitting ? <><MiniSpinner color="white" /> Judging...</> : <><Zap size={14} /> Submit</>}
       </button>
     </div>
   );

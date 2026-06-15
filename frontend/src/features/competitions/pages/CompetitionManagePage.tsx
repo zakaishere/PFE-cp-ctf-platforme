@@ -673,7 +673,7 @@ function SidebarEndConfirm({ name, text, onTextChange, busy, onConfirm, onCancel
   return (
     <div style={{ background: "rgba(239,68,68,0.06)", border: "1px solid rgba(239,68,68,0.25)", borderRadius: 6, padding: 10, marginBottom: 6 }}>
       <p style={{ fontSize: 12, color: "#fca5a5", margin: "0 0 6px", lineHeight: 1.4 }}>
-        ⚠ Type the competition name to confirm ending.
+        Type the competition name to confirm ending.
       </p>
       <input className="input" value={text} onChange={e => onTextChange(e.target.value)} placeholder={name} style={{ marginBottom: 8, fontSize: 12 }} />
       <div style={{ display: "flex", gap: 6 }}>

@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { useParams } from "next/navigation";
 import Link from "next/link";
-import { Trophy, Snowflake, Loader2, ChevronDown } from "lucide-react";
+import { Trophy, Snowflake, Loader2, ChevronDown, TrendingUp } from "lucide-react";
 import {
   LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip,
   Legend, ReferenceLine, ResponsiveContainer,
@@ -211,9 +211,9 @@ function FinalResults({ visible, myTeamId }: {
           background: "#0f172a", border: "1px solid #1e293b", borderRadius: 12,
           marginBottom: 18,
         }}>
-          {top3[1] && <PodiumStep entry={top3[1]} rank={2} height={120} medal="🥈" competitionId={ctx.competition!.id} />}
-          {top3[0] && <PodiumStep entry={top3[0]} rank={1} height={160} medal="🥇" competitionId={ctx.competition!.id} />}
-          {top3[2] && <PodiumStep entry={top3[2]} rank={3} height={90}  medal="🥉" competitionId={ctx.competition!.id} />}
+          {top3[1] && <PodiumStep entry={top3[1]} rank={2} height={120} medal="2nd" competitionId={ctx.competition!.id} />}
+          {top3[0] && <PodiumStep entry={top3[0]} rank={1} height={160} medal="1st" competitionId={ctx.competition!.id} />}
+          {top3[2] && <PodiumStep entry={top3[2]} rank={3} height={90}  medal="3rd" competitionId={ctx.competition!.id} />}
         </div>
       )}
 
@@ -468,7 +468,7 @@ function ScoreTimeline({ competitionId, status, frozenAt }: {
         }}
       >
         <span style={{ display: "flex", alignItems: "center", gap: 8, fontWeight: 700, fontSize: 14 }}>
-          📈 Score Timeline — Top {graphData?.teams.length ?? 10} Teams
+          <TrendingUp size={14} style={{verticalAlign:"-2px",marginRight:6}} />Score Timeline — Top {graphData?.teams.length ?? 10} Teams
         </span>
         <ChevronDown size={16} style={{
           color: "#64748b",
