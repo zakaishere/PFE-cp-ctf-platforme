@@ -2,8 +2,6 @@ package com.university.platform.execution.service;
 
 import com.university.platform.assessment.model.TestCase;
 import com.university.platform.assessment.repository.TestCaseRepository;
-import com.university.platform.assessment.service.ExamScoringService;
-import com.university.platform.competition.service.CompetitionScoringService;
 import com.university.platform.config.RabbitMQConfig;
 import com.university.platform.execution.dto.WebSocketSubmissionMessage.SubmissionCompleteMessage;
 import com.university.platform.execution.dto.WebSocketSubmissionMessage.TestCaseResultMessage;
@@ -36,8 +34,7 @@ public class ExecutionWorkerService {
     private final TestCaseRepository testCaseRepository;
     private final DockerService dockerService;
     private final SimpMessagingTemplate messagingTemplate;
-    private final CompetitionScoringService competitionScoringService;
-    private final ExamScoringService examScoringService;
+    private final SubmissionScoringDispatcher scoringDispatcher;
 
     @RabbitListener(queues = RabbitMQConfig.QUEUE_NAME)
     @Transactional
@@ -50,6 +47,14 @@ public class ExecutionWorkerService {
         if (submission == null) {
             // Stale message (submission was deleted or from a previous DB) — ACK and discard
             log.warn("[WORKER] Submission {} not found in DB, discarding stale message", submissionId);
+            return;
+        }
+
+        // Idempotency guard: a redelivered message for an already-finished
+        // submission must not re-run Docker or re-score (scoring is also guarded
+        // independently by the atomic claim in SubmissionScoringDispatcher).
+        if (submission.getStatus() == SubmissionStatus.COMPLETED) {
+            log.info("[WORKER] Submission {} already COMPLETED — skipping redelivered message", submissionId);
             return;
         }
 
@@ -205,28 +210,13 @@ public class ExecutionWorkerService {
     // -------------------------------------------------------------------------
 
     private void dispatchScoring(Submission submission, Result result, int passedCount, int totalCount) {
-        if (submission.isPlanningMode()) return;   // run-only never scores
-
-        if (submission.getCompetitionId() != null) {
-            try {
-                competitionScoringService.processResult(submission, result, passedCount, totalCount);
-            } catch (Exception ex) {
-                log.error("[WORKER] Competition scoring failed for submission {}: {}",
-                        submission.getSubmissionId(), ex.getMessage(), ex);
-            }
-        }
-
-        if (submission.getAssessment() != null) {
-            try {
-                examScoringService.scoreSubmission(
-                        submission.getAssessment().getAssessmentId(),
-                        submission.getProblem().getProblemId(),
-                        submission.getStudent().getId(),
-                        passedCount, totalCount);
-            } catch (Exception ex) {
-                log.error("[WORKER] Exam/TP scoring failed for submission {}: {}",
-                        submission.getSubmissionId(), ex.getMessage(), ex);
-            }
+        // Exactly-once, lock-correct scoring in a single transaction.
+        // Wrapped so a scoring failure can never roll back or block the saved Result.
+        try {
+            scoringDispatcher.scoreOnce(submission, result, passedCount, totalCount);
+        } catch (Exception ex) {
+            log.error("[WORKER] Scoring failed for submission {}: {}",
+                    submission.getSubmissionId(), ex.getMessage(), ex);
         }
     }
 

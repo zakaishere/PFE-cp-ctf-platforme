@@ -38,7 +38,10 @@ public class ExamScoringService {
     private final ExamAttemptResultRepository examAttemptResultRepository;
     private final SimpMessagingTemplate messagingTemplate;
 
-    @Transactional(propagation = Propagation.REQUIRES_NEW)
+    // Joins the caller's single scoring transaction; the per-student result row
+    // is locked FOR UPDATE so concurrent submissions can't lose the attempts
+    // increment or the best-score update.
+    @Transactional
     public void scoreSubmission(UUID assessmentId, UUID problemId, UUID studentId,
                                 int passedCount, int totalCount) {
         Assessment assessment = assessmentRepository.findById(assessmentId).orElse(null);
@@ -56,9 +59,13 @@ public class ExamScoringService {
                 ? (int) Math.round(((double) passedCount / totalCount) * maxPoints)
                 : 0;
 
+        // Race-free upsert + locked read so concurrent submissions for the same
+        // (assessment, problem, student) serialise their best-score / attempts writes.
+        examAttemptResultRepository.insertIfAbsent(assessmentId, problemId, studentId);
         ExamAttemptResult res = examAttemptResultRepository
-                .findByAssessmentIdAndProblemIdAndStudentId(assessmentId, problemId, studentId)
-                .orElseGet(() -> ExamAttemptResult.create(assessmentId, problemId, studentId));
+                .findForUpdate(assessmentId, problemId, studentId)
+                .orElseThrow(() -> new IllegalStateException(
+                        "exam-attempt row missing after upsert for student " + studentId));
 
         boolean improved = newScore > res.getBestScore();
         if (improved) {

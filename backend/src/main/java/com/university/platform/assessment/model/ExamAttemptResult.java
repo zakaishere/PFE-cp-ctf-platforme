@@ -72,6 +72,12 @@ public class ExamAttemptResult {
     @Builder.Default
     private LocalDateTime updatedAt = LocalDateTime.now();
 
+    /** Optimistic-lock backstop; the hot path also locks this row for update. */
+    @Version
+    @Column(name = "version", nullable = false)
+    @Builder.Default
+    private long version = 0;
+
     public static ExamAttemptResult create(UUID assessmentId, UUID problemId, UUID studentId) {
         return ExamAttemptResult.builder()
                 .assessmentId(assessmentId)

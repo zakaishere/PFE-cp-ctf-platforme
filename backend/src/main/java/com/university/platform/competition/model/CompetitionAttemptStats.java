@@ -74,4 +74,14 @@ public class CompetitionAttemptStats {
     @Column(name = "penalty_minutes", nullable = false)
     @Builder.Default
     private int penaltyMinutes = 0;
+
+    /**
+     * Optimistic-lock backstop. The hot path locks this row pessimistically
+     * ({@code findForUpdate}), but @Version protects any non-locked write path
+     * and lets callers retry on a lost update under concurrent submissions.
+     */
+    @Version
+    @Column(name = "version", nullable = false)
+    @Builder.Default
+    private long version = 0;
 }

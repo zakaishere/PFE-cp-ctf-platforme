@@ -55,7 +55,10 @@ public class CompetitionScoringService {
      * @param passedCount number of test cases that passed (for PARTIAL)
      * @param totalCount  total test cases run (for PARTIAL)
      */
-    @Transactional(propagation = Propagation.REQUIRES_NEW)
+    // Joins the caller's single scoring transaction (see SubmissionScoringDispatcher).
+    // The per-participant stat row is locked FOR UPDATE for the duration of the
+    // update so teammates sharing one row cannot lose each other's writes.
+    @Transactional
     public void processResult(Submission submission, Result result, int passedCount, int totalCount) {
         UUID competitionId = submission.getCompetitionId();
         if (competitionId == null) return;
@@ -90,7 +93,7 @@ public class CompetitionScoringService {
                 .findByCompetitionIdAndProblem_ProblemId(competitionId, problemId).orElse(null);
 
         if (participantId != null && cp != null) {
-            CompetitionAttemptStats stats = findOrCreate(competitionId, problemId, participantId, isTeamMode);
+            CompetitionAttemptStats stats = lockOrCreate(competitionId, problemId, participantId, isTeamMode);
             submissionScore = switch (competition.getScoringMode()) {
                 case ICPC    -> scoreIcpc(competition, cp, stats, allPassed, submission.getTimestamp());
                 case RATED   -> scoreRated(competition, cp, stats, allPassed, submission.getTimestamp());
@@ -200,23 +203,28 @@ public class CompetitionScoringService {
 
     // ── helpers ────────────────────────────────────────────────────────────────
 
-    private CompetitionAttemptStats findOrCreate(UUID competitionId, UUID problemId,
+    /**
+     * Ensure the (competition, problem, participant) row exists and return it
+     * locked FOR UPDATE. The upsert is race-free (ON CONFLICT DO NOTHING) so
+     * two teammates inserting concurrently can't deadlock or throw; the
+     * subsequent locked read serialises their field updates.
+     */
+    private CompetitionAttemptStats lockOrCreate(UUID competitionId, UUID problemId,
                                                  UUID participantId, boolean isTeam) {
+        attemptStatsRepository.insertIfAbsent(competitionId, problemId, participantId, isTeam);
         return attemptStatsRepository
-                .findByCompetitionIdAndProblemIdAndParticipantId(competitionId, problemId, participantId)
-                .orElseGet(() -> CompetitionAttemptStats.builder()
-                        .competitionId(competitionId)
-                        .problemId(problemId)
-                        .participantId(participantId)
-                        .team(isTeam)
-                        .build());
+                .findForUpdate(competitionId, problemId, participantId)
+                .orElseThrow(() -> new IllegalStateException(
+                        "attempt-stats row missing after upsert for participant " + participantId));
     }
 
+    /**
+     * Atomic first-blood claim — a single guarded UPDATE decides the unique
+     * winner under concurrency (no read-then-set).
+     */
     private void maybeFirstBlood(CompetitionProblem cp, CompetitionAttemptStats stats, LocalDateTime at) {
-        if (cp.getFirstBloodParticipantId() == null) {
-            cp.setFirstBloodParticipantId(stats.getParticipantId());
-            cp.setFirstBloodAt(at);
-            competitionProblemRepository.save(cp);
+        int claimed = competitionProblemRepository.claimFirstBlood(cp.getId(), stats.getParticipantId(), at);
+        if (claimed > 0) {
             log.info("[COMP-SCORING] First blood on problem {} by participant {}",
                     cp.getProblem().getProblemId(), stats.getParticipantId());
         }

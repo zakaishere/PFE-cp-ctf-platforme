@@ -4,6 +4,7 @@ import com.university.platform.execution.model.Submission;
 import com.university.platform.execution.model.Submission.ProgrammingLanguage;
 import com.university.platform.execution.model.Submission.SubmissionStatus;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
@@ -96,6 +97,16 @@ public interface SubmissionRepository extends JpaRepository<Submission, UUID> {
             @Param("problemId") UUID problemId,
             Pageable pageable
     );
+
+    /**
+     * Atomic idempotency claim: flips {@code scored} false→true in a single
+     * conditional UPDATE. Returns 1 the first time (caller owns scoring) and 0
+     * on any redelivery/concurrent attempt (caller must skip). Race-free and
+     * portable (no DB-specific upsert needed).
+     */
+    @Modifying
+    @Query("UPDATE Submission s SET s.scored = true WHERE s.submissionId = :id AND s.scored = false")
+    int markScoredIfUnscored(@Param("id") UUID submissionId);
 
 }
 

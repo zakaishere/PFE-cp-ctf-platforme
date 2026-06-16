@@ -10,6 +10,10 @@ import java.util.UUID;
 @Entity
 @Table(
     name = "competition_submissions",
+    uniqueConstraints = @UniqueConstraint(
+        name = "uq_csub_submission_id",
+        columnNames = "submission_id"
+    ),
     indexes = {
         @Index(name = "idx_csub_competition_id", columnList = "competition_id"),
         @Index(name = "idx_csub_student_id",     columnList = "student_id"),

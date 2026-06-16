@@ -36,4 +36,17 @@ public class RateLimitConfig {
         Bandwidth limit = Bandwidth.classic(10, Refill.greedy(10, Duration.ofMinutes(1)));
         return Bucket.builder().addLimit(limit).build();
     }
+
+    /**
+     * Per-(user, event) judge-submission flood control. Keyed by
+     * "{studentId}:{eventId}" so a student gets an independent quota per
+     * competition / exam / TP / practice problem. Enforced at intake
+     * (SubmissionService) — never on the judge worker.
+     * 20 submissions/minute — generous for legitimate use, caps floods.
+     */
+    public Bucket resolveSubmissionBucket(String key) {
+        return buckets.computeIfAbsent("submit:" + key, k -> Bucket.builder()
+                .addLimit(Bandwidth.classic(20, Refill.greedy(20, Duration.ofMinutes(1))))
+                .build());
+    }
 }

@@ -45,6 +45,7 @@ public class SubmissionService {
     private final AssessmentRepository  assessmentRepository;
     private final JoinRequestRepository joinRequestRepository;
     private final RabbitTemplate        rabbitTemplate;
+    private final com.university.platform.config.RateLimitConfig rateLimitConfig;
 
     @Transactional
     public SubmissionResponseDTO submit(SubmissionRequestDTO request) {
@@ -56,6 +57,13 @@ public class SubmissionService {
         Problem problem = problemRepository.findById(request.getProblemId())
                 .orElseThrow(() -> new EntityNotFoundException(
                         "Problem not found: " + request.getProblemId()));
+
+        // Per-(user, event) flood control at intake — never throttles the judge worker.
+        UUID eventId = request.getAssessmentId() != null ? request.getAssessmentId() : problem.getProblemId();
+        if (!rateLimitConfig.resolveSubmissionBucket(student.getId() + ":" + eventId).tryConsume(1)) {
+            throw new ResponseStatusException(HttpStatus.TOO_MANY_REQUESTS,
+                    "Too many submissions — please slow down and try again shortly.");
+        }
 
         Assessment assessment = null;
         if (request.getAssessmentId() != null) {
