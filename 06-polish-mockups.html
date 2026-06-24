@@ -1,0 +1,712 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1.0"/>
+<title>Algora — Polish mockups</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap');
+:root{
+  --bg:#0f1117;--bg-2:#141720;--surface:#1c2132;--surface-2:#222840;--surface-3:#28304a;
+  --line:#252d3d;--line-strong:#3a4568;
+  --ink:#edf0f7;--ink-2:#9aa3be;--ink-3:#616b88;
+  --accent:#5b7cf6;--accent-2:#7b96ff;--accent-soft:rgba(91,124,246,.15);--accent-ring:rgba(91,124,246,.35);
+  --success:#2ec27e;--success-soft:rgba(46,194,126,.15);
+  --warn:#e8a030;--warn-soft:rgba(232,160,48,.15);
+  --danger:#f0637a;--danger-soft:rgba(240,99,122,.15);
+  --violet:#9b8cf6;--violet-soft:rgba(155,140,246,.15);
+  --r:12px;--r-sm:8px;
+  --font:'Plus Jakarta Sans',system-ui,sans-serif;
+  --mono:'JetBrains Mono',ui-monospace,monospace;
+  --card-shadow:0 1px 3px rgba(0,0,0,.2),0 0 0 1px rgba(255,255,255,.04);
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{min-height:100%;background:var(--bg);color:var(--ink);font-family:var(--font);font-size:14px;-webkit-font-smoothing:antialiased;letter-spacing:-.01em}
+::-webkit-scrollbar{width:8px}::-webkit-scrollbar-thumb{background:var(--surface-2);border-radius:8px;border:2px solid var(--bg)}
+.btn,.na,.prow,.erow,.ftab,.tab,.act,.ql,.choice,.nav-item{transition:background 120ms ease,color 120ms ease,box-shadow 120ms ease,border-color 120ms ease}
+
+/* ── NAV ── */
+.nav{position:sticky;top:0;z-index:50;background:rgba(15,17,23,.88);backdrop-filter:blur(14px);border-bottom:1px solid var(--line)}
+.nav-in{max-width:1280px;margin:0 auto;display:flex;align-items:center;gap:4px;height:62px;padding:0 24px}
+.logo{display:flex;align-items:center;gap:10px;font-weight:700;font-size:16px;margin-right:20px}
+.logo .m{width:30px;height:30px;border-radius:9px;background:var(--accent);display:grid;place-items:center;color:#fff;font-family:var(--mono);font-weight:700;font-size:13px}
+.nl{display:flex;gap:2px}
+.na{display:flex;align-items:center;gap:8px;padding:8px 13px;border-radius:9px;color:var(--ink-2);font-weight:550;font-size:13.5px;cursor:pointer}
+.na svg{width:16px;height:16px;color:var(--ink-3)}
+.na:hover{background:var(--surface);color:var(--ink)}.na.on{background:var(--accent-soft);color:var(--accent-2)}.na.on svg{color:var(--accent)}
+.nsp{flex:1}
+.srch{display:flex;align-items:center;gap:8px;background:var(--bg-2);border:1px solid var(--line);border-radius:9px;padding:8px 12px;width:210px}
+.srch svg{width:15px;height:15px;color:var(--ink-3);flex:none}.srch input{border:none;outline:none;background:none;color:var(--ink);font:500 13px var(--font);width:100%}
+.ib{width:36px;height:36px;border-radius:9px;border:1px solid var(--line);background:var(--bg-2);display:grid;place-items:center;color:var(--ink-2);cursor:pointer}
+.ib:hover{background:var(--surface)}.ib svg{width:17px;height:17px}
+.me-chip{display:flex;align-items:center;gap:9px;padding:4px 8px 4px 4px;border-radius:9px;cursor:pointer}
+.me-chip:hover{background:var(--surface)}
+.av{width:32px;height:32px;border-radius:9px;display:grid;place-items:center;color:#fff;font-weight:700;font-size:12px;flex:none}
+.me-nm{font-weight:600;font-size:13px}.me-rl{font-size:11px;color:var(--ink-3)}
+
+/* ── LAYOUT ── */
+.wrap{max-width:1280px;margin:0 auto;padding:28px 24px 80px}
+.view[hidden]{display:none!important}
+
+/* ── PRIMITIVES ── */
+.card{background:var(--surface);border:1px solid var(--line);border-radius:var(--r);box-shadow:var(--card-shadow)}
+.btn{display:inline-flex;align-items:center;gap:7px;border:1px solid var(--line-strong);background:var(--surface);color:var(--ink);padding:9px 15px;border-radius:10px;font:600 13.5px var(--font);cursor:pointer}
+.btn:hover{background:var(--surface-2)}.btn svg{width:15px;height:15px}
+.btn.primary{background:var(--accent);border-color:var(--accent);color:#fff}.btn.primary:hover{background:var(--accent-2)}
+.btn.ghost{background:transparent;border-color:var(--line)}.btn.ghost:hover{background:var(--surface)}
+.btn.sm{padding:7px 12px;font-size:13px}.btn.danger{color:#ff8fa3;background:transparent;border-color:transparent}.btn.danger:hover{background:var(--danger-soft)}
+.pill{display:inline-flex;align-items:center;gap:5px;font:650 11.5px var(--font);padding:4px 10px;border-radius:999px}
+.pill .d{width:6px;height:6px;border-radius:50%;flex:none}
+.pill.live{color:#ff8fa3;background:var(--danger-soft)}.pill.live .d{background:var(--danger)}
+.pill.open{color:#5dd4a0;background:var(--success-soft)}.pill.open .d{background:var(--success)}
+.pill.reg{color:#ffc069;background:var(--warn-soft)}.pill.reg .d{background:var(--warn)}
+.pill.closed{color:var(--ink-2);background:var(--bg-2);border:1px solid var(--line)}.pill.closed .d{background:var(--ink-3)}
+.pill.exam{color:#ffc069;background:var(--warn-soft)}.pill.tp{color:#b8acff;background:var(--violet-soft)}.pill.cp{color:var(--accent-2);background:var(--accent-soft)}
+.crumb{font-size:12.5px;color:var(--ink-3);margin-bottom:18px;display:flex;align-items:center;gap:6px}
+.crumb svg{width:13px;height:13px}.crumb a{color:var(--ink-3);cursor:pointer}.crumb a:hover{color:var(--ink-2)}
+.ph{display:flex;align-items:flex-end;justify-content:space-between;margin-bottom:22px}
+.ph h1{font-size:22px;font-weight:700;letter-spacing:-.02em;margin-bottom:3px}.ph .sub{color:var(--ink-2);font-size:13.5px}
+.gl{font:650 11px var(--font);letter-spacing:.07em;text-transform:uppercase;color:var(--ink-3);margin:22px 0 10px}
+
+/* ── VIEW SWITCHER DEMO BAR ── */
+.demo-bar{background:var(--surface-3);border-bottom:1px solid var(--line);padding:10px 24px;display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.demo-bar span{font-size:11px;color:var(--ink-3);font-weight:650;letter-spacing:.06em;text-transform:uppercase;margin-right:4px}
+.dvbtn{padding:6px 13px;border-radius:8px;font:600 12.5px var(--font);cursor:pointer;border:1px solid var(--line);background:var(--surface);color:var(--ink-2)}
+.dvbtn:hover{background:var(--surface-2);color:var(--ink)}.dvbtn.on{background:var(--accent);border-color:var(--accent);color:#fff}
+
+/* ═══════════════════════════════════════
+   VIEW 1 — STUDENT DASHBOARD (urgency-first)
+═══════════════════════════════════════ */
+.greeting{margin-bottom:24px}
+.greeting h1{font-size:24px;font-weight:700;letter-spacing:-.02em;margin-bottom:3px}
+.greeting p{color:var(--ink-2);font-size:14px}
+
+/* active now — hero card */
+.hero-card{padding:22px 24px;display:flex;align-items:center;gap:20px;margin-bottom:14px}
+.hero-icon{width:48px;height:48px;border-radius:12px;display:grid;place-items:center;flex:none;background:var(--danger-soft);color:#ff8fa3}
+.hero-icon svg{width:24px;height:24px}
+.hero-info{flex:1}.hero-info .ht{font-size:11px;font-weight:650;letter-spacing:.07em;text-transform:uppercase;color:var(--ink-3);margin-bottom:5px}
+.hero-info h2{font-size:18px;font-weight:700;margin-bottom:6px}
+.hero-info .hm{font-size:13px;color:var(--ink-2);display:flex;gap:14px}
+.hero-info .hm span{display:flex;align-items:center;gap:5px}.hero-info .hm svg{width:14px;height:14px;color:var(--ink-3)}
+.hero-right{display:flex;flex-direction:column;align-items:flex-end;gap:10px;flex:none}
+.timer{font:600 22px var(--mono);color:#ff8fa3;letter-spacing:1px}
+.timer-lbl{font-size:11px;color:var(--ink-3);text-align:right}
+
+/* coming up */
+.upnext{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-bottom:22px}
+.ucard{padding:18px;display:flex;flex-direction:column;gap:10px}
+.ucard .ut{font:650 11px var(--font);letter-spacing:.07em;text-transform:uppercase;color:var(--ink-3)}
+.ucard h3{font-size:15px;font-weight:700;letter-spacing:-.01em}
+.ucard .um{font-size:13px;color:var(--ink-2);display:flex;flex-direction:column;gap:5px}
+.ucard .um span{display:flex;align-items:center;gap:6px}.ucard .um svg{width:14px;height:14px;color:var(--ink-3)}
+.soon{font:600 12.5px var(--mono);color:#ffc069}
+
+/* in progress TPs */
+.tp-row{display:flex;align-items:center;gap:14px;padding:13px 18px;border-bottom:1px solid var(--line)}
+.tp-row:last-child{border-bottom:none}
+.tp-icon{width:32px;height:32px;border-radius:9px;background:var(--violet-soft);color:#b8acff;display:grid;place-items:center;flex:none}.tp-icon svg{width:16px;height:16px}
+.tp-info{flex:1;min-width:0}
+.tp-info b{font:650 13.5px var(--font);display:block;margin-bottom:4px}
+.tp-info .tm{font-size:12.5px;color:var(--ink-2)}
+.tp-bar{width:130px;flex:none}
+.tp-bar .pb{height:6px;border-radius:6px;background:var(--bg-2);overflow:hidden;margin-bottom:5px}
+.tp-bar .pb i{display:block;height:100%;background:var(--accent);border-radius:6px}
+.tp-bar .pl{font:500 11.5px var(--mono);color:var(--ink-3)}
+
+/* stats strip */
+.stats-strip{display:flex;align-items:center;gap:0;margin-bottom:22px}
+.ss-item{flex:1;padding:14px 20px;display:flex;flex-direction:column;gap:5px;border-right:1px solid var(--line)}
+.ss-item:last-child{border-right:none}
+.ss-item .sk{font:650 11px var(--font);letter-spacing:.07em;text-transform:uppercase;color:var(--ink-3)}
+.ss-item .sv{font:700 20px var(--mono);color:var(--ink)}
+
+/* activity list */
+.act-row{display:flex;align-items:center;gap:13px;padding:12px 18px;border-bottom:1px solid var(--line)}
+.act-row:last-child{border-bottom:none}
+.act-ic{width:30px;height:30px;border-radius:8px;display:grid;place-items:center;flex:none}
+.act-ic.ok{background:var(--success-soft);color:#5dd4a0}.act-ic.sub{background:var(--accent-soft);color:var(--accent-2)}.act-ic.bad{background:var(--danger-soft);color:#ff8fa3}
+.act-ic svg{width:15px;height:15px}
+.act-t{flex:1;font-size:13.5px}.act-t b{font-weight:650}
+.act-t .a2{font-size:12px;color:var(--ink-3);margin-top:2px}
+.act-when{font:500 12px var(--mono);color:var(--ink-3)}
+
+/* ═══════════════════════════════════════
+   VIEW 2 — CREATE FORM (progressive disclosure)
+═══════════════════════════════════════ */
+.formwrap{max-width:780px}
+.stepper{display:flex;align-items:center;margin-bottom:28px}
+.step{display:flex;align-items:center;gap:8px;color:var(--ink-3);font-weight:600;font-size:13px}
+.step .n{width:26px;height:26px;border-radius:50%;border:1.5px solid var(--line-strong);display:grid;place-items:center;font:700 12px var(--mono)}
+.step.on{color:var(--ink)}.step.on .n{border-color:var(--accent);background:var(--accent);color:#fff}
+.step.done{color:var(--ink-2)}.step.done .n{border-color:var(--accent);color:var(--accent-2)}
+.sline{flex:1;height:1.5px;background:var(--line);margin:0 10px}
+
+.fcard{margin-bottom:14px}
+.fcard-head{padding:16px 18px;border-bottom:1px solid var(--line);font:700 13.5px var(--font)}
+.fcard-body{padding:18px}
+.field{margin-bottom:16px}
+.field label{display:block;font:600 13px var(--font);margin-bottom:7px;color:var(--ink)}
+.field .hint{font-size:12px;color:var(--ink-3);margin-top:5px}
+.req{color:var(--accent-2)}
+input[type=text],input[type=number],input[type=datetime-local],textarea,select{
+  width:100%;background:var(--bg-2);border:1px solid var(--line);border-radius:10px;padding:11px 13px;color:var(--ink);font:500 13.5px var(--font);outline:none}
+input:focus,textarea:focus,select:focus{border-color:var(--accent);box-shadow:0 0 0 3px var(--accent-soft)}
+textarea{min-height:88px;resize:vertical;line-height:1.55}
+input::placeholder,textarea::placeholder{color:var(--ink-3)}
+.two{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+.seg{display:inline-flex;background:var(--bg-2);border:1px solid var(--line);border-radius:10px;padding:3px;gap:3px}
+.seg .opt{padding:8px 15px;border-radius:8px;cursor:pointer;font:600 13px var(--font);color:var(--ink-2)}
+.seg .opt:hover{color:var(--ink)}.seg .opt.on{background:var(--surface-3);color:var(--ink);box-shadow:0 1px 3px rgba(0,0,0,.25)}
+
+/* advanced toggle */
+.adv-toggle{display:flex;align-items:center;gap:8px;cursor:pointer;color:var(--ink-3);font:600 13px var(--font);padding:14px 0 2px;user-select:none}
+.adv-toggle:hover{color:var(--ink-2)}.adv-toggle svg{width:16px;height:16px;transition:transform 200ms ease}
+.adv-toggle.open svg{transform:rotate(180deg)}
+.adv-fields{overflow:hidden;max-height:0;transition:max-height 220ms ease}
+.adv-fields.open{max-height:600px}
+
+.sw-row{display:flex;align-items:center;justify-content:space-between;padding:13px 15px;border:1px solid var(--line);border-radius:10px;background:var(--bg-2);margin-bottom:12px}
+.sw-row .st{font:600 13.5px var(--font)}.sw-row .st small{display:block;color:var(--ink-3);font-weight:500;font-size:12px;margin-top:2px}
+.sw{width:40px;height:22px;border-radius:999px;background:var(--line-strong);position:relative;cursor:pointer;flex:none}
+.sw::after{content:"";position:absolute;top:3px;left:3px;width:16px;height:16px;border-radius:50%;background:#fff;transition:left 120ms ease}
+.sw.on{background:var(--accent)}.sw.on::after{left:21px}
+
+.form-foot{display:flex;align-items:center;justify-content:space-between;padding-top:18px;border-top:1px solid var(--line);margin-top:24px}
+
+/* ═══════════════════════════════════════
+   VIEW 3 — EMPTY STATES
+═══════════════════════════════════════ */
+.empty-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:14px}
+.empty-card{padding:36px 24px;text-align:center;display:flex;flex-direction:column;align-items:center;gap:0}
+.empty-card .ei{width:44px;height:44px;border-radius:12px;display:grid;place-items:center;margin:0 auto 14px}
+.empty-card .ei svg{width:22px;height:22px}
+.empty-card h3{font:650 14px var(--font);color:var(--ink);margin-bottom:6px}
+.empty-card p{font-size:13px;color:var(--ink-2);line-height:1.55;margin-bottom:14px}
+
+/* ═══════════════════════════════════════
+   VIEW 4 — MOBILE ARENA
+═══════════════════════════════════════ */
+.mobile-frame{width:390px;height:700px;background:var(--bg);border-radius:24px;overflow:hidden;position:relative;box-shadow:0 0 0 1px var(--line-strong),0 24px 60px rgba(0,0,0,.5);margin:0 auto}
+.mbar{background:rgba(15,17,23,.95);border-bottom:1px solid var(--line);padding:0 16px;height:52px;display:flex;align-items:center;gap:10px}
+.mbar .mlogo{width:24px;height:24px;border-radius:7px;background:var(--accent);display:grid;place-items:center;color:#fff;font:700 11px var(--mono)}
+.mbar .mtitle{flex:1;font:650 13px var(--font);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.mbar .mtimer{font:600 15px var(--mono);color:#ff8fa3;letter-spacing:.5px}
+.mbar .mav{width:26px;height:26px;border-radius:7px;background:linear-gradient(135deg,#f0a93c,#e8607e);display:grid;place-items:center;color:#fff;font:700 10px var(--font)}
+.mcontent{height:calc(700px - 52px - 52px);overflow:auto}
+.mpanel[hidden]{display:none}
+
+/* mobile statement */
+.mstmt{padding:16px}
+.mstmt .mc{font:500 11.5px var(--mono);color:var(--ink-3);margin-bottom:10px}
+.mstmt h2{font-size:17px;font-weight:700;margin-bottom:10px}
+.mtags{display:flex;gap:8px;margin-bottom:14px;flex-wrap:wrap}
+.mtag{font:500 11px var(--mono);color:var(--ink-2);background:var(--bg-2);border:1px solid var(--line);border-radius:6px;padding:3px 8px}
+.mstmt p{font-size:13.5px;color:var(--ink-2);line-height:1.65;margin-bottom:12px}
+.mio{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.mio .mb{border:1px solid var(--line);border-radius:9px;overflow:hidden;background:var(--bg-2)}
+.mio .mc2{font:650 10px var(--font);letter-spacing:.06em;text-transform:uppercase;color:var(--ink-3);padding:7px 10px;border-bottom:1px solid var(--line)}
+.mio pre{font:400 11.5px var(--mono);padding:10px;color:var(--ink-2);line-height:1.5}
+
+/* mobile problems rail */
+.mprow{display:flex;align-items:center;gap:12px;padding:14px 16px;border-bottom:1px solid var(--line);cursor:pointer}
+.mprow:hover{background:var(--surface-2)}
+.mpbadge{width:32px;height:32px;border-radius:9px;display:grid;place-items:center;font:700 13px var(--mono);background:var(--bg-2);color:var(--ink);flex:none}
+.mpbadge.solved{background:rgba(46,194,126,.15);color:#5dd4a0}
+.mpbadge.wrong{background:var(--danger-soft);color:#ff8fa3}
+.mpinfo{flex:1}.mpinfo b{font:650 13.5px var(--font);display:block;margin-bottom:3px}
+.mpinfo .mm{font-size:12px;color:var(--ink-3)}
+.mpstat{font:600 12px var(--font)}.mpstat.ok{color:#5dd4a0}.mpstat.bad{color:#ff8fa3}.mpstat.none{color:var(--ink-3)}
+
+/* mobile submit */
+.msubmit{display:flex;flex-direction:column;height:100%}
+.msubhead{display:flex;align-items:center;gap:8px;padding:12px 14px;border-bottom:1px solid var(--line)}
+.mlang{display:flex;align-items:center;gap:6px;background:var(--bg-2);border:1px solid var(--line);border-radius:8px;padding:7px 10px;font:500 12.5px var(--mono);cursor:pointer}
+.meditor{flex:1;background:#0c121e;overflow:auto;padding:14px}
+.meditor pre{font:400 12px var(--mono);color:#cdd7e8;line-height:1.65}
+.mfooter{flex:none;border-top:1px solid var(--line);padding:12px 14px;background:var(--surface)}
+.mcases{display:flex;gap:6px;margin-bottom:10px;flex-wrap:wrap}
+.mcase{width:30px;height:30px;border-radius:8px;display:grid;place-items:center;font:500 11.5px var(--mono);border:1px solid var(--line);background:var(--bg-2);color:var(--ink-3)}
+.mcase.pass{background:rgba(46,194,126,.15);border-color:#1d5343;color:#5dd4a0}
+.mcase.fail{background:var(--danger-soft);border-color:#5a2230;color:#ff8fa3}
+.mbtns{display:grid;grid-template-columns:1fr 1.4fr;gap:8px}
+
+/* mobile bottom tab bar */
+.mtabs{position:absolute;bottom:0;left:0;right:0;height:52px;background:var(--surface);border-top:1px solid var(--line);display:flex}
+.mtab{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;cursor:pointer;color:var(--ink-3);font:600 11px var(--font)}
+.mtab svg{width:18px;height:18px}.mtab.on{color:var(--accent-2)}.mtab.on svg{color:var(--accent)}
+.mtab-bar{position:absolute;top:0;height:2px;width:40px;border-radius:0 0 2px 2px;background:var(--accent);transition:left 200ms ease}
+
+/* ── ICONS ── */
+</style>
+</head>
+<body>
+
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <symbol id="i-home" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 10.5 12 3l9 7.5"/><path d="M5 9.5V21h14V9.5"/><path d="M9.5 21v-6h5v6"/></symbol>
+  <symbol id="i-doc" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M6 3h8l4 4v14H6Z"/><path d="M14 3v4h4"/><path d="M9 12h6M9 16h6"/></symbol>
+  <symbol id="i-trophy" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M7 4h10v5a5 5 0 0 1-10 0Z"/><path d="M7 6H4v1a3 3 0 0 0 3 3"/><path d="M17 6h3v1a3 3 0 0 1-3 3"/><path d="M10 14h4l-.5 4h-3Z"/><path d="M8 21h8"/></symbol>
+  <symbol id="i-flask" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M9 3h6"/><path d="M10 3v6l-4.5 8a2 2 0 0 0 1.8 3h9.4a2 2 0 0 0 1.8-3L14 9V3"/><path d="M7.5 14h9"/></symbol>
+  <symbol id="i-flag" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M5 21V4"/><path d="M5 4h11l-1.5 3.5L16 11H5"/></symbol>
+  <symbol id="i-code" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="m8 9-3 3 3 3"/><path d="m16 9 3 3-3 3"/><path d="m13.5 7-3 10"/></symbol>
+  <symbol id="i-medal" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="14" r="5"/><path d="m8.5 9.5-2-6h4l2 3"/><path d="m15.5 9.5 2-6h-4l-2 3"/></symbol>
+  <symbol id="i-search" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.2-3.2"/></symbol>
+  <symbol id="i-bell" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9a6 6 0 0 1 12 0c0 5 2 6 2 6H4s2-1 2-6"/><path d="M10 19a2 2 0 0 0 4 0"/></symbol>
+  <symbol id="i-plus" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14M5 12h14"/></symbol>
+  <symbol id="i-arrow" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14"/><path d="m13 6 6 6-6 6"/></symbol>
+  <symbol id="i-check" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m5 12 4.5 4.5L19 7"/></symbol>
+  <symbol id="i-clock" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></symbol>
+  <symbol id="i-cal" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="5" width="16" height="16" rx="2"/><path d="M4 9h16M8 3v4M16 3v4"/></symbol>
+  <symbol id="i-users" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="8" r="3.2"/><path d="M3.5 20a5.5 5.5 0 0 1 11 0"/><path d="M16 5.5a3.2 3.2 0 0 1 0 6"/><path d="M17.5 14.5a5.5 5.5 0 0 1 3 5"/></symbol>
+  <symbol id="i-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m6 9 6 6 6-6"/></symbol>
+  <symbol id="i-star" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="m12 4 2.4 5 5.6.8-4 4 1 5.6-5-2.7-5 2.7 1-5.6-4-4 5.6-.8Z"/></symbol>
+  <symbol id="i-zap" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M13 3 4 14h6l-1 7 9-11h-6Z"/></symbol>
+  <symbol id="i-list" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M8 6h13M8 12h13M8 18h13M3 6h.01M3 12h.01M3 18h.01"/></symbol>
+  <symbol id="i-x" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6 6 18M6 6l12 12"/></symbol>
+  <symbol id="i-send" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="m22 2-11 11"/><path d="m22 2-7 20-4-9-9-4 20-7Z"/></symbol>
+</svg>
+
+<!-- TOP NAV -->
+<header class="nav">
+  <div class="nav-in">
+    <div class="logo"><div class="m">A</div> Algora</div>
+    <nav class="nl">
+      <div class="na on" data-v="dash"><svg><use href="#i-home"/></svg>Dashboard</div>
+      <div class="na" data-v="form"><svg><use href="#i-plus"/></svg>Create</div>
+      <div class="na" data-v="empty"><svg><use href="#i-list"/></svg>Empty states</div>
+      <div class="na" data-v="mobile"><svg><use href="#i-zap"/></svg>Mobile arena</div>
+    </nav>
+    <div class="nsp"></div>
+    <div class="srch"><svg><use href="#i-search"/></svg><input placeholder="Search…"></div>
+    <div class="ib"><svg><use href="#i-bell"/></svg></div>
+    <div class="me-chip">
+      <div class="av" style="background:linear-gradient(135deg,#f0a93c,#e8607e)">YA</div>
+      <div><div class="me-nm">Yassine A.</div><div class="me-rl">Student</div></div>
+    </div>
+  </div>
+</header>
+
+<!-- DEMO SWITCHER BAR -->
+<div class="demo-bar">
+  <span>Prompt</span>
+  <button class="dvbtn on" data-v="dash">1+2 — Dashboard (urgency-first)</button>
+  <button class="dvbtn" data-v="form">3 — Create form (progressive)</button>
+  <button class="dvbtn" data-v="empty">4 — Empty states</button>
+  <button class="dvbtn" data-v="mobile">5 — Mobile arena</button>
+</div>
+
+<div class="wrap">
+
+<!-- ═══ VIEW: DASHBOARD ═══ -->
+<section class="view" data-view="dash">
+  <div class="greeting">
+    <h1>Good evening, Yassine</h1>
+    <p>Tuesday, 24 June 2026</p>
+  </div>
+
+  <!-- ACTIVE NOW -->
+  <div class="gl" style="margin-top:0">Active right now</div>
+  <div class="card hero-card" style="margin-bottom:22px">
+    <div class="hero-icon"><svg><use href="#i-trophy"/></svg></div>
+    <div class="hero-info">
+      <div class="ht">Competition</div>
+      <h2>Weekly Sprint #12 <span class="pill live"><span class="d"></span>Live</span></h2>
+      <div class="hm">
+        <span><svg><use href="#i-users"/></svg>Teams of 2–3</span>
+        <span><svg><use href="#i-list"/></svg>5 problems</span>
+        <span>ICPC scoring</span>
+      </div>
+    </div>
+    <div class="hero-right">
+      <div>
+        <div class="timer">01:02:14</div>
+        <div class="timer-lbl">remaining</div>
+      </div>
+      <button class="btn primary">Enter arena <svg><use href="#i-arrow"/></svg></button>
+    </div>
+  </div>
+
+  <!-- COMING UP -->
+  <div class="gl">Coming up</div>
+  <div class="upnext" style="margin-bottom:22px">
+    <div class="card ucard">
+      <div class="ut">Exam</div>
+      <h3>Data Structures — Midterm</h3>
+      <div class="um">
+        <span><svg><use href="#i-cal"/></svg>Sat 21 June · 14:00</span>
+        <span><svg><use href="#i-clock"/></svg>45 min · one attempt</span>
+        <span style="color:var(--ink-3)">Access code required</span>
+      </div>
+      <div class="soon">Starts in 1h 58m</div>
+      <button class="btn ghost sm" style="margin-top:4px">View details</button>
+    </div>
+    <div class="card ucard">
+      <div class="ut">Competition</div>
+      <h3>Beginners Round 7</h3>
+      <div class="um">
+        <span><svg><use href="#i-cal"/></svg>Wed 25 June · 18:00</span>
+        <span><svg><use href="#i-clock"/></svg>2 hours · solo</span>
+      </div>
+      <div style="font-size:13px;color:var(--ink-3)">Starts in 2 days</div>
+      <button class="btn ghost sm" style="margin-top:4px">View details</button>
+    </div>
+    <div class="card ucard">
+      <div class="ut">TP</div>
+      <h3>TP 5 — Hashing &amp; Maps</h3>
+      <div class="um">
+        <span><svg><use href="#i-cal"/></svg>Due Sat 18:00</span>
+        <span>5 attempts max</span>
+      </div>
+      <div class="soon">Due in 3 days</div>
+      <button class="btn ghost sm" style="margin-top:4px">Open</button>
+    </div>
+  </div>
+
+  <!-- IN PROGRESS TPs -->
+  <div class="gl">In progress</div>
+  <div class="card" style="margin-bottom:22px">
+    <div class="tp-row">
+      <div class="tp-icon"><svg><use href="#i-flask"/></svg></div>
+      <div class="tp-info"><b>TP 5 — Hashing &amp; Maps</b><div class="tm">Due in 3 days · 2 of 3 tasks</div></div>
+      <div class="tp-bar"><div class="pb"><i style="width:52%"></i></div><div class="pl">39 / 75 pts</div></div>
+      <button class="btn sm primary">Open</button>
+    </div>
+    <div class="tp-row">
+      <div class="tp-icon"><svg><use href="#i-flask"/></svg></div>
+      <div class="tp-info"><b>TP 6 — Graphs</b><div class="tm">Due in 9 days · not started</div></div>
+      <div class="tp-bar"><div class="pb"><i style="width:0%"></i></div><div class="pl">0 / 125 pts</div></div>
+      <button class="btn sm">Open</button>
+    </div>
+  </div>
+
+  <!-- STATS STRIP -->
+  <div class="gl">Your stats</div>
+  <div class="card stats-strip" style="margin-bottom:22px">
+    <div class="ss-item"><div class="sk">Solved</div><div class="sv">47</div></div>
+    <div class="ss-item"><div class="sk">Points</div><div class="sv">1,240</div></div>
+    <div class="ss-item"><div class="sk">Rank</div><div class="sv">#18</div></div>
+    <div class="ss-item"><div class="sk">Contests</div><div class="sv">6</div></div>
+  </div>
+
+  <!-- RECENT ACTIVITY -->
+  <div class="gl">Recent activity</div>
+  <div class="card">
+    <div class="act-row"><div class="act-ic ok"><svg><use href="#i-check"/></svg></div><div class="act-t"><b>Solved "Coin Machine"</b><div class="a2">Practice · Medium · +20 pts</div></div><div class="act-when">2h ago</div></div>
+    <div class="act-row"><div class="act-ic sub"><svg><use href="#i-code"/></svg></div><div class="act-t"><b>Submitted to "Group Anagrams"</b><div class="a2">TP 5 · Partial 14/25</div></div><div class="act-when">5h ago</div></div>
+    <div class="act-row"><div class="act-ic ok"><svg><use href="#i-check"/></svg></div><div class="act-t"><b>Passed "Algorithms — Quiz 2"</b><div class="a2">Exam · Grade 78%</div></div><div class="act-when">Yesterday</div></div>
+    <div class="act-row"><div class="act-ic bad"><svg><use href="#i-x"/></svg></div><div class="act-t"><b>Wrong answer on "LRU Cache"</b><div class="a2">Practice · Hard</div></div><div class="act-when">Yesterday</div></div>
+  </div>
+</section>
+
+<!-- ═══ VIEW: CREATE FORM ═══ -->
+<section class="view" data-view="form" hidden>
+  <div class="ph"><div><h1>New competition</h1><div class="sub">Fill in the core details — advanced options are one click away.</div></div></div>
+
+  <div class="formwrap">
+    <!-- stepper -->
+    <div class="stepper" style="margin-bottom:26px">
+      <div class="step on"><span class="n">1</span><span>Basics</span></div>
+      <div class="sline"></div>
+      <div class="step"><span class="n">2</span><span>Schedule</span></div>
+      <div class="sline"></div>
+      <div class="step"><span class="n">3</span><span>Format</span></div>
+      <div class="sline"></div>
+      <div class="step"><span class="n">4</span><span>Problems</span></div>
+      <div class="sline"></div>
+      <div class="step"><span class="n">5</span><span>Review</span></div>
+    </div>
+
+    <!-- CORE FIELDS -->
+    <div class="card fcard">
+      <div class="fcard-head">Core details</div>
+      <div class="fcard-body">
+        <div class="field">
+          <label>Title <span class="req">*</span></label>
+          <input type="text" value="Spring Algo Cup #3" placeholder="e.g. Spring Algo Cup #3">
+        </div>
+        <div class="field" style="margin-bottom:0">
+          <label>Description</label>
+          <textarea placeholder="What is this contest about?">A 3-hour team contest over 6 algorithmic problems. ICPC rules.</textarea>
+        </div>
+      </div>
+    </div>
+
+    <div class="card fcard">
+      <div class="fcard-head">Scoring mode</div>
+      <div class="fcard-body">
+        <div class="field" style="margin-bottom:0">
+          <div class="seg">
+            <div class="opt on">ICPC</div>
+            <div class="opt">Rated</div>
+            <div class="opt">Partial</div>
+          </div>
+          <div class="hint" style="margin-top:10px">ICPC: rank by problems solved, ties broken by penalty time.</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ADVANCED TOGGLE -->
+    <div class="adv-toggle" id="advToggle" onclick="toggleAdv()">
+      <svg><use href="#i-chevron"/></svg>
+      Advanced settings
+      <span style="font-size:12px;color:var(--ink-3);font-weight:500;margin-left:4px">— freeze, penalty, team size</span>
+    </div>
+
+    <div class="adv-fields" id="advFields">
+      <div style="padding-top:12px">
+        <div class="card fcard">
+          <div class="fcard-head">Advanced</div>
+          <div class="fcard-body">
+            <div class="sw-row">
+              <div class="st">Freeze scoreboard near the end<small>Hide standings for the final stretch — revealed after contest ends.</small></div>
+              <div class="sw on" id="freezeSw" onclick="this.classList.toggle('on')"></div>
+            </div>
+            <div class="two" style="margin-bottom:14px">
+              <div class="field" style="margin-bottom:0"><label>Min team size</label><input type="number" value="2"></div>
+              <div class="field" style="margin-bottom:0"><label>Max team size</label><input type="number" value="3"></div>
+            </div>
+            <div class="field" style="margin-bottom:0">
+              <label>Wrong-answer penalty</label>
+              <input type="number" value="20" style="max-width:160px">
+              <div class="hint">Minutes added per wrong attempt (ICPC mode).</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="form-foot">
+      <button class="btn ghost">← Back</button>
+      <div style="display:flex;gap:10px">
+        <button class="btn">Save draft</button>
+        <button class="btn primary">Continue <svg><use href="#i-arrow"/></svg></button>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ═══ VIEW: EMPTY STATES ═══ -->
+<section class="view" data-view="empty" hidden>
+  <div class="ph"><div><h1>Empty states</h1><div class="sub">Instructional, not generic — every state tells you what to do next.</div></div></div>
+
+  <div class="gl" style="margin-top:0">Teacher side</div>
+  <div class="empty-grid" style="margin-bottom:22px">
+    <div class="card empty-card">
+      <div class="ei" style="background:var(--accent-soft);color:var(--accent-2)"><svg><use href="#i-list"/></svg></div>
+      <h3>No problems attached</h3>
+      <p>Add from your problem bank to make this contest submittable.</p>
+      <button class="btn primary sm"><svg><use href="#i-plus"/></svg>Add problem</button>
+    </div>
+    <div class="card empty-card">
+      <div class="ei" style="background:var(--warn-soft);color:#ffc069"><svg><use href="#i-send"/></svg></div>
+      <h3>No submissions yet</h3>
+      <p>They'll appear here in real time once the event is active.</p>
+    </div>
+    <div class="card empty-card">
+      <div class="ei" style="background:var(--success-soft);color:#5dd4a0"><svg><use href="#i-users"/></svg></div>
+      <h3>No join requests</h3>
+      <p>Requests appear here when visibility is set to Request-based.</p>
+    </div>
+    <div class="card empty-card">
+      <div class="ei" style="background:var(--violet-soft);color:#b8acff"><svg><use href="#i-flask"/></svg></div>
+      <h3>No tasks added</h3>
+      <p>Add tasks from your problem bank. Each can have its own point value and attempt limit.</p>
+      <button class="btn primary sm"><svg><use href="#i-plus"/></svg>Add task</button>
+    </div>
+    <div class="card empty-card">
+      <div class="ei" style="background:var(--danger-soft);color:#ff8fa3"><svg><use href="#i-trophy"/></svg></div>
+      <h3>No teams registered</h3>
+      <p>Share the competition link so students can register.</p>
+    </div>
+    <div class="card empty-card">
+      <div class="ei" style="background:var(--surface-2);color:var(--ink-3)"><svg><use href="#i-zap"/></svg></div>
+      <h3>Nothing active right now</h3>
+      <p>Create a competition, exam, or TP to get started.</p>
+      <button class="btn sm"><svg><use href="#i-plus"/></svg>Create</button>
+    </div>
+  </div>
+
+  <div class="gl">Student side</div>
+  <div class="empty-grid">
+    <div class="card empty-card">
+      <div class="ei" style="background:var(--accent-soft);color:var(--accent-2)"><svg><use href="#i-trophy"/></svg></div>
+      <h3>No competitions available</h3>
+      <p>Check back soon or ask your teacher to open registration.</p>
+    </div>
+    <div class="card empty-card">
+      <div class="ei" style="background:var(--warn-soft);color:#ffc069"><svg><use href="#i-doc"/></svg></div>
+      <h3>No exams assigned</h3>
+      <p>Your teacher will share an access code when one is ready.</p>
+    </div>
+    <div class="card empty-card">
+      <div class="ei" style="background:var(--success-soft);color:#5dd4a0"><svg><use href="#i-code"/></svg></div>
+      <h3>No submissions yet</h3>
+      <p>Head to Practice to solve your first problem and earn points.</p>
+      <button class="btn primary sm">Go to Practice</button>
+    </div>
+    <div class="card empty-card">
+      <div class="ei" style="background:var(--surface-2);color:var(--ink-3)"><svg><use href="#i-search"/></svg></div>
+      <h3>No problems match</h3>
+      <p>Try adjusting the difficulty or status filter.</p>
+    </div>
+    <div class="card empty-card">
+      <div class="ei" style="background:var(--violet-soft);color:#b8acff"><svg><use href="#i-medal"/></svg></div>
+      <h3>No rankings yet</h3>
+      <p>Solve practice problems to earn points and appear here.</p>
+    </div>
+    <div class="card empty-card">
+      <div class="ei" style="background:var(--danger-soft);color:#ff8fa3"><svg><use href="#i-zap"/></svg></div>
+      <h3>Nothing active right now</h3>
+      <p>Check Competitions and Exams for upcoming events.</p>
+    </div>
+  </div>
+</section>
+
+<!-- ═══ VIEW: MOBILE ARENA ═══ -->
+<section class="view" data-view="mobile" hidden>
+  <div class="ph"><div><h1>Mobile arena</h1><div class="sub">The 3-column arena collapses into a tabbed single-column layout on mobile — bottom tabs switch between Problems, Statement, and Submit.</div></div></div>
+
+  <div class="mobile-frame">
+    <!-- event bar -->
+    <div class="mbar">
+      <div class="mlogo">A</div>
+      <div class="mtitle">Weekly Sprint #12</div>
+      <div class="mtimer">01:02:14</div>
+      <div class="mav">YA</div>
+    </div>
+
+    <!-- content panels -->
+    <div class="mcontent" id="mContent">
+
+      <!-- PANEL: statement (default) -->
+      <div class="mpanel" id="mStmt">
+        <div class="mstmt">
+          <div class="mc">C · Balanced Subarrays</div>
+          <h2>Balanced Subarrays</h2>
+          <div class="mtags">
+            <span class="mtag">Medium</span>
+            <span class="mtag">1000 ms</span>
+            <span class="mtag">300 pts</span>
+          </div>
+          <p>You are given an array of <em>n</em> integers. A subarray is called <strong>balanced</strong> if the number of even elements equals the number of odd elements. Count how many non-empty subarrays are balanced.</p>
+          <div class="mio">
+            <div class="mb"><div class="mc2">Input</div><pre>4
+1 2 3 4</pre></div>
+            <div class="mb"><div class="mc2">Output</div><pre>4</pre></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- PANEL: problems rail -->
+      <div class="mpanel" id="mProbs" hidden>
+        <div class="mprow"><div class="mpbadge solved">A</div><div class="mpinfo"><b>Warm Handshake</b><div class="mm">100 pts</div></div><div class="mpstat ok">✓</div></div>
+        <div class="mprow"><div class="mpbadge solved">B</div><div class="mpinfo"><b>Prefix Parity</b><div class="mm">100 pts</div></div><div class="mpstat ok">✓</div></div>
+        <div class="mprow" style="background:var(--surface-2)"><div class="mpbadge" style="background:var(--accent-soft);color:var(--accent-2)">C</div><div class="mpinfo"><b>Balanced Subarrays</b><div class="mm">300 pts</div></div><div class="mpstat none">—</div></div>
+        <div class="mprow"><div class="mpbadge wrong">D</div><div class="mpinfo"><b>Tetouan Transit</b><div class="mm">400 pts</div></div><div class="mpstat bad">×2</div></div>
+        <div class="mprow"><div class="mpbadge solved">E</div><div class="mpinfo"><b>Coin Machine</b><div class="mm">500 pts</div></div><div class="mpstat ok">✓</div></div>
+        <div class="mprow"><div class="mpbadge">F</div><div class="mpinfo"><b>Median of Medians</b><div class="mm">700 pts</div></div><div class="mpstat none">—</div></div>
+      </div>
+
+      <!-- PANEL: submit -->
+      <div class="mpanel msubmit" id="mSubmit" hidden>
+        <div class="msubhead">
+          <div class="mlang">C++ 17 ▾</div>
+          <div style="flex:1"></div>
+          <span style="font-size:12px;color:var(--ink-3)">Problem C</span>
+        </div>
+        <div class="meditor" style="flex:1">
+          <pre><span style="color:#7aa2ff">#include</span> <span style="color:#e0a572">&lt;bits/stdc++.h&gt;</span>
+<span style="color:#7aa2ff">using namespace</span> std;
+<span style="color:#5ec8c0">int</span> <span style="color:#c9a0ff">main</span>(){
+  <span style="color:#5ec8c0">int</span> n; cin &gt;&gt; n;
+  <span style="color:#5ec8c0">long long</span> ans=0, bal=0;
+  map&lt;<span style="color:#5ec8c0">long long</span>,<span style="color:#5ec8c0">long long</span>&gt; cnt;
+  cnt[0]=1;
+  <span style="color:#7aa2ff">for</span>(<span style="color:#5ec8c0">int</span> i=0;i&lt;n;i++){
+    <span style="color:#5ec8c0">long long</span> x; cin&gt;&gt;x;
+    bal+=(x&amp;1)?1:-1;
+    ans+=cnt[bal]++;
+  }
+  cout&lt;&lt;ans&lt;&lt;<span style="color:#e0a572">"\n"</span>;
+}</pre>
+        </div>
+        <div class="mfooter">
+          <div class="mcases">
+            <div class="mcase pass">1</div>
+            <div class="mcase pass">2</div>
+            <div class="mcase fail">3</div>
+            <div class="mcase">4</div>
+            <div class="mcase">5</div>
+          </div>
+          <div class="mbtns">
+            <button class="btn sm ghost" style="justify-content:center">Run</button>
+            <button class="btn sm primary" style="justify-content:center">Submit <svg><use href="#i-send"/></svg></button>
+          </div>
+        </div>
+      </div>
+
+    </div><!-- end mcontent -->
+
+    <!-- bottom tab bar -->
+    <div class="mtabs">
+      <div class="mtab" id="mTab-probs" onclick="switchMobile('probs')">
+        <svg><use href="#i-list"/></svg>Problems
+      </div>
+      <div class="mtab on" id="mTab-stmt" onclick="switchMobile('stmt')">
+        <svg><use href="#i-doc"/></svg>Statement
+      </div>
+      <div class="mtab" id="mTab-submit" onclick="switchMobile('submit')">
+        <svg><use href="#i-code"/></svg>Submit
+      </div>
+    </div>
+  </div>
+
+  <p style="text-align:center;color:var(--ink-3);font-size:13px;margin-top:22px">
+    The bottom tab bar switches between Problems rail, Statement, and Submit panel.<br>
+    Timer stays visible at all times. Works at 390px — no horizontal scroll.
+  </p>
+</section>
+
+</div><!-- end wrap -->
+
+<script>
+// view switching
+const views=document.querySelectorAll('.view');
+const navLinks=document.querySelectorAll('.na[data-v]');
+const dvBtns=document.querySelectorAll('.dvbtn[data-v]');
+
+function showView(v){
+  views.forEach(s=>s.hidden=s.dataset.view!==v);
+  navLinks.forEach(l=>l.classList.toggle('on',l.dataset.v===v));
+  dvBtns.forEach(b=>b.classList.toggle('on',b.dataset.v===v));
+  window.scrollTo(0,0);
+}
+navLinks.forEach(l=>l.addEventListener('click',()=>showView(l.dataset.v)));
+dvBtns.forEach(b=>b.addEventListener('click',()=>showView(b.dataset.v)));
+
+// advanced toggle
+function toggleAdv(){
+  const t=document.getElementById('advToggle');
+  const f=document.getElementById('advFields');
+  t.classList.toggle('open');
+  f.classList.toggle('open');
+}
+
+// mobile arena tabs
+function switchMobile(panel){
+  ['probs','stmt','submit'].forEach(p=>{
+    document.getElementById('m'+p.charAt(0).toUpperCase()+p.slice(1)).hidden=p!==panel;
+    document.getElementById('mTab-'+p).classList.toggle('on',p===panel);
+  });
+}
+// fix capitalization for panel ids
+function switchMobile(panel){
+  const map={probs:'mProbs',stmt:'mStmt',submit:'mSubmit'};
+  Object.entries(map).forEach(([k,id])=>{
+    document.getElementById(id).hidden=k!==panel;
+    document.getElementById('mTab-'+k).classList.toggle('on',k===panel);
+  });
+}
+</script>
+</body>
+</html>

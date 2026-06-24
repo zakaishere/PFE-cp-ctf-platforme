@@ -7,7 +7,7 @@ import { useRouter } from "next/navigation";
 import Navbar from "@/components/Navbar";
 import {
   Trophy, FileText, FlaskConical, Flag, ArrowRight,
-  Clock, AlertTriangle, Loader2, Plus,
+  Clock, AlertTriangle, Loader2, Plus, Zap,
 } from "lucide-react";
 import { getTeacherDashboardOverview, type TeacherDashboardOverview } from "@/lib/api";
 import { useAuth } from "@/features/auth/contexts/AuthContext";
@@ -106,7 +106,7 @@ function ActiveTile({
 }) {
   return (
     <div style={{
-      background: "var(--bg-primary)", border: "1px solid var(--border)",
+      background: "var(--bg-secondary)", border: "1px solid var(--border)",
       borderRadius: 8, padding: "12px 16px", marginBottom: 10,
     }}>
       <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 8 }}>
@@ -308,9 +308,10 @@ export default function TeacherOverview() {
 
                 {data.activeCompetitions.length === 0 && data.activeExams.length === 0
                   && data.openTPs.length === 0 && data.activeCtfs.length === 0 && (
-                  <div className="psp-empty" style={{ padding: 48 }}>
+                  <div className="psp-empty" style={{ padding: "32px 24px" }}>
+                    <Zap size={28} color="var(--ink-3)" style={{ margin: "0 auto 12px" }} />
                     <div className="psp-empty-title">Nothing active right now</div>
-                    <div>Create a competition, exam or TP to get started.</div>
+                    <div>Create a competition, exam, or TP to get started.</div>
                     <div style={{ display: "flex", gap: 8, justifyContent: "center", marginTop: 14 }}>
                       <button className="psp-btn psp-btn-primary" onClick={() => router.push("/teacher/competitions")}>
                         <Trophy size={12} /> New Competition

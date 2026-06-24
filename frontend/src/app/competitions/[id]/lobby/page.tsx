@@ -209,14 +209,14 @@ function CountdownBoxes({ h, m, s, isUrgent, isCritical }: {
   h: string; m: string; s: string;
   isUrgent: boolean; isCritical: boolean;
 }) {
-  const numColor = isCritical ? "var(--danger-ink)" : isUrgent ? "var(--warn-ink)" : "white";
+  const numColor = isCritical ? "var(--danger-ink)" : isUrgent ? "var(--warn-ink)" : "var(--ink)";
   const cls = isCritical ? "countdown-critical" : isUrgent ? "countdown-urgent" : "";
 
   return (
     <div className={`countdown-display ${cls}`} style={{ display: "flex", alignItems: "center", gap: 8, justifyContent: "center" }}>
       {[{ val: h, lbl: "hours" }, { val: m, lbl: "min" }, { val: s, lbl: "sec" }].map(({ val, lbl }, i) => (
         <>
-          {i > 0 && <span style={{ fontSize: 36, fontWeight: 800, color: numColor, opacity: 0.6, marginBottom: 14 }}>:</span>}
+          {i > 0 && <span style={{ fontSize: 36, fontWeight: 600, color: "var(--ink-3)", marginBottom: 14 }}>:</span>}
           <div className="countdown-box" key={lbl}>
             <div className="countdown-number" style={{ color: numColor }}>{val}</div>
             <div className="countdown-label">{lbl}</div>
@@ -425,35 +425,33 @@ export default function CompetitionLobbyPage() {
     : lobby.status === "ENDED" ? "Ended"
     : lobby.status;
 
-  const heroBg = isLive
-    ? "linear-gradient(135deg, #2a0f16 0%, var(--danger) 120%)"
-    : "linear-gradient(135deg, #0e1630 0%, #233a82 55%, var(--brand) 120%)";
+  const heroBg = "var(--surface)";
 
   return (
     <>
       <style>{`
         /* ── countdown boxes ── */
         .countdown-box {
-          background: rgba(255,255,255,0.12);
-          border: 1px solid rgba(255,255,255,0.2);
-          border-radius: 4px;
+          background: var(--surface-2);
+          border: 1px solid var(--line);
+          border-radius: var(--r-sm);
           padding: 8px 16px;
           min-width: 64px;
           text-align: center;
         }
         .countdown-number {
           font-size: 48px;
-          font-weight: 800;
+          font-weight: 600;
           font-family: ui-monospace, 'Cascadia Code', monospace;
           line-height: 1;
-          color: white;
+          color: var(--ink);
         }
         .countdown-label {
-          font-size: 11px;
-          color: rgba(255,255,255,0.55);
+          font-size: 10px;
+          color: var(--ink-3);
           margin-top: 4px;
-          text-transform: lowercase;
-          letter-spacing: 0.5px;
+          text-transform: uppercase;
+          letter-spacing: 0.8px;
         }
         .countdown-critical .countdown-number { animation: pulse-num 0.8s ease-in-out infinite; }
 
@@ -627,6 +625,8 @@ export default function CompetitionLobbyPage() {
       {/* ══════════════════════════════════════════════════════════════════ */}
       <div style={{
         background: heroBg,
+        border: "1px solid var(--line)",
+        borderLeft: "none", borderRight: "none",
         padding: "28px 40px",
         display: "flex",
         alignItems: "center",
@@ -641,7 +641,7 @@ export default function CompetitionLobbyPage() {
             <h1 style={{
               fontSize: 24,
               fontWeight: 800,
-              color: "white",
+              color: "var(--ink)",
               letterSpacing: "-0.3px",
               margin: 0,
             }}>
@@ -650,9 +650,9 @@ export default function CompetitionLobbyPage() {
             {/* Status badge */}
             {isLive ? (
               <span style={{
-                background: "rgba(255,255,255,0.2)",
-                color: "white",
-                border: "1px solid rgba(255,255,255,0.4)",
+                background: "var(--danger-soft)",
+                color: "var(--danger-ink)",
+                border: "1px solid var(--danger)",
                 borderRadius: 20,
                 padding: "3px 12px",
                 fontSize: 11,
@@ -666,8 +666,9 @@ export default function CompetitionLobbyPage() {
               </span>
             ) : (
               <span style={{
-                background: "rgba(255,255,255,0.15)",
-                color: "rgba(255,255,255,0.9)",
+                background: "var(--accent-soft)",
+                color: "var(--brand)",
+                border: "1px solid var(--accent-ring)",
                 borderRadius: 20,
                 padding: "3px 12px",
                 fontSize: 11,
@@ -677,7 +678,7 @@ export default function CompetitionLobbyPage() {
               </span>
             )}
           </div>
-          <div style={{ color: "rgba(255,255,255,0.65)", fontSize: 13, display: "flex", gap: 12, flexWrap: "wrap" }}>
+          <div style={{ color: "var(--ink-2)", fontSize: 13, display: "flex", gap: 12, flexWrap: "wrap" }}>
             <span>{isTeamMode ? "Team Competition" : "Individual Competition"}</span>
             <span>·</span>
             <span>{lobby.problems.length} Problem{lobby.problems.length !== 1 ? "s" : ""}</span>
@@ -690,17 +691,17 @@ export default function CompetitionLobbyPage() {
         {/* Right: countdown or live indicator */}
         <div style={{ textAlign: "center" }}>
           {isLive || countdown.isLive ? (
-            <div style={{ color: "white" }}>
-              <div style={{ fontSize: 13, color: "rgba(255,255,255,0.7)", marginBottom: 8 }}>
+            <div style={{ color: "var(--ink)" }}>
+              <div style={{ fontSize: 13, color: "var(--ink-2)", marginBottom: 8 }}>
                 Competition is Live!
               </div>
-              <div style={{ fontSize: 32, fontWeight: 800, fontFamily: "ui-monospace, monospace", color: "white" }}>
+              <div style={{ fontSize: 32, fontWeight: 800, fontFamily: "ui-monospace, monospace", color: "var(--danger-ink)" }}>
                 <span style={{ width: 7, height: 7, borderRadius: "50%", background: "var(--danger)", display: "inline-block", marginRight: 6 }} />Started
               </div>
             </div>
           ) : (
             <>
-              <div style={{ fontSize: 12, color: "rgba(255,255,255,0.55)", marginBottom: 10, letterSpacing: 1 }}>
+              <div style={{ fontSize: 12, color: "var(--ink-3)", marginBottom: 10, letterSpacing: 1 }}>
                 STARTS IN
               </div>
               <CountdownBoxes

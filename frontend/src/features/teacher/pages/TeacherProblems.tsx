@@ -7,7 +7,7 @@ import Navbar from "@/components/Navbar";
 import {
   Plus, Search, Edit2, Trash2, Eye, EyeOff, Send, Save,
   ChevronDown, ChevronUp, Code2, FileText, X, ExternalLink,
-  Lightbulb, CheckCircle2, Clock, ChevronLeft, ChevronRight,
+  Lightbulb, ChevronLeft, ChevronRight, Check,
 } from "lucide-react";
 import { toast } from "@/components/ui/PSPToast";
 import {
@@ -299,15 +299,6 @@ const TeacherProblems = () => {
   const updateTestCase   = (id: string, field: keyof TestCase, value: string | boolean) =>
     setTestCases(prev => prev.map(tc => tc.id === id ? { ...tc, [field]: value } : tc));
 
-  // ── Derived stats ──────────────────────────────────────────────────────────
-
-  const stats = {
-    total:       totalElements,
-    published:   problems.filter(p => p.status === "published").length,
-    draft:       problems.filter(p => p.status === "draft").length,
-    unpublished: problems.filter(p => p.status === "unpublished").length,
-  };
-
   // ── Render ─────────────────────────────────────────────────────────────────
 
   return (
@@ -328,96 +319,56 @@ const TeacherProblems = () => {
               {totalElements} problem{totalElements !== 1 ? "s" : ""} in your library — manage, publish, and assign to assessments
             </div>
           </div>
-          <button className="psp-btn psp-btn-secondary" onClick={openCreate}>
+          <button className="psp-btn psp-btn-primary" onClick={openCreate}>
             <Code2 size={13} /> New Problem
           </button>
         </div>
 
-        {/* ── Stats ─────────────────────────────────────────────────────── */}
-        <div className="psp-stats">
-          <div className="psp-stat-card">
-            <div className="psp-stat-icon ic-blue"><FileText size={20} /></div>
-            <div>
-              <div className="psp-stat-val">{stats.total}</div>
-              <div className="psp-stat-lbl">Total Problems</div>
-            </div>
-          </div>
-          <div className="psp-stat-card">
-            <div className="psp-stat-icon ic-green"><CheckCircle2 size={20} /></div>
-            <div>
-              <div className="psp-stat-val">{stats.published}</div>
-              <div className="psp-stat-lbl">Published</div>
-            </div>
-          </div>
-          <div className="psp-stat-card">
-            <div className="psp-stat-icon ic-orange"><Clock size={20} /></div>
-            <div>
-              <div className="psp-stat-val">{stats.draft}</div>
-              <div className="psp-stat-lbl">Drafts</div>
-            </div>
-          </div>
-          <div className="psp-stat-card">
-            <div className="psp-stat-icon ic-purple"><EyeOff size={20} /></div>
-            <div>
-              <div className="psp-stat-val">{stats.unpublished}</div>
-              <div className="psp-stat-lbl">Unpublished</div>
-            </div>
-          </div>
-        </div>
+        {/* ── Problems Table ─────────────────────────────────────────────── */}
+        <div style={{ background: "var(--surface)", border: "1px solid var(--line)", borderRadius: "var(--r)", overflow: "hidden" }}>
 
-        {/* ── Problems Card ─────────────────────────────────────────────── */}
-        <div className="psp-card">
-
-          {/* Card header */}
-          <div className="psp-card-header">
-            <span className="psp-card-title">All Problems</span>
-            <div style={{ position: "relative" }}>
-              <Search
-                size={12}
-                style={{ position: "absolute", left: 8, top: "50%", transform: "translateY(-50%)", color: "var(--text-subtle)", pointerEvents: "none" }}
-              />
-              <input
-                className="psp-search"
-                style={{ paddingLeft: 26, width: 220 }}
-                placeholder="Search problems…"
-                value={search}
-                onChange={e => setSearch(e.target.value)}
-              />
+          {/* Toolbar */}
+          <div style={{ padding: "10px 16px", display: "flex", alignItems: "center", gap: 10, borderBottom: "1px solid var(--line)", flexWrap: "wrap" }}>
+            <div style={{ position: "relative", flex: "0 0 200px" }}>
+              <Search size={12} style={{ position: "absolute", left: 8, top: "50%", transform: "translateY(-50%)", color: "var(--ink-3)", pointerEvents: "none" }} />
+              <input className="psp-search" style={{ paddingLeft: 26, width: "100%" }} placeholder="Search problems…" value={search} onChange={e => setSearch(e.target.value)} />
+            </div>
+            {/* Status segmented group */}
+            <div style={{ display: "inline-flex", background: "var(--bg-2)", border: "1px solid var(--line)", borderRadius: 9, padding: 3, gap: 2 }}>
+              {(["all", "published", "draft", "unpublished"] as const).map(s => (
+                <button key={s} onClick={() => setStatusFilter(s)} style={{ padding: "4px 10px", borderRadius: 6, border: "none", cursor: "pointer", fontSize: 12, fontWeight: statusFilter === s ? 600 : 400, background: statusFilter === s ? "var(--surface-3)" : "transparent", color: statusFilter === s ? "var(--ink)" : "var(--ink-3)", transition: "all 0.1s" }}>
+                  {s === "all" ? "All" : s.charAt(0).toUpperCase() + s.slice(1)}
+                </button>
+              ))}
+            </div>
+            {/* Difficulty segmented group */}
+            <div style={{ display: "inline-flex", background: "var(--bg-2)", border: "1px solid var(--line)", borderRadius: 9, padding: 3, gap: 2 }}>
+              {(["all", "Easy", "Medium", "Hard"] as const).map(d => (
+                <button key={d} onClick={() => setDiffFilter(d)} style={{ padding: "4px 10px", borderRadius: 6, border: "none", cursor: "pointer", fontSize: 12, fontWeight: diffFilter === d ? 600 : 400, background: diffFilter === d ? "var(--surface-3)" : "transparent", color: diffFilter === d ? "var(--ink)" : "var(--ink-3)", transition: "all 0.1s" }}>
+                  {d === "all" ? "All Difficulties" : d}
+                </button>
+              ))}
             </div>
           </div>
 
-          {/* Filter bar */}
-          <div className="psp-filter-bar">
-            {(["all", "published", "draft", "unpublished"] as const).map(s => (
-              <button
-                key={s}
-                className={`psp-ftab${statusFilter === s ? " on" : ""}`}
-                onClick={() => setStatusFilter(s)}
-              >
-                {s === "all" ? "All Status" : s.charAt(0).toUpperCase() + s.slice(1)}
-              </button>
-            ))}
-            <span style={{ margin: "0 8px", color: "var(--border-strong)", fontSize: 14, userSelect: "none" }}>|</span>
-            {(["all", "Easy", "Medium", "Hard"] as const).map(d => (
-              <button
-                key={d}
-                className={`psp-ftab${diffFilter === d ? " on" : ""}`}
-                onClick={() => setDiffFilter(d)}
-              >
-                {d === "all" ? "All Difficulties" : d}
-              </button>
+          {/* Column headers */}
+          <div style={{ display: "grid", gridTemplateColumns: "40px 1fr 110px 180px 90px 80px", padding: "7px 16px", background: "var(--bg-2)", borderBottom: "1px solid var(--line)" }}>
+            {(["", "Problem", "Difficulty", "Category", "Test cases", ""] as const).map((h, i) => (
+              <div key={i} style={{ fontSize: 11, fontWeight: 600, color: "var(--ink-3)", textTransform: "uppercase", letterSpacing: "0.06em", textAlign: i === 5 ? "right" : "left" }}>
+                {h}
+              </div>
             ))}
           </div>
 
           {/* Loading skeletons */}
           {isLoading && Array.from({ length: 5 }).map((_, i) => (
-            <div key={i} style={{ padding: "12px 16px", borderBottom: "1px solid var(--border)", display: "flex", alignItems: "center", gap: 12 }}>
-              <div style={{ flex: 1 }}>
-                <div className="skel" style={{ width: "52%", height: 13, borderRadius: 2, marginBottom: 8 }} />
-                <div className="skel" style={{ width: "28%", height: 10, borderRadius: 2 }} />
-              </div>
-              <div className="skel" style={{ width: 56, height: 20, borderRadius: 2 }} />
-              <div className="skel" style={{ width: 56, height: 20, borderRadius: 2 }} />
+            <div key={i} style={{ display: "grid", gridTemplateColumns: "40px 1fr 110px 180px 90px 80px", padding: "12px 16px", borderBottom: "1px solid var(--line)", alignItems: "center", gap: 8 }}>
+              <div style={{ display: "flex", justifyContent: "center" }}><div className="skel" style={{ width: 20, height: 20, borderRadius: "50%" }} /></div>
+              <div><div className="skel" style={{ width: "52%", height: 13, borderRadius: 3, marginBottom: 6 }} /><div className="skel" style={{ width: "32%", height: 10, borderRadius: 3 }} /></div>
+              <div className="skel" style={{ width: 58, height: 14, borderRadius: 3 }} />
+              <div className="skel" style={{ width: 80, height: 12, borderRadius: 3 }} />
+              <div className="skel" style={{ width: 36, height: 12, borderRadius: 3 }} />
+              <div />
             </div>
           ))}
 
@@ -427,10 +378,7 @@ const TeacherProblems = () => {
               <div className="psp-empty-title">No problems found</div>
               <div style={{ fontSize: 13 }}>
                 Try adjusting your filters or{" "}
-                <button
-                  style={{ color: "var(--brand)", background: "none", border: "none", cursor: "pointer", fontWeight: 600, padding: 0, fontSize: 13 }}
-                  onClick={openCreate}
-                >
+                <button style={{ color: "var(--brand)", background: "none", border: "none", cursor: "pointer", fontWeight: 600, padding: 0, fontSize: 13 }} onClick={openCreate}>
                   create a new problem
                 </button>
               </div>
@@ -439,35 +387,26 @@ const TeacherProblems = () => {
 
           {/* Problem rows */}
           {!isLoading && filtered.map(p => (
-            <ProblemRow
-              key={p.id}
-              p={p}
-              onEdit={openEdit}
-              onToggle={toggleStatus}
-              onDelete={id => setDeleteId(id)}
-            />
+            <ProblemRow key={p.id} p={p} onEdit={openEdit} onToggle={toggleStatus} onDelete={id => setDeleteId(id)} />
           ))}
 
           {/* Pagination footer */}
           {!isLoading && totalPages > 1 && (
-            <div style={{ padding: "10px 16px", display: "flex", alignItems: "center", justifyContent: "space-between", borderTop: "1px solid var(--border)" }}>
-              <span style={{ fontSize: 11, color: "var(--text-muted)" }}>
-                Page {currentPage + 1} of {totalPages} · {totalElements} total
+            <div style={{ padding: "10px 16px", display: "flex", alignItems: "center", justifyContent: "space-between", borderTop: "1px solid var(--line)" }}>
+              <span style={{ fontSize: 12, color: "var(--ink-3)" }}>
+                {totalElements > 0 ? `${currentPage * pageSize + 1}–${Math.min((currentPage + 1) * pageSize, totalElements)} of ${totalElements}` : `${totalElements} problems`}
               </span>
-              <div style={{ display: "flex", gap: 6 }}>
-                <button
-                  className="psp-btn psp-btn-secondary psp-btn-sm"
-                  disabled={currentPage === 0}
-                  onClick={() => setCurrentPage(p => Math.max(0, p - 1))}
-                >
-                  <ChevronLeft size={12} /> Prev
+              <div style={{ display: "flex", gap: 4 }}>
+                <button disabled={currentPage === 0} onClick={() => setCurrentPage(p => Math.max(0, p - 1))} style={{ width: 32, height: 32, border: "1px solid var(--line)", borderRadius: 7, background: "transparent", color: "var(--ink-2)", cursor: currentPage === 0 ? "not-allowed" : "pointer", opacity: currentPage === 0 ? 0.4 : 1, display: "flex", alignItems: "center", justifyContent: "center" }}>
+                  <ChevronLeft size={14} />
                 </button>
-                <button
-                  className="psp-btn psp-btn-secondary psp-btn-sm"
-                  disabled={currentPage >= totalPages - 1}
-                  onClick={() => setCurrentPage(p => Math.min(totalPages - 1, p + 1))}
-                >
-                  Next <ChevronRight size={12} />
+                {Array.from({ length: Math.min(totalPages, 7) }, (_, i) => i).map(pg => (
+                  <button key={pg} onClick={() => setCurrentPage(pg)} style={{ width: 32, height: 32, border: "1px solid var(--line)", borderRadius: 7, fontSize: 13, fontWeight: 600, background: currentPage === pg ? "var(--brand)" : "transparent", color: currentPage === pg ? "#fff" : "var(--ink-2)", cursor: "pointer" }}>
+                    {pg + 1}
+                  </button>
+                ))}
+                <button disabled={currentPage >= totalPages - 1} onClick={() => setCurrentPage(p => Math.min(totalPages - 1, p + 1))} style={{ width: 32, height: 32, border: "1px solid var(--line)", borderRadius: 7, background: "transparent", color: "var(--ink-2)", cursor: currentPage >= totalPages - 1 ? "not-allowed" : "pointer", opacity: currentPage >= totalPages - 1 ? 0.4 : 1, display: "flex", alignItems: "center", justifyContent: "center" }}>
+                  <ChevronRight size={14} />
                 </button>
               </div>
             </div>
@@ -771,7 +710,7 @@ const TeacherProblems = () => {
   );
 };
 
-// ─── Problem Row (extracted for clarity) ─────────────────────────────────────
+// ─── Problem Row ──────────────────────────────────────────────────────────────
 
 function ProblemRow({
   p,
@@ -786,58 +725,72 @@ function ProblemRow({
 }) {
   const [hovered, setHovered] = useState(false);
 
+  const dot = p.status === "published"
+    ? { bg: "var(--success-soft)", border: "var(--success)", check: true }
+    : p.status === "draft"
+    ? { bg: "var(--warn-soft)", border: "var(--warn)", check: false }
+    : { bg: "transparent", border: "var(--line-strong)", check: false };
+
+  const diffColor = p.difficulty === "Easy" ? "var(--success-ink)" : p.difficulty === "Medium" ? "var(--warn-ink)" : "var(--danger-ink)";
+
   return (
     <div
       style={{
-        padding: "12px 16px",
-        borderBottom: "1px solid var(--border)",
-        display: "flex",
+        display: "grid",
+        gridTemplateColumns: "40px 1fr 110px 180px 90px 80px",
+        padding: "11px 16px",
+        borderBottom: "1px solid var(--line)",
         alignItems: "center",
-        gap: 14,
-        background: hovered ? "var(--bg-secondary)" : "transparent",
+        background: hovered ? "var(--surface-2)" : "transparent",
         transition: "background 0.1s",
       }}
       onMouseEnter={() => setHovered(true)}
       onMouseLeave={() => setHovered(false)}
     >
-      {/* Info */}
-      <div style={{ flex: 1, minWidth: 0 }}>
-        <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap", marginBottom: 4 }}>
-          <span style={{
-            fontSize: 13, fontWeight: 600, color: "var(--text-primary)",
-            overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", maxWidth: 340,
-          }}>
-            {p.title}
-          </span>
-          <span className={`psp-badge ${statusBadgeClass(p.status)}`}>{p.status}</span>
-          <span className={`psp-badge ${diffBadgeClass(p.difficulty)}`}>{p.difficulty}</span>
-        </div>
-        <div style={{ display: "flex", gap: 14, fontSize: 11, color: "var(--text-muted)", alignItems: "center", flexWrap: "wrap" }}>
-          <span>{p.category}</span>
-          <span>{p.testCases.length} test case{p.testCases.length !== 1 ? "s" : ""}</span>
-          {p.tags.length > 0 && (
-            <span>
-              {p.tags.slice(0, 3).join(", ")}{p.tags.length > 3 ? ` +${p.tags.length - 3}` : ""}
-            </span>
-          )}
-          {p.hints.length > 0 && (
-            <span style={{ display: "flex", alignItems: "center", gap: 3 }}>
-              <Lightbulb size={10} />
-              {p.hints.length} hint{p.hints.length !== 1 ? "s" : ""}
-            </span>
-          )}
+      {/* Col 1: status dot */}
+      <div style={{ display: "flex", justifyContent: "center" }}>
+        <div style={{ width: 20, height: 20, borderRadius: "50%", background: dot.bg, border: `1.5px solid ${dot.border}`, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+          {dot.check && <Check size={10} color="var(--success)" />}
         </div>
       </div>
 
-      {/* Actions */}
-      <div style={{ display: "flex", gap: 2, alignItems: "center", flexShrink: 0 }}>
+      {/* Col 2: title + tags */}
+      <div style={{ minWidth: 0 }}>
+        <div style={{ fontSize: 14, fontWeight: 600, color: "var(--ink)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", marginBottom: p.tags.length ? 4 : 0 }}>
+          {p.title}
+        </div>
+        {p.tags.length > 0 && (
+          <div style={{ display: "flex", gap: 4, flexWrap: "wrap" }}>
+            {p.tags.slice(0, 4).map(tag => (
+              <span key={tag} style={{ background: "var(--bg-2)", border: "1px solid var(--line)", borderRadius: 6, padding: "1px 7px", fontSize: 11, fontFamily: "ui-monospace, monospace", color: "var(--ink-3)" }}>
+                {tag}
+              </span>
+            ))}
+          </div>
+        )}
+      </div>
+
+      {/* Col 3: difficulty */}
+      <div style={{ fontSize: 13, fontFamily: "ui-monospace, monospace", fontWeight: 600, color: diffColor }}>
+        {p.difficulty}
+      </div>
+
+      {/* Col 4: category */}
+      <div style={{ fontSize: 13, color: "var(--ink-3)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+        {p.category}
+      </div>
+
+      {/* Col 5: test cases */}
+      <div style={{ fontSize: 13, color: "var(--ink-3)" }}>
+        {p.testCases.length}
+      </div>
+
+      {/* Col 6: actions */}
+      <div style={{ display: "flex", gap: 2, justifyContent: "flex-end" }}>
         <Link href={`/problems/${p.id}`} target="_blank">
           <ActionIcon title="Try problem"><ExternalLink size={13} /></ActionIcon>
         </Link>
-        <ActionIcon
-          title={p.status === "published" ? "Unpublish" : "Publish"}
-          onClick={() => onToggle(p)}
-        >
+        <ActionIcon title={p.status === "published" ? "Unpublish" : "Publish"} onClick={() => onToggle(p)}>
           {p.status === "published" ? <EyeOff size={13} /> : <Eye size={13} />}
         </ActionIcon>
         <ActionIcon title="Edit" onClick={() => onEdit(p)}>
@@ -867,10 +820,10 @@ function ActionIcon({
       title={title}
       onClick={onClick}
       style={{
-        width: 28, height: 28, display: "flex", alignItems: "center", justifyContent: "center",
-        border: "none", cursor: "pointer", borderRadius: 3, transition: "background 0.1s, color 0.1s",
-        background: hov ? (danger ? "var(--red-light)" : "var(--bg-hover)") : "transparent",
-        color: hov ? (danger ? "#de350b" : "var(--text-primary)") : "var(--text-muted)",
+        width: 30, height: 30, display: "flex", alignItems: "center", justifyContent: "center",
+        border: "none", cursor: "pointer", borderRadius: 6, transition: "background 0.1s, color 0.1s",
+        background: hov ? (danger ? "var(--danger-soft)" : "var(--surface-3)") : "transparent",
+        color: hov ? (danger ? "var(--danger)" : "var(--ink)") : "var(--ink-3)",
       }}
       onMouseEnter={() => setHov(true)}
       onMouseLeave={() => setHov(false)}

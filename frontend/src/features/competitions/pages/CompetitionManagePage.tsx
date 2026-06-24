@@ -6,12 +6,14 @@ import {
   Settings, Puzzle, Gamepad2, BarChart3, Users, FileText,
   AlertTriangle, Download, PlayCircle, StopCircle, X,
   Calendar, GripVertical, Loader2, Plus, ChevronDown, ChevronUp,
+  ChevronLeft, Trophy,
 } from "lucide-react";
 import { DndContext, closestCenter, KeyboardSensor, PointerSensor, useSensor, useSensors, DragEndEvent } from "@dnd-kit/core";
 import { SortableContext, sortableKeyboardCoordinates, useSortable, verticalListSortingStrategy, arrayMove } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 import { toast } from "@/components/ui/PSPToast";
-import ManageLayout from "@/components/manage/ManageLayout";
+import Navbar from "@/components/Navbar";
+import Link from "next/link";
 import CPScoreboard from "@/features/competitions/components/CPScoreboard";
 import {
   getCompetitionDetail, getCompetitionOverview, startCompetition, endCompetition,
@@ -174,57 +176,110 @@ export default function CompetitionManagePage() {
     violations: "Violations", export: "Export",
   };
 
+  const statusPill = (s: string) => {
+    const map: Record<string, { bg: string; color: string; label: string }> = {
+      ACTIVE:       { bg: "var(--danger-soft)",  color: "var(--danger)",  label: "Live" },
+      REGISTRATION: { bg: "var(--accent-soft)",  color: "var(--brand)",   label: "Registration" },
+      ENDED:        { bg: "var(--bg-2)",          color: "var(--ink-3)",   label: "Ended" },
+      UPCOMING:     { bg: "var(--warn-soft)",     color: "var(--warn)",    label: "Upcoming" },
+    };
+    const st = map[s] ?? { bg: "var(--bg-2)", color: "var(--ink-3)", label: s };
+    return <span style={{ fontSize: 11, fontWeight: 700, padding: "3px 10px", borderRadius: 9, background: st.bg, color: st.color, letterSpacing: "0.04em", flexShrink: 0 }}>{st.label}</span>;
+  };
+
   if (loading) {
     return (
-      <ManageLayout
-        title="Loading…" status="DRAFT" navGroups={NAV_GROUPS}
-        activeTab={tab} onTabChange={navigate}
-        backHref="/teacher/competitions" backLabel="Back to Competitions"
-        loading
-      >
+      <>
+        <Navbar />
         <div style={{ display: "flex", justifyContent: "center", padding: 80 }}>
-          <Loader2 size={24} style={{ animation: "spin 1s linear infinite", color: "#6366f1" }} />
+          <Loader2 size={24} style={{ animation: "spin 1s linear infinite", color: "var(--brand)" }} />
         </div>
-      </ManageLayout>
+      </>
     );
   }
 
+  const compStatus = comp?.status ?? "DRAFT";
+
   return (
-    <ManageLayout
-      title={comp?.title ?? "Competition"}
-      status={comp?.status ?? "DRAFT"}
-      navGroups={NAV_GROUPS}
-      activeTab={tab}
-      onTabChange={navigate}
-      backHref="/teacher/competitions"
-      backLabel="Back to Competitions"
-      actions={(isRegistration || isActive) ? sidebarActions : undefined}
-      footer={comp?.startTime ? (
-        <div style={{ display: "flex", alignItems: "center", gap: 5 }}>
-          <Calendar size={11} />
-          <span>{fmtDate(comp.startTime)}</span>
+    <>
+      <Navbar />
+      <div className="psp-breadcrumb">
+        <Link href="/teacher/competitions">Competitions</Link> ›{" "}
+        <span style={{ color: "var(--ink)" }}>{comp?.title ?? "Competition"}</span>
+      </div>
+      <div className="psp-main">
+        {/* Header card */}
+        <div style={{ background: "var(--surface)", border: "1px solid var(--line)", borderRadius: "var(--r)", padding: "22px 24px", marginBottom: 16 }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 16 }}>
+            <div style={{ width: 40, height: 40, borderRadius: 9, background: isEnded ? "var(--bg-2)" : "var(--accent-soft)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+              <Trophy size={20} color={isEnded ? "var(--ink-3)" : "var(--brand)"} />
+            </div>
+            <div style={{ flex: 1, minWidth: 0 }}>
+              <div style={{ fontSize: 21, fontWeight: 700, color: "var(--ink)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{comp?.title ?? "Competition"}</div>
+            </div>
+            {statusPill(compStatus)}
+            <Link href="/teacher/competitions" style={{ fontSize: 12, color: "var(--ink-3)", textDecoration: "none", display: "inline-flex", alignItems: "center", gap: 4, flexShrink: 0, marginLeft: 4 }}>
+              <ChevronLeft size={13} /> Back
+            </Link>
+          </div>
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 1, background: "var(--line)", borderRadius: 8, overflow: "hidden" }}>
+            {[
+              { label: "Start",      value: comp?.startTime ? fmtDate(comp.startTime) : "—" },
+              { label: "Duration",   value: comp?.durationMinutes ? `${comp.durationMinutes} min` : "—" },
+              { label: "Problems",   value: String(comp?.problemCount ?? comp?.problemsCount ?? "—") },
+              { label: "Registered", value: String(comp?.participantCount ?? overview?.registrationCount ?? 0) },
+            ].map((s, i) => (
+              <div key={i} style={{ background: "var(--bg-2)", padding: "12px 16px" }}>
+                <div style={{ fontSize: 11, color: "var(--ink-3)", textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: 4 }}>{s.label}</div>
+                <div style={{ fontSize: 16, fontWeight: 600, color: "var(--ink)" }}>{s.value}</div>
+              </div>
+            ))}
+          </div>
         </div>
-      ) : undefined}
-    >
-      <div style={{ marginBottom: 20 }}>
-        <div style={{ fontSize: 18, fontWeight: 800, color: "var(--text-primary)" }}>
-          {tabHeadings[tab]}
+
+        {/* Two-column layout */}
+        <div style={{ display: "grid", gridTemplateColumns: "1fr 280px", gap: 20, alignItems: "start" }}>
+          <div>
+            <div style={{ display: "flex", gap: 2, marginBottom: 16, background: "var(--surface)", border: "1px solid var(--line)", borderRadius: "var(--r)", padding: 4, overflowX: "auto" }}>
+              {(Object.entries(tabHeadings) as [TabKey, string][]).map(([key, label]) => (
+                <button key={key} onClick={() => navigate(key)} style={{ padding: "7px 14px", borderRadius: 7, border: "none", cursor: "pointer", fontSize: 13, fontWeight: tab === key ? 600 : 400, background: tab === key ? "var(--brand)" : "transparent", color: tab === key ? "#fff" : "var(--ink-3)", transition: "all 0.1s", whiteSpace: "nowrap" }}>
+                  {label}
+                </button>
+              ))}
+            </div>
+            {tab === "settings"    && <SettingsTab comp={comp} onSaved={loadDetail} />}
+            {tab === "problems"    && <ProblemsTab comp={comp} detail={detail} onChanged={loadDetail} />}
+            {tab === "control"     && <ControlTab comp={comp} overview={overview} />}
+            {tab === "scoreboard"  && (
+              <div style={{ height: "calc(100vh - 180px)", display: "flex", flexDirection: "column", border: "1px solid var(--line)", borderRadius: 8, overflow: "hidden" }}>
+                <CPScoreboard competitionId={id} />
+              </div>
+            )}
+            {tab === "teams"       && <TeamsTab competitionId={id} />}
+            {tab === "submissions" && <SubmissionsTab competitionId={id} />}
+            {tab === "violations"  && <ViolationsTab competitionId={id} />}
+            {tab === "export"      && <ExportTab competitionId={id} title={comp?.title ?? "competition"} />}
+          </div>
+
+          <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
+            <div style={{ background: "var(--surface)", border: "1px solid var(--line)", borderRadius: "var(--r)", padding: "16px 18px" }}>
+              <div style={{ fontSize: 11, fontWeight: 700, color: "var(--ink-3)", textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: 12 }}>Info</div>
+              {comp?.description && <p style={{ fontSize: 13, color: "var(--ink-2)", margin: "0 0 10px", lineHeight: 1.5 }}>{comp.description}</p>}
+              {comp?.scoringMode && <div style={{ fontSize: 12, color: "var(--ink-3)", marginBottom: 6 }}>Scoring: <span style={{ color: "var(--ink-2)" }}>{comp.scoringMode}</span></div>}
+              {comp?.mode && <div style={{ fontSize: 12, color: "var(--ink-3)" }}>Mode: <span style={{ color: "var(--ink-2)" }}>{comp.mode}</span></div>}
+              {!comp?.description && !comp?.scoringMode && <div style={{ fontSize: 13, color: "var(--ink-3)", fontStyle: "italic" }}>No details added.</div>}
+            </div>
+            <div style={{ background: "var(--surface)", border: "1px solid var(--line)", borderRadius: "var(--r)", padding: "16px 18px" }}>
+              <div style={{ fontSize: 11, fontWeight: 700, color: "var(--ink-3)", textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: 12 }}>Quick Actions</div>
+              {sidebarActions}
+              {!isRegistration && !isActive && (
+                <div style={{ fontSize: 13, color: "var(--ink-3)", fontStyle: "italic" }}>No actions available.</div>
+              )}
+            </div>
+          </div>
         </div>
       </div>
-
-      {tab === "settings"    && <SettingsTab comp={comp} onSaved={loadDetail} />}
-      {tab === "problems"    && <ProblemsTab comp={comp} detail={detail} onChanged={loadDetail} />}
-      {tab === "control"     && <ControlTab comp={comp} overview={overview} />}
-      {tab === "scoreboard"  && (
-        <div style={{ height: "calc(100vh - 180px)", display: "flex", flexDirection: "column", border: "1px solid var(--border)", borderRadius: 8, overflow: "hidden" }}>
-          <CPScoreboard competitionId={id} />
-        </div>
-      )}
-      {tab === "teams"       && <TeamsTab competitionId={id} />}
-      {tab === "submissions" && <SubmissionsTab competitionId={id} />}
-      {tab === "violations"  && <ViolationsTab competitionId={id} />}
-      {tab === "export"      && <ExportTab competitionId={id} title={comp?.title ?? "competition"} />}
-    </ManageLayout>
+    </>
   );
 }
 
@@ -369,10 +424,13 @@ function ProblemsTab({ comp, detail, onChanged }: { comp: any; detail: any; onCh
       </div>
 
       {problems.length === 0 ? (
-        <div className="psp-empty" style={{ padding: 48 }}>
-          <Puzzle size={32} color="var(--border)" style={{ margin: "0 auto 12px" }} />
-          <div className="psp-empty-title">No problems yet</div>
-          <div>Add problems from the bank to get started.</div>
+        <div className="psp-empty" style={{ padding: "32px 24px" }}>
+          <Puzzle size={28} color="var(--ink-3)" style={{ margin: "0 auto 12px" }} />
+          <div className="psp-empty-title">No problems attached</div>
+          <div>Add from your problem bank to make this contest submittable.</div>
+          <button className="psp-btn psp-btn-primary psp-btn-sm" onClick={openPicker} style={{ marginTop: 14 }}>
+            <Plus size={12} /> Add problem
+          </button>
         </div>
       ) : (
         <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
@@ -554,7 +612,11 @@ function TeamsTab({ competitionId }: { competitionId: string }) {
   return (
     <div>
       {requests.length === 0 ? (
-        <div className="psp-empty"><div>No pending join requests.</div></div>
+        <div className="psp-empty" style={{ padding: "32px 24px" }}>
+          <Users size={28} color="var(--ink-3)" style={{ margin: "0 auto 12px" }} />
+          <div className="psp-empty-title">No join requests</div>
+          <div>Requests appear here when visibility is set to Request-based.</div>
+        </div>
       ) : (
         <>
           <div style={{ display: "flex", justifyContent: "flex-end", marginBottom: 12 }}>

@@ -1,0 +1,581 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Algora — Teacher</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap');
+  :root{
+    --bg:#080b14;--bg-2:#0b0f1b;--surface:#111726;--surface-2:#161d2f;
+    --line:#1e2638;--line-strong:#2a3346;
+    --ink:#e9edf7;--ink-2:#98a1ba;--ink-3:#5e6880;
+    --accent:#5d7cf7;--accent-2:#7a93ff;--accent-soft:rgba(93,124,247,.13);--accent-ring:rgba(93,124,247,.32);
+    --success:#2dbd80;--success-soft:rgba(45,189,128,.13);
+    --warn:#e0a23c;--warn-soft:rgba(224,162,60,.13);
+    --danger:#f0697e;--danger-soft:rgba(240,105,126,.13);
+    --r:13px;--r-sm:9px;
+    --font:'Plus Jakarta Sans',system-ui,-apple-system,'Segoe UI',Roboto,sans-serif;
+    --mono:'JetBrains Mono',ui-monospace,Menlo,Consolas,monospace;
+  }
+  *{box-sizing:border-box}html,body{margin:0;min-height:100%}
+  body{background:var(--bg);color:var(--ink);font-family:var(--font);font-size:14px;-webkit-font-smoothing:antialiased;letter-spacing:-.01em}
+  ::selection{background:var(--accent-ring)}
+  ::-webkit-scrollbar{width:11px;height:11px}::-webkit-scrollbar-thumb{background:#1d2538;border-radius:9px;border:3px solid var(--bg)}
+
+  .nav{position:sticky;top:0;z-index:20;background:rgba(11,15,27,.82);backdrop-filter:blur(12px);border-bottom:1px solid var(--line)}
+  .nav-in{max-width:1280px;margin:0 auto;display:flex;align-items:center;gap:8px;height:62px;padding:0 24px}
+  .logo{display:flex;align-items:center;gap:10px;font-weight:700;font-size:16px;margin-right:18px}
+  .logo .m{width:30px;height:30px;border-radius:9px;background:linear-gradient(150deg,var(--accent),#9db0ff);display:grid;place-items:center;color:#0a0e18;font-family:var(--mono);font-weight:700;font-size:13px}
+  .logo .role{font-size:10px;font-weight:650;letter-spacing:.08em;text-transform:uppercase;color:var(--ink-3);border:1px solid var(--line);border-radius:6px;padding:2px 7px;margin-left:2px}
+  .nlinks{display:flex;gap:2px}
+  .nlink{display:flex;align-items:center;gap:8px;padding:8px 13px;border-radius:9px;color:var(--ink-2);font-weight:550;font-size:13.5px;cursor:pointer}
+  .nlink svg{width:17px;height:17px;color:var(--ink-3)}
+  .nlink:hover{background:var(--surface);color:var(--ink)} .nlink:hover svg{color:var(--ink-2)}
+  .nlink.active{background:var(--accent-soft);color:var(--accent-2)} .nlink.active svg{color:var(--accent)}
+  .nsp{flex:1}
+  .iconbtn{width:38px;height:38px;border-radius:10px;border:1px solid var(--line);background:var(--bg-2);display:grid;place-items:center;color:var(--ink-2);cursor:pointer}
+  .iconbtn:hover{background:var(--surface)} .iconbtn svg{width:18px;height:18px}
+  .me{display:flex;align-items:center;gap:9px;padding:5px 6px 5px 5px;border-radius:10px;cursor:pointer}
+  .me:hover{background:var(--surface)}
+  .me .av{width:32px;height:32px;border-radius:9px;background:linear-gradient(135deg,#3d8bff,#7a5cff);display:grid;place-items:center;color:#fff;font-weight:700;font-size:12px}
+  .me .nm{font-weight:600;font-size:13px;line-height:1.15}.me .rl{font-size:11px;color:var(--ink-3)}
+
+  .wrap{max-width:1280px;margin:0 auto;padding:30px 24px 80px}
+  .view[hidden]{display:none}
+
+  .btn{display:inline-flex;align-items:center;gap:8px;border:1px solid var(--line-strong);background:var(--surface);color:var(--ink);padding:9px 15px;border-radius:10px;font-family:var(--font);font-weight:600;font-size:13.5px;cursor:pointer}
+  .btn:hover{background:var(--surface-2);border-color:#33405a} .btn svg{width:16px;height:16px}
+  .btn.primary{background:var(--accent);border-color:var(--accent);color:#fff} .btn.primary:hover{background:var(--accent-2)}
+  .btn.sm{padding:7px 12px;font-size:13px} .btn.ghost{background:transparent}
+  .btn.danger{color:#ff8497;border-color:transparent;background:transparent} .btn.danger:hover{background:var(--danger-soft)}
+  .btn[disabled]{opacity:.5;cursor:default}
+
+  .pill{display:inline-flex;align-items:center;gap:6px;font-size:12px;font-weight:650;padding:4px 10px;border-radius:999px}
+  .pill .dot{width:6px;height:6px;border-radius:50%}
+  .pill.live{color:#ff8497;background:var(--danger-soft)}.pill.live .dot{background:var(--danger)}
+  .pill.open{color:#4cd49b;background:var(--success-soft)}.pill.open .dot{background:var(--success)}
+  .pill.draft{color:var(--ink-2);background:var(--surface-2);border:1px solid var(--line)}.pill.draft .dot{background:var(--ink-3)}
+  .pill.soon{color:#eeb866;background:var(--warn-soft)}.pill.soon .dot{background:var(--warn)}
+
+  .card{background:var(--surface);border:1px solid var(--line);border-radius:var(--r)}
+  .pagehead{display:flex;align-items:flex-end;justify-content:space-between;margin-bottom:22px}
+  .pagehead h1{font-size:23px;font-weight:700;letter-spacing:-.02em;margin:0 0 4px}
+  .pagehead .sub{color:var(--ink-2);font-size:14px}
+
+  .stats{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-bottom:28px}
+  .stat{padding:17px 19px}
+  .stat .k{font-size:12px;color:var(--ink-3);font-weight:600;display:flex;align-items:center;gap:7px}.stat .k svg{width:15px;height:15px}
+  .stat .v{font-size:27px;font-weight:700;letter-spacing:-.02em;margin-top:9px}
+  .stat .v small{font-size:13px;color:var(--ink-3);font-weight:600}
+
+  .group-label{font-size:11.5px;font-weight:650;letter-spacing:.06em;text-transform:uppercase;color:var(--ink-3);margin:24px 2px 12px}
+  .ecard{display:flex;align-items:center;gap:16px;padding:16px 18px;margin-bottom:10px}
+  .eb{width:42px;height:42px;border-radius:10px;display:grid;place-items:center;flex:none;background:var(--accent-soft);color:var(--accent-2)}.eb svg{width:20px;height:20px}
+  .eb.dim{background:var(--surface-2);color:var(--ink-3)}
+  .einfo{flex:1;min-width:0}.einfo h3{margin:0 0 4px;font-size:15px;font-weight:700;display:flex;align-items:center;gap:9px}
+  .einfo .em{font-size:12.5px;color:var(--ink-2);display:flex;gap:14px;flex-wrap:wrap}.einfo .em span{display:inline-flex;gap:6px;align-items:center}
+  .einfo .em svg{width:13px;height:13px;color:var(--ink-3)}
+  .eright{display:flex;gap:8px;flex:none}
+
+  /* quick create */
+  .qc{display:grid;grid-template-columns:repeat(3,1fr);gap:14px;margin-bottom:6px}
+  .qc-card{padding:18px;cursor:pointer;display:flex;align-items:center;gap:14px}
+  .qc-card:hover{background:var(--surface-2);border-color:var(--accent-ring)}
+  .qc-ic{width:42px;height:42px;border-radius:11px;background:var(--accent-soft);color:var(--accent-2);display:grid;place-items:center;flex:none}.qc-ic svg{width:21px;height:21px}
+  .qc-card h3{margin:0 0 2px;font-size:15px;font-weight:700}.qc-card p{margin:0;font-size:12.5px;color:var(--ink-3)}
+
+  /* table */
+  .tbl-wrap{overflow:hidden}
+  .table{width:100%;border-collapse:collapse}
+  .table th{text-align:left;font-size:11px;font-weight:650;letter-spacing:.05em;text-transform:uppercase;color:var(--ink-3);padding:13px 18px;border-bottom:1px solid var(--line);background:var(--bg-2)}
+  .table td{padding:13px 18px;border-bottom:1px solid var(--line);font-size:13.5px}
+  .table tr:last-child td{border-bottom:none}
+  .table tbody tr:hover{background:var(--surface-2)}
+  .diff{font-weight:650;font-size:12.5px}.diff.e{color:#4cd49b}.diff.m{color:#eeb866}.diff.h{color:#ff8497}
+  .muted{color:var(--ink-3)} .mono{font-family:var(--mono)}
+
+  /* ---- create chooser ---- */
+  .choose{display:grid;grid-template-columns:repeat(3,1fr);gap:16px;margin-top:8px}
+  .choice{padding:26px;cursor:pointer;display:flex;flex-direction:column;gap:14px}
+  .choice:hover{border-color:var(--accent-ring);background:var(--surface-2)}
+  .choice .ci{width:48px;height:48px;border-radius:12px;background:var(--accent-soft);color:var(--accent-2);display:grid;place-items:center}.choice .ci svg{width:24px;height:24px}
+  .choice h3{margin:0;font-size:17px;font-weight:700}
+  .choice p{margin:0;font-size:13px;color:var(--ink-2);line-height:1.55}
+  .choice .go{margin-top:auto;color:var(--accent-2);font-weight:650;font-size:13px;display:flex;align-items:center;gap:6px}.choice .go svg{width:15px;height:15px}
+
+  /* ---- forms ---- */
+  .formwrap{max-width:780px}
+  .stepper{display:flex;align-items:center;margin-bottom:28px}
+  .step{display:flex;align-items:center;gap:9px;color:var(--ink-3)}
+  .step .n{width:26px;height:26px;border-radius:50%;border:1.5px solid var(--line-strong);display:grid;place-items:center;font-size:12.5px;font-weight:700;font-family:var(--mono)}
+  .step .lb{font-size:13px;font-weight:600}
+  .step.active{color:var(--ink)}.step.active .n{border-color:var(--accent);background:var(--accent);color:#fff}
+  .step.done{color:var(--ink-2)}.step.done .n{border-color:var(--accent);color:var(--accent-2)}
+  .step-line{flex:1;height:1.5px;background:var(--line);margin:0 12px}
+
+  .panel[hidden]{display:none}
+  .field{margin-bottom:18px}
+  .field>label{display:block;font-weight:600;font-size:13px;margin-bottom:7px}
+  .field .hint{font-size:12px;color:var(--ink-3);margin-top:6px}
+  .req{color:var(--accent-2)}
+  input[type=text],input[type=number],input[type=datetime-local],input[type=password],textarea,select{
+    width:100%;background:var(--bg-2);border:1px solid var(--line);border-radius:10px;padding:11px 13px;color:var(--ink);font-family:var(--font);font-size:13.5px;outline:none}
+  input:focus,textarea:focus,select:focus{border-color:var(--accent);box-shadow:0 0 0 3px var(--accent-soft)}
+  textarea{min-height:92px;resize:vertical;line-height:1.5}
+  input::placeholder,textarea::placeholder{color:var(--ink-3)}
+  .two{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+  .three{display:grid;grid-template-columns:1fr 1fr 1fr;gap:14px}
+  .inunit{position:relative}.inunit .u{position:absolute;right:13px;top:50%;transform:translateY(-50%);font-size:12px;color:var(--ink-3);font-family:var(--mono)}
+  .inunit input{padding-right:54px}
+
+  .seg{display:inline-flex;background:var(--bg-2);border:1px solid var(--line);border-radius:11px;padding:3px;gap:3px}
+  .seg .opt{padding:9px 16px;border-radius:8px;cursor:pointer;font-weight:600;font-size:13px;color:var(--ink-2);white-space:nowrap}
+  .seg .opt:hover{color:var(--ink)} .seg .opt.on{background:var(--accent);color:#fff}
+
+  .switchrow{display:flex;align-items:center;justify-content:space-between;padding:14px 16px;border:1px solid var(--line);border-radius:11px;background:var(--bg-2);margin-bottom:14px}
+  .switchrow .t{font-weight:600;font-size:13.5px}.switchrow .t small{display:block;color:var(--ink-3);font-weight:500;font-size:12px;margin-top:2px}
+  .sw{width:42px;height:24px;border-radius:999px;background:var(--line-strong);position:relative;cursor:pointer;flex:none;transition:background .15s}
+  .sw::after{content:"";position:absolute;top:3px;left:3px;width:18px;height:18px;border-radius:50%;background:#fff;transition:left .15s}
+  .sw.on{background:var(--accent)}.sw.on::after{left:21px}
+
+  .cond[hidden]{display:none}
+  .cond{padding:16px;border:1px dashed var(--line-strong);border-radius:11px;margin-bottom:14px;background:rgba(93,124,247,.04)}
+  .cond .ch{font-size:11.5px;font-weight:650;letter-spacing:.05em;text-transform:uppercase;color:var(--ink-3);margin-bottom:13px}
+
+  .attach{display:flex;align-items:center;gap:12px;padding:11px 13px;border:1px solid var(--line);border-radius:11px;margin-bottom:8px;background:var(--bg-2)}
+  .grip{color:var(--ink-3);cursor:grab;display:grid}.grip svg{width:17px;height:17px}
+  .attach .ord{font-family:var(--mono);font-weight:700;color:var(--accent-2);width:18px}
+  .attach .anm{font-weight:650;flex:1;font-size:13.5px}
+  .attach .di{font-size:11.5px;font-weight:650}
+  .attach . pts-in{width:90px}
+  .attach input{width:84px;padding:8px 10px}
+  .attach .lbl{font-size:11px;color:var(--ink-3)}
+
+  .tc{border:1px solid var(--line);border-radius:11px;margin-bottom:10px;overflow:hidden}
+  .tc-h{display:flex;align-items:center;gap:10px;padding:10px 13px;background:var(--bg-2);border-bottom:1px solid var(--line)}
+  .tc-h .tt{font-weight:650;font-size:13px}.tc-h .tt .mono{color:var(--accent-2)}
+  .tc-b{display:grid;grid-template-columns:1fr 1fr;gap:0}
+  .tc-b .cell{padding:12px 13px}.tc-b .cell:first-child{border-right:1px solid var(--line)}
+  .tc-b .cell .cl{font-size:11px;color:var(--ink-3);text-transform:uppercase;letter-spacing:.05em;margin-bottom:7px}
+  .tc-b textarea{min-height:64px;font-family:var(--mono);font-size:12.5px}
+
+  .form-foot{display:flex;align-items:center;justify-content:space-between;margin-top:26px;padding-top:18px;border-top:1px solid var(--line)}
+  .form-foot .rgt{display:flex;gap:10px}
+
+  .review{display:grid;grid-template-columns:1fr 1fr;gap:0;border:1px solid var(--line);border-radius:12px;overflow:hidden}
+  .rv{padding:14px 16px;border-bottom:1px solid var(--line)}
+  .rv:nth-child(odd){border-right:1px solid var(--line)}
+  .rv .k{font-size:11.5px;color:var(--ink-3);text-transform:uppercase;letter-spacing:.05em}
+  .rv .v{font-weight:650;margin-top:4px;font-size:14px}
+
+  .backlink{display:inline-flex;align-items:center;gap:7px;color:var(--ink-2);font-weight:600;font-size:13px;cursor:pointer;margin-bottom:16px}
+  .backlink:hover{color:var(--ink)}.backlink svg{width:16px;height:16px;transform:rotate(180deg)}
+
+  @media(max-width:1000px){.nlinks{display:none}.stats,.qc,.choose{grid-template-columns:1fr 1fr}.two,.three{grid-template-columns:1fr}}
+</style>
+</head>
+<body>
+
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <symbol id="i-grid" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3.5" y="3.5" width="7" height="7" rx="1.5"/><rect x="13.5" y="3.5" width="7" height="7" rx="1.5"/><rect x="3.5" y="13.5" width="7" height="7" rx="1.5"/><rect x="13.5" y="13.5" width="7" height="7" rx="1.5"/></symbol>
+  <symbol id="i-code" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="m8 9-3 3 3 3"/><path d="m16 9 3 3-3 3"/><path d="m13.5 7-3 10"/></symbol>
+  <symbol id="i-trophy" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M7 4h10v5a5 5 0 0 1-10 0Z"/><path d="M7 6H4v1a3 3 0 0 0 3 3"/><path d="M17 6h3v1a3 3 0 0 1-3 3"/><path d="M10 14h4l-.5 4h-3Z"/><path d="M8 21h8"/></symbol>
+  <symbol id="i-doc" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M6 3h8l4 4v14H6Z"/><path d="M14 3v4h4"/><path d="M9 12h6M9 16h6"/></symbol>
+  <symbol id="i-flask" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M9 3h6"/><path d="M10 3v6l-4.5 8a2 2 0 0 0 1.8 3h9.4a2 2 0 0 0 1.8-3L14 9V3"/><path d="M7.5 14h9"/></symbol>
+  <symbol id="i-plus" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14M5 12h14"/></symbol>
+  <symbol id="i-pencil" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 20h4L19 9l-4-4L4 16Z"/><path d="m14 6 4 4"/></symbol>
+  <symbol id="i-eye" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M2 12s4-7 10-7 10 7 10 7-4 7-10 7-10-7-10-7Z"/><circle cx="12" cy="12" r="3"/></symbol>
+  <symbol id="i-trash" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 7h16M9 7V4h6v3M6 7l1 13h10l1-13"/></symbol>
+  <symbol id="i-grip" viewBox="0 0 24 24" fill="currentColor"><circle cx="9" cy="6" r="1.4"/><circle cx="15" cy="6" r="1.4"/><circle cx="9" cy="12" r="1.4"/><circle cx="15" cy="12" r="1.4"/><circle cx="9" cy="18" r="1.4"/><circle cx="15" cy="18" r="1.4"/></symbol>
+  <symbol id="i-clock" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></symbol>
+  <symbol id="i-users" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="8" r="3.2"/><path d="M3.5 20a5.5 5.5 0 0 1 11 0"/><path d="M16 5.5a3.2 3.2 0 0 1 0 6"/><path d="M17.5 14.5a5.5 5.5 0 0 1 3 5"/></symbol>
+  <symbol id="i-check" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m5 12 4.5 4.5L19 7"/></symbol>
+  <symbol id="i-cal" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="5" width="16" height="16" rx="2"/><path d="M4 9h16M8 3v4M16 3v4"/></symbol>
+  <symbol id="i-arrow" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14"/><path d="m13 6 6 6-6 6"/></symbol>
+  <symbol id="i-bell" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9a6 6 0 0 1 12 0c0 5 2 6 2 6H4s2-1 2-6"/><path d="M10 19a2 2 0 0 0 4 0"/></symbol>
+  <symbol id="i-inbox" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 13h5l1.5 3h5L16 13h5"/><path d="M5 5h14l2 8v6H3v-6Z"/></symbol>
+  <symbol id="i-layers" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="m12 3 9 5-9 5-9-5Z"/><path d="m3 12 9 5 9-5M3 16l9 5 9-5"/></symbol>
+</svg>
+
+<header class="nav">
+  <div class="nav-in">
+    <div class="logo"><div class="m">A</div> Algora <span class="role">Teacher</span></div>
+    <nav class="nlinks">
+      <div class="nlink active" data-v="overview"><svg><use href="#i-grid"/></svg> Overview</div>
+      <div class="nlink" data-v="problems"><svg><use href="#i-layers"/></svg> Problem bank</div>
+      <div class="nlink" data-v="reviewq"><svg><use href="#i-inbox"/></svg> Submissions</div>
+    </nav>
+    <div class="nsp"></div>
+    <button class="btn primary" data-v="create"><svg><use href="#i-plus"/></svg> Create</button>
+    <div class="iconbtn"><svg><use href="#i-bell"/></svg></div>
+    <div class="me"><div class="av">BB</div><div><div class="nm">Prof. Bennani</div><div class="rl">Teacher</div></div></div>
+  </div>
+</header>
+
+<div class="wrap">
+
+  <!-- OVERVIEW -->
+  <section class="view" data-view="overview">
+    <div class="pagehead"><div><h1>Overview</h1><div class="sub">Your events, problems, and submissions to review.</div></div></div>
+
+    <div class="stats">
+      <div class="card stat"><div class="k"><svg><use href="#i-trophy"/></svg> Active events</div><div class="v">2</div></div>
+      <div class="card stat"><div class="k"><svg><use href="#i-inbox"/></svg> Awaiting review</div><div class="v">14</div></div>
+      <div class="card stat"><div class="k"><svg><use href="#i-layers"/></svg> Problems</div><div class="v">32</div></div>
+      <div class="card stat"><div class="k"><svg><use href="#i-users"/></svg> Students</div><div class="v">86</div></div>
+    </div>
+
+    <div class="group-label">Create something</div>
+    <div class="qc">
+      <div class="card qc-card" data-go="comp"><div class="qc-ic"><svg><use href="#i-trophy"/></svg></div><div><h3>Competition</h3><p>Timed CP contest, teams, scoreboard</p></div></div>
+      <div class="card qc-card" data-go="exam"><div class="qc-ic"><svg><use href="#i-doc"/></svg></div><div><h3>Exam</h3><p>Solo, pass/fail, results after close</p></div></div>
+      <div class="card qc-card" data-go="tp"><div class="qc-ic"><svg><use href="#i-flask"/></svg></div><div><h3>TP</h3><p>Deadline-based, attempts, partial credit</p></div></div>
+    </div>
+
+    <div class="group-label">Your events</div>
+    <div class="card ecard">
+      <div class="eb"><svg><use href="#i-trophy"/></svg></div>
+      <div class="einfo"><h3>Weekly Sprint #12 <span class="pill live"><span class="dot"></span>Live</span></h3>
+        <div class="em"><span>CP · ICPC</span><span><svg><use href="#i-users"/></svg>22 teams</span><span><svg><use href="#i-clock"/></svg>1:02 left</span></div></div>
+      <div class="eright"><button class="btn sm"><svg><use href="#i-eye"/></svg>Monitor</button></div>
+    </div>
+    <div class="card ecard">
+      <div class="eb"><svg><use href="#i-trophy"/></svg></div>
+      <div class="einfo"><h3>Spring Algo Cup #3 <span class="pill draft"><span class="dot"></span>Draft</span></h3>
+        <div class="em"><span>CP · ICPC</span><span><svg><use href="#i-cal"/></svg>Sat 21 June</span><span>6 problems</span></div></div>
+      <div class="eright"><button class="btn sm"><svg><use href="#i-pencil"/></svg>Edit</button><button class="btn sm primary">Publish</button></div>
+    </div>
+    <div class="card ecard">
+      <div class="eb"><svg><use href="#i-doc"/></svg></div>
+      <div class="einfo"><h3>Data Structures — Midterm <span class="pill soon"><span class="dot"></span>Scheduled</span></h3>
+        <div class="em"><span>Exam · pass ≥ 50%</span><span><svg><use href="#i-cal"/></svg>Sat 14:00</span><span>Access code</span></div></div>
+      <div class="eright"><button class="btn sm"><svg><use href="#i-pencil"/></svg>Edit</button></div>
+    </div>
+    <div class="card ecard">
+      <div class="eb dim"><svg><use href="#i-doc"/></svg></div>
+      <div class="einfo"><h3>OOP — Final <span class="pill open"><span class="dot"></span>Ended · grades to reveal</span></h3>
+        <div class="em"><span>Exam</span><span>41 submissions</span></div></div>
+      <div class="eright"><button class="btn sm">Reveal grades</button><button class="btn sm"><svg><use href="#i-eye"/></svg>Results</button></div>
+    </div>
+  </section>
+
+  <!-- PROBLEM BANK -->
+  <section class="view" data-view="problems" hidden>
+    <div class="pagehead"><div><h1>Problem bank</h1><div class="sub">Reusable problems with test cases, shared across all your events.</div></div>
+      <button class="btn primary" data-go="problem"><svg><use href="#i-plus"/></svg>New problem</button></div>
+    <div class="card tbl-wrap">
+      <table class="table">
+        <thead><tr><th>Title</th><th>Difficulty</th><th>Category</th><th>Test cases</th><th>Used in</th><th>Updated</th></tr></thead>
+        <tbody>
+          <tr><td style="font-weight:650">Balanced Subarrays</td><td><span class="diff m">Medium</span></td><td>Prefix sums</td><td class="mono">8 <span class="muted">(5 hidden)</span></td><td class="muted">2 events</td><td class="muted">2d ago</td></tr>
+          <tr><td style="font-weight:650">Group Anagrams</td><td><span class="diff m">Medium</span></td><td>Hashing</td><td class="mono">8 <span class="muted">(6 hidden)</span></td><td class="muted">TP 5</td><td class="muted">3d ago</td></tr>
+          <tr><td style="font-weight:650">LRU Cache</td><td><span class="diff h">Hard</span></td><td>Design</td><td class="mono">12 <span class="muted">(9 hidden)</span></td><td class="muted">—</td><td class="muted">5d ago</td></tr>
+          <tr><td style="font-weight:650">Validate Stack Sequence</td><td><span class="diff m">Medium</span></td><td>Stack</td><td class="mono">10 <span class="muted">(7 hidden)</span></td><td class="muted">DS Midterm</td><td class="muted">1w ago</td></tr>
+          <tr><td style="font-weight:650">Two-Sum Index</td><td><span class="diff e">Easy</span></td><td>Arrays</td><td class="mono">6 <span class="muted">(3 hidden)</span></td><td class="muted">3 events</td><td class="muted">1w ago</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <!-- SUBMISSIONS REVIEW QUEUE -->
+  <section class="view" data-view="reviewq" hidden>
+    <div class="pagehead"><div><h1>Submissions</h1><div class="sub">Review, override scores, and check flagged attempts.</div></div></div>
+    <div class="card tbl-wrap">
+      <table class="table">
+        <thead><tr><th>Student</th><th>Problem</th><th>Event</th><th>Verdict</th><th>Score</th><th>Language</th><th></th></tr></thead>
+        <tbody>
+          <tr><td style="font-weight:650">Yassine A.</td><td>Group Anagrams</td><td class="muted">TP 5</td><td><span class="diff m">Partial</span></td><td class="mono">14/25</td><td class="muted mono">Java</td><td><button class="btn sm"><svg><use href="#i-eye"/></svg>Open</button></td></tr>
+          <tr><td style="font-weight:650">Salma R.</td><td>Validate Stack Sequence</td><td class="muted">DS Midterm</td><td><span class="diff e">Accepted</span></td><td class="mono">25/25</td><td class="muted mono">Python</td><td><button class="btn sm"><svg><use href="#i-eye"/></svg>Open</button></td></tr>
+          <tr><td style="font-weight:650">Mehdi K.</td><td>Balanced Subarrays</td><td class="muted">Weekly Sprint #12</td><td><span class="diff h">Wrong answer</span></td><td class="mono">0</td><td class="muted mono">C++</td><td><button class="btn sm"><svg><use href="#i-eye"/></svg>Open</button></td></tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <!-- CREATE CHOOSER -->
+  <section class="view" data-view="create" hidden>
+    <div class="pagehead"><div><h1>Create</h1><div class="sub">Pick what you want to set up. CTF uses your existing flow.</div></div></div>
+    <div class="choose">
+      <div class="card choice" data-go="comp"><div class="ci"><svg><use href="#i-trophy"/></svg></div><h3>Competition</h3><p>A timed competitive-programming contest with teams, a live scoreboard, and ICPC, Rated, or Partial scoring.</p><div class="go">Set up<svg><use href="#i-arrow"/></svg></div></div>
+      <div class="card choice" data-go="exam"><div class="ci"><svg><use href="#i-doc"/></svg></div><h3>Exam</h3><p>A solo, proctored assessment. No scoreboard, pass/fail against a threshold, grades released after it closes.</p><div class="go">Set up<svg><use href="#i-arrow"/></svg></div></div>
+      <div class="card choice" data-go="tp"><div class="ci"><svg><use href="#i-flask"/></svg></div><h3>TP</h3><p>A deadline-based practical with multiple attempts, partial credit, and live personal scoring.</p><div class="go">Set up<svg><use href="#i-arrow"/></svg></div></div>
+    </div>
+  </section>
+
+  <!-- ============ CREATE COMPETITION (wizard) ============ -->
+  <section class="view" data-view="comp" hidden>
+    <div class="backlink" data-v="create"><svg><use href="#i-arrow"/></svg> Back to create</div>
+    <div class="pagehead"><div><h1>New competition</h1><div class="sub">Five quick steps. You can save as a draft anytime.</div></div></div>
+
+    <div class="formwrap">
+      <div class="stepper" id="cpStepper">
+        <div class="step active" data-s="0"><span class="n">1</span><span class="lb">Basics</span></div>
+        <div class="step-line"></div>
+        <div class="step" data-s="1"><span class="n">2</span><span class="lb">Schedule</span></div>
+        <div class="step-line"></div>
+        <div class="step" data-s="2"><span class="n">3</span><span class="lb">Format</span></div>
+        <div class="step-line"></div>
+        <div class="step" data-s="3"><span class="n">4</span><span class="lb">Problems</span></div>
+        <div class="step-line"></div>
+        <div class="step" data-s="4"><span class="n">5</span><span class="lb">Review</span></div>
+      </div>
+
+      <!-- step 1 -->
+      <div class="panel" data-panel="0">
+        <div class="field"><label>Title <span class="req">*</span></label><input type="text" value="Spring Algo Cup #3" placeholder="e.g. Spring Algo Cup #3"></div>
+        <div class="field"><label>Description</label><textarea placeholder="What is this contest about? Rules, audience, prizes…">A 3-hour team contest over 6 algorithmic problems. ICPC rules.</textarea></div>
+        <div class="field"><label>Visibility</label>
+          <div class="seg" data-seg="vis"><div class="opt on">Public</div><div class="opt">Private (request to join)</div></div>
+          <div class="hint">Public contests appear in the students' list. Private ones require approval.</div>
+        </div>
+      </div>
+
+      <!-- step 2 -->
+      <div class="panel" data-panel="1" hidden>
+        <div class="two">
+          <div class="field"><label>Start date &amp; time <span class="req">*</span></label><input type="datetime-local" value="2026-06-21T14:00"></div>
+          <div class="field"><label>Duration</label><div class="inunit"><input type="number" value="180"><span class="u">min</span></div><div class="hint">Ends Sat 21 June, 17:00.</div></div>
+        </div>
+        <div class="switchrow"><div class="t">Freeze scoreboard near the end<small>Hide standings for the final stretch — revealed after the contest.</small></div><div class="sw on" data-sw="freeze"></div></div>
+        <div class="cond" data-cond-for="freeze">
+          <div class="ch">Freeze settings</div>
+          <div class="field" style="margin:0"><label>Freeze for the last</label><div class="inunit" style="max-width:180px"><input type="number" value="60"><span class="u">min</span></div></div>
+        </div>
+      </div>
+
+      <!-- step 3 -->
+      <div class="panel" data-panel="2" hidden>
+        <div class="field"><label>Participation</label>
+          <div class="seg" data-seg="mode"><div class="opt">Solo</div><div class="opt on">Team</div></div>
+        </div>
+        <div class="cond" data-cond-for="team">
+          <div class="ch">Team size</div>
+          <div class="two">
+            <div class="field" style="margin:0"><label>Minimum</label><input type="number" value="2"></div>
+            <div class="field" style="margin:0"><label>Maximum</label><input type="number" value="3"></div>
+          </div>
+        </div>
+
+        <div class="field" style="margin-top:4px"><label>Scoring mode</label>
+          <div class="seg" data-seg="score"><div class="opt on">ICPC</div><div class="opt">Rated</div><div class="opt">Partial</div></div>
+          <div class="hint">Choose how points and rank are computed. Only the chosen mode's settings show below.</div>
+        </div>
+
+        <div class="cond" data-score="icpc">
+          <div class="ch">ICPC settings</div>
+          <p style="margin:0 0 12px;font-size:13px;color:var(--ink-2)">Rank by problems solved, ties broken by penalty time.</p>
+          <div class="field" style="margin:0"><label>Penalty per wrong attempt</label><div class="inunit" style="max-width:180px"><input type="number" value="20"><span class="u">min</span></div></div>
+        </div>
+        <div class="cond" data-score="rated" hidden>
+          <div class="ch">Rated (decremental) settings</div>
+          <p style="margin:0 0 12px;font-size:13px;color:var(--ink-2)">Points start high and decay over time and on wrong attempts.</p>
+          <div class="three">
+            <div class="field" style="margin:0"><label>Max points</label><input type="number" value="500"></div>
+            <div class="field" style="margin:0"><label>Min points</label><input type="number" value="100"></div>
+            <div class="field" style="margin:0"><label>Decay / min</label><input type="number" value="2"></div>
+          </div>
+        </div>
+        <div class="cond" data-score="partial" hidden>
+          <div class="ch">Partial (subtask) settings</div>
+          <p style="margin:0;font-size:13px;color:var(--ink-2)">Score = passed test cases ÷ total × max points. No time decay. Per-problem max is set on the next step.</p>
+        </div>
+      </div>
+
+      <!-- step 4 -->
+      <div class="panel" data-panel="3" hidden>
+        <div class="field"><label>Problems <span class="req">*</span></label>
+          <div class="hint" style="margin-top:0;margin-bottom:12px">Drag to reorder. Points apply per problem.</div>
+          <div class="attach"><span class="grip"><svg><use href="#i-grip"/></svg></span><span class="ord">A</span><span class="anm">Two-Sum Index</span><span class="di diff e">Easy</span><div><div class="lbl">points</div></div><input type="number" value="100"></div>
+          <div class="attach"><span class="grip"><svg><use href="#i-grip"/></svg></span><span class="ord">B</span><span class="anm">Prefix Parity</span><span class="di diff e">Easy</span><div><div class="lbl">points</div></div><input type="number" value="100"></div>
+          <div class="attach"><span class="grip"><svg><use href="#i-grip"/></svg></span><span class="ord">C</span><span class="anm">Balanced Subarrays</span><span class="di diff m">Medium</span><div><div class="lbl">points</div></div><input type="number" value="300"></div>
+          <div class="attach"><span class="grip"><svg><use href="#i-grip"/></svg></span><span class="ord">D</span><span class="anm">Validate Stack Sequence</span><span class="di diff m">Medium</span><div><div class="lbl">points</div></div><input type="number" value="400"></div>
+          <button class="btn" style="margin-top:6px"><svg><use href="#i-plus"/></svg>Add from problem bank</button>
+        </div>
+      </div>
+
+      <!-- step 5 -->
+      <div class="panel" data-panel="4" hidden>
+        <p style="font-size:13.5px;color:var(--ink-2);margin:0 0 16px">Review and publish. Publishing moves the contest to <b style="color:var(--ink)">Registration</b> so students can sign up.</p>
+        <div class="review">
+          <div class="rv"><div class="k">Title</div><div class="v">Spring Algo Cup #3</div></div>
+          <div class="rv"><div class="k">Visibility</div><div class="v">Public</div></div>
+          <div class="rv"><div class="k">Start</div><div class="v">Sat 21 June, 14:00</div></div>
+          <div class="rv"><div class="k">Duration</div><div class="v">3 hours</div></div>
+          <div class="rv"><div class="k">Participation</div><div class="v">Teams of 2–3</div></div>
+          <div class="rv"><div class="k">Scoring</div><div class="v">ICPC · +20 min penalty</div></div>
+          <div class="rv"><div class="k">Freeze</div><div class="v">Last 60 minutes</div></div>
+          <div class="rv"><div class="k">Problems</div><div class="v">4 attached</div></div>
+        </div>
+      </div>
+
+      <div class="form-foot">
+        <button class="btn ghost" id="cpBack" disabled><svg style="transform:rotate(180deg)"><use href="#i-arrow"/></svg>Back</button>
+        <div class="rgt">
+          <button class="btn">Save draft</button>
+          <button class="btn primary" id="cpNext">Continue<svg><use href="#i-arrow"/></svg></button>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ CREATE EXAM ============ -->
+  <section class="view" data-view="exam" hidden>
+    <div class="backlink" data-v="create"><svg><use href="#i-arrow"/></svg> Back to create</div>
+    <div class="pagehead"><div><h1>New exam</h1><div class="sub">Solo assessment. Grades stay hidden until you reveal them.</div></div></div>
+    <div class="formwrap">
+      <div class="group-label" style="margin-top:0">Basics</div>
+      <div class="field"><label>Title <span class="req">*</span></label><input type="text" placeholder="e.g. Data Structures — Midterm"></div>
+      <div class="field"><label>Description</label><textarea placeholder="Instructions students see before starting."></textarea></div>
+      <div class="field"><label>Module</label><select><option>— None —</option><option selected>Data Structures (S4)</option><option>Algorithms (S5)</option></select></div>
+
+      <div class="group-label">Schedule &amp; access</div>
+      <div class="two">
+        <div class="field"><label>Starts at <span class="req">*</span></label><input type="datetime-local" value="2026-06-21T14:00"></div>
+        <div class="field"><label>Duration</label><div class="inunit"><input type="number" value="45"><span class="u">min</span></div></div>
+      </div>
+      <div class="field"><label>Who can take it</label>
+        <div class="seg" data-seg="examvis"><div class="opt">Module only</div><div class="opt on">Access code</div><div class="opt">By request</div></div>
+      </div>
+      <div class="cond" data-cond-for="examcode">
+        <div class="ch">Access code</div>
+        <div class="field" style="margin:0"><label>Code students must enter</label><input type="text" value="DS-MID-7QK2" style="max-width:240px;font-family:var(--mono)"></div>
+      </div>
+      <div class="two">
+        <div class="field"><label>Passing score</label><div class="inunit" style="max-width:160px"><input type="number" value="50"><span class="u">%</span></div><div class="hint">Below this is a fail.</div></div>
+        <div class="field"><label>&nbsp;</label><div class="switchrow" style="margin:0"><div class="t">Late penalty<small>Reduce score for late submissions</small></div><div class="sw" data-sw="exampen"></div></div></div>
+      </div>
+
+      <div class="group-label">Questions</div>
+      <div class="attach"><span class="grip"><svg><use href="#i-grip"/></svg></span><span class="ord">1</span><span class="anm">Validate Stack Sequence</span><span class="di diff m">Medium</span><div><div class="lbl">points</div></div><input type="number" value="25"></div>
+      <div class="attach"><span class="grip"><svg><use href="#i-grip"/></svg></span><span class="ord">2</span><span class="anm">Balanced Subarrays</span><span class="di diff m">Medium</span><div><div class="lbl">points</div></div><input type="number" value="25"></div>
+      <button class="btn" style="margin-top:6px"><svg><use href="#i-plus"/></svg>Add question</button>
+
+      <div class="form-foot"><button class="btn ghost" data-v="create">Cancel</button><div class="rgt"><button class="btn">Save draft</button><button class="btn primary">Publish exam</button></div></div>
+    </div>
+  </section>
+
+  <!-- ============ CREATE TP ============ -->
+  <section class="view" data-view="tp" hidden>
+    <div class="backlink" data-v="create"><svg><use href="#i-arrow"/></svg> Back to create</div>
+    <div class="pagehead"><div><h1>New TP</h1><div class="sub">Deadline-based practical. Students see their own score live.</div></div></div>
+    <div class="formwrap">
+      <div class="group-label" style="margin-top:0">Basics</div>
+      <div class="field"><label>Title <span class="req">*</span></label><input type="text" placeholder="e.g. TP 5 — Hashing & Maps"></div>
+      <div class="field"><label>Description</label><textarea placeholder="What students should build / submit."></textarea></div>
+      <div class="field"><label>Module</label><select><option>— None —</option><option selected>Data Structures (S4)</option></select></div>
+
+      <div class="group-label">Settings</div>
+      <div class="two">
+        <div class="field"><label>Deadline <span class="req">*</span></label><input type="datetime-local" value="2026-06-21T18:00"></div>
+        <div class="field"><label>Max attempts</label><input type="number" placeholder="Leave empty for unlimited" value="5"><div class="hint">Per task.</div></div>
+      </div>
+      <div class="switchrow"><div class="t">Time limit per attempt<small>Optional — once a student opens the TP, they have this long.</small></div><div class="sw" data-sw="tptime"></div></div>
+      <div class="cond" data-cond-for="tptime" hidden>
+        <div class="ch">Attempt duration</div>
+        <div class="field" style="margin:0"><div class="inunit" style="max-width:180px"><input type="number" value="120"><span class="u">min</span></div></div>
+      </div>
+      <div class="field"><label>Who can access</label>
+        <div class="seg" data-seg="tpvis"><div class="opt on">Module only</div><div class="opt">Access code</div><div class="opt">By request</div></div>
+      </div>
+
+      <div class="group-label">Tasks</div>
+      <div class="attach"><span class="grip"><svg><use href="#i-grip"/></svg></span><span class="ord">1</span><span class="anm">Two-Sum Index</span><span class="di diff e">Easy</span><div><div class="lbl">points</div></div><input type="number" value="25"></div>
+      <div class="attach"><span class="grip"><svg><use href="#i-grip"/></svg></span><span class="ord">2</span><span class="anm">Group Anagrams</span><span class="di diff m">Medium</span><div><div class="lbl">points</div></div><input type="number" value="25"></div>
+      <button class="btn" style="margin-top:6px"><svg><use href="#i-plus"/></svg>Add task</button>
+
+      <div class="form-foot"><button class="btn ghost" data-v="create">Cancel</button><div class="rgt"><button class="btn">Save draft</button><button class="btn primary">Publish TP</button></div></div>
+    </div>
+  </section>
+
+  <!-- ============ PROBLEM EDITOR ============ -->
+  <section class="view" data-view="problem" hidden>
+    <div class="backlink" data-v="problems"><svg><use href="#i-arrow"/></svg> Back to problem bank</div>
+    <div class="pagehead"><div><h1>New problem</h1><div class="sub">The statement, limits, and test cases the judge runs against.</div></div></div>
+    <div class="formwrap">
+      <div class="group-label" style="margin-top:0">Statement</div>
+      <div class="field"><label>Title <span class="req">*</span></label><input type="text" placeholder="e.g. Balanced Subarrays"></div>
+      <div class="field"><label>Description</label><textarea placeholder="Full problem statement, input/output format, constraints…" style="min-height:130px"></textarea></div>
+      <div class="three">
+        <div class="field"><label>Difficulty</label><div class="seg" data-seg="diff" style="width:100%"><div class="opt">Easy</div><div class="opt on">Medium</div><div class="opt">Hard</div></div></div>
+        <div class="field"><label>Category</label><input type="text" value="Prefix sums"></div>
+        <div class="field"><label>Tags</label><input type="text" value="arrays, math" placeholder="comma separated"></div>
+      </div>
+      <div class="two">
+        <div class="field"><label>Time limit</label><div class="inunit"><input type="number" value="1000"><span class="u">ms</span></div></div>
+        <div class="field"><label>Memory limit</label><div class="inunit"><input type="number" value="256"><span class="u">MB</span></div></div>
+      </div>
+
+      <div class="group-label">Test cases</div>
+      <div class="tc">
+        <div class="tc-h"><span class="tt">Case <span class="mono">#1</span></span><div style="flex:1"></div><span class="lbl muted" style="font-size:12px;margin-right:10px">Visible to students</span><button class="btn sm danger"><svg><use href="#i-trash"/></svg></button></div>
+        <div class="tc-b"><div class="cell"><div class="cl">Input</div><textarea>4
+1 2 3 4</textarea></div><div class="cell"><div class="cl">Expected output</div><textarea>4</textarea></div></div>
+      </div>
+      <div class="tc">
+        <div class="tc-h"><span class="tt">Case <span class="mono">#2</span></span><div style="flex:1"></div><span class="pill draft" style="margin-right:10px"><span class="dot"></span>Hidden</span><button class="btn sm danger"><svg><use href="#i-trash"/></svg></button></div>
+        <div class="tc-b"><div class="cell"><div class="cl">Input</div><textarea>6
+2 2 2 1 1 1</textarea></div><div class="cell"><div class="cl">Expected output</div><textarea>9</textarea></div></div>
+      </div>
+      <button class="btn" style="margin-top:4px"><svg><use href="#i-plus"/></svg>Add test case</button>
+
+      <div class="form-foot"><button class="btn ghost" data-v="problems">Cancel</button><div class="rgt"><button class="btn primary">Save problem</button></div></div>
+    </div>
+  </section>
+
+</div>
+
+<script>
+  const views=document.querySelectorAll('.view');
+  const links=document.querySelectorAll('.nlink');
+  function show(v){
+    views.forEach(s=>s.hidden=s.dataset.view!==v);
+    links.forEach(x=>x.classList.toggle('active',x.dataset.v===v));
+    window.scrollTo(0,0);
+  }
+  document.querySelectorAll('[data-v]').forEach(el=>el.addEventListener('click',e=>{ if(el.tagName==='A'||el.dataset.v){show(el.dataset.v);} }));
+  document.querySelectorAll('[data-go]').forEach(el=>el.addEventListener('click',()=>show(el.dataset.go)));
+
+  // segmented controls + conditional reveals
+  document.querySelectorAll('.seg').forEach(seg=>{
+    seg.querySelectorAll('.opt').forEach(opt=>opt.addEventListener('click',()=>{
+      seg.querySelectorAll('.opt').forEach(o=>o.classList.remove('on'));
+      opt.classList.add('on');
+      const kind=seg.dataset.seg;
+      if(kind==='mode'){toggleCond('team',opt.textContent.trim()==='Team');}
+      if(kind==='examvis'){toggleCond('examcode',opt.textContent.trim()==='Access code');}
+      if(kind==='score'){
+        const m=opt.textContent.trim().toLowerCase();
+        document.querySelectorAll('[data-score]').forEach(c=>c.hidden=c.dataset.score!==m);
+      }
+    }));
+  });
+  function toggleCond(name,on){const c=document.querySelector('[data-cond-for="'+name+'"]'); if(c)c.hidden=!on;}
+
+  // switches
+  document.querySelectorAll('.sw').forEach(sw=>sw.addEventListener('click',()=>{
+    sw.classList.toggle('on');
+    const n=sw.dataset.sw;
+    if(n==='freeze')toggleCond('freeze',sw.classList.contains('on'));
+    if(n==='tptime')toggleCond('tptime',sw.classList.contains('on'));
+  }));
+
+  // competition wizard stepper
+  let step=0; const maxStep=4;
+  const panels=()=>document.querySelectorAll('[data-panel]');
+  const steps=()=>document.querySelectorAll('#cpStepper .step');
+  function render(){
+    panels().forEach(p=>p.hidden=+p.dataset.panel!==step);
+    steps().forEach(s=>{const i=+s.dataset.s;s.classList.toggle('active',i===step);s.classList.toggle('done',i<step);});
+    document.getElementById('cpBack').disabled=step===0;
+    const next=document.getElementById('cpNext');
+    next.innerHTML = step===maxStep ? 'Publish — open registration' : 'Continue<svg><use href="#i-arrow"/></svg>';
+    next.classList.toggle('primary',true);
+  }
+  document.getElementById('cpNext')?.addEventListener('click',()=>{ if(step<maxStep){step++;render();} });
+  document.getElementById('cpBack')?.addEventListener('click',()=>{ if(step>0){step--;render();} });
+  document.querySelectorAll('#cpStepper .step').forEach(s=>s.addEventListener('click',()=>{step=+s.dataset.s;render();}));
+  render();
+</script>
+</body>
+</html>

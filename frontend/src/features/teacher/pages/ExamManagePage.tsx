@@ -5,13 +5,14 @@ import { useParams } from "next/navigation";
 import {
   Settings, BookOpen, Eye, BarChart3, AlertTriangle, Download,
   StopCircle, Loader2, Plus, GripVertical, ChevronDown, ChevronUp,
-  X, Users, CheckCircle2,
+  X, Users, CheckCircle2, ChevronLeft, FileText, Send,
 } from "lucide-react";
 import { DndContext, closestCenter, KeyboardSensor, PointerSensor, useSensor, useSensors, DragEndEvent } from "@dnd-kit/core";
 import { SortableContext, sortableKeyboardCoordinates, useSortable, verticalListSortingStrategy, arrayMove } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 import { toast } from "@/components/ui/PSPToast";
-import ManageLayout from "@/components/manage/ManageLayout";
+import Navbar from "@/components/Navbar";
+import Link from "next/link";
 import {
   getAssessmentDetail, closeLiveExam, patchAssessmentSettings,
   addProblemToAssessment, removeAssessmentProblem, reorderAssessmentProblems,
@@ -108,55 +109,112 @@ export default function ExamManagePage() {
   const isActive = status === "ACTIVE";
   const isEnded  = status === "ENDED";
 
-  const sidebarActions = isActive ? (
-    <button
-      className="psp-btn psp-btn-secondary"
-      style={{ width: "100%", justifyContent: "center", gap: 6, color: "#f87171", borderColor: "rgba(239,68,68,0.4)" }}
-      onClick={handleClose} disabled={closing}
-    >
-      {closing ? <Loader2 size={13} style={{ animation: "spin 1s linear infinite" }} /> : <StopCircle size={13} />}
-      Close Exam
-    </button>
-  ) : undefined;
-
   const headings: Record<TabKey, string> = {
     settings: "Settings", problems: "Problems", monitor: "Live Monitor",
     results: "Results", violations: "Violations", export: "Export",
   };
 
+  const statusPill = (s: string) => {
+    const map: Record<string, { bg: string; color: string; label: string }> = {
+      ACTIVE: { bg: "var(--danger-soft)", color: "var(--danger)", label: "Live" },
+      UPCOMING: { bg: "var(--warn-soft)", color: "var(--warn)", label: "Upcoming" },
+      ENDED: { bg: "var(--bg-2)", color: "var(--ink-3)", label: "Ended" },
+    };
+    const st = map[s] ?? { bg: "var(--accent-soft)", color: "var(--brand)", label: s };
+    return <span style={{ fontSize: 11, fontWeight: 700, padding: "3px 10px", borderRadius: 9, background: st.bg, color: st.color, letterSpacing: "0.04em", flexShrink: 0 }}>{st.label}</span>;
+  };
+
   if (loading) {
     return (
-      <ManageLayout title="Loading…" status="UPCOMING" navGroups={NAV_GROUPS}
-        activeTab={tab} onTabChange={navigate} backHref="/teacher/exams" backLabel="Back to Exams" loading>
+      <>
+        <Navbar />
         <div style={{ display: "flex", justifyContent: "center", padding: 80 }}>
-          <Loader2 size={24} style={{ animation: "spin 1s linear infinite", color: "#6366f1" }} />
+          <Loader2 size={24} style={{ animation: "spin 1s linear infinite", color: "var(--brand)" }} />
         </div>
-      </ManageLayout>
+      </>
     );
   }
 
   return (
-    <ManageLayout
-      title={detail?.title ?? "Exam"}
-      status={status}
-      navGroups={NAV_GROUPS}
-      activeTab={tab}
-      onTabChange={navigate}
-      backHref="/teacher/exams"
-      backLabel="Back to Exams"
-      actions={sidebarActions}
-    >
-      <div style={{ marginBottom: 20 }}>
-        <div style={{ fontSize: 18, fontWeight: 800, color: "var(--text-primary)" }}>{headings[tab]}</div>
+    <>
+      <Navbar />
+      <div className="psp-breadcrumb">
+        <Link href="/teacher/exams">Exams &amp; TPs</Link> ›{" "}
+        <span style={{ color: "var(--ink)" }}>{detail?.title ?? "Exam"}</span>
       </div>
+      <div className="psp-main">
+        {/* Header card */}
+        <div style={{ background: "var(--surface)", border: "1px solid var(--line)", borderRadius: "var(--r)", padding: "22px 24px", marginBottom: 16 }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 16 }}>
+            <div style={{ width: 40, height: 40, borderRadius: 9, background: "var(--warn-soft)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+              <FileText size={20} color="var(--warn)" />
+            </div>
+            <div style={{ flex: 1, minWidth: 0 }}>
+              <div style={{ fontSize: 21, fontWeight: 700, color: "var(--ink)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{detail?.title ?? "Exam"}</div>
+            </div>
+            {statusPill(status)}
+            <Link href="/teacher/exams" style={{ fontSize: 12, color: "var(--ink-3)", textDecoration: "none", display: "inline-flex", alignItems: "center", gap: 4, flexShrink: 0, marginLeft: 4 }}>
+              <ChevronLeft size={13} /> Back
+            </Link>
+          </div>
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 1, background: "var(--line)", borderRadius: 8, overflow: "hidden" }}>
+            {[
+              { label: "Start",     value: detail?.scheduledStartTime ? new Date(detail.scheduledStartTime).toLocaleDateString("en-GB", { day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit" } as Intl.DateTimeFormatOptions) : "—" },
+              { label: "Duration",  value: detail?.durationMinutes ? `${detail.durationMinutes} min` : "—" },
+              { label: "Problems",  value: String(detail?.problemsCount ?? "—") },
+              { label: "Submitted", value: String(detail?.submissionCount ?? 0) },
+            ].map((s, i) => (
+              <div key={i} style={{ background: "var(--bg-2)", padding: "12px 16px" }}>
+                <div style={{ fontSize: 11, color: "var(--ink-3)", textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: 4 }}>{s.label}</div>
+                <div style={{ fontSize: 16, fontWeight: 600, color: "var(--ink)" }}>{s.value}</div>
+              </div>
+            ))}
+          </div>
+        </div>
 
-      {tab === "settings"   && <ExamSettingsTab detail={detail} onSaved={loadDetail} />}
-      {tab === "problems"   && <ExamProblemsTab detail={detail} assessmentId={id} onChanged={loadDetail} />}
-      {tab === "monitor"    && <ExamMonitorTab assessmentId={id} detail={detail} />}
-      {tab === "results"    && <ExamResultsTab assessmentId={id} detail={detail} />}
-      {tab === "violations" && <ExamViolationsTab assessmentId={id} />}
-      {tab === "export"     && <ExamExportTab assessmentId={id} title={detail?.title ?? "exam"} />}
-    </ManageLayout>
+        {/* Two-column layout */}
+        <div style={{ display: "grid", gridTemplateColumns: "1fr 280px", gap: 20, alignItems: "start" }}>
+          {/* Left: horizontal tab bar + content */}
+          <div>
+            <div style={{ display: "flex", gap: 2, marginBottom: 16, background: "var(--surface)", border: "1px solid var(--line)", borderRadius: "var(--r)", padding: 4, overflowX: "auto" }}>
+              {(Object.entries(headings) as [TabKey, string][]).map(([key, label]) => (
+                <button key={key} onClick={() => navigate(key)} style={{ padding: "7px 14px", borderRadius: 7, border: "none", cursor: "pointer", fontSize: 13, fontWeight: tab === key ? 600 : 400, background: tab === key ? "var(--brand)" : "transparent", color: tab === key ? "#fff" : "var(--ink-3)", transition: "all 0.1s", whiteSpace: "nowrap" }}>
+                  {label}
+                </button>
+              ))}
+            </div>
+            {tab === "settings"   && <ExamSettingsTab detail={detail} onSaved={loadDetail} />}
+            {tab === "problems"   && <ExamProblemsTab detail={detail} assessmentId={id} onChanged={loadDetail} />}
+            {tab === "monitor"    && <ExamMonitorTab assessmentId={id} detail={detail} />}
+            {tab === "results"    && <ExamResultsTab assessmentId={id} detail={detail} />}
+            {tab === "violations" && <ExamViolationsTab assessmentId={id} />}
+            {tab === "export"     && <ExamExportTab assessmentId={id} title={detail?.title ?? "exam"} />}
+          </div>
+
+          {/* Right sidebar */}
+          <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
+            <div style={{ background: "var(--surface)", border: "1px solid var(--line)", borderRadius: "var(--r)", padding: "16px 18px" }}>
+              <div style={{ fontSize: 11, fontWeight: 700, color: "var(--ink-3)", textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: 12 }}>Info</div>
+              {detail?.description && <p style={{ fontSize: 13, color: "var(--ink-2)", margin: "0 0 10px", lineHeight: 1.5 }}>{detail.description}</p>}
+              {detail?.moduleName && <div style={{ fontSize: 12, color: "var(--ink-3)", marginBottom: 6 }}>Module: <span style={{ color: "var(--ink-2)" }}>{detail.moduleName}</span></div>}
+              {detail?.visibilityMode && <div style={{ fontSize: 12, color: "var(--ink-3)" }}>Visibility: <span style={{ color: "var(--ink-2)" }}>{(detail.visibilityMode as string).replace(/_/g, " ")}</span></div>}
+              {!detail?.description && !detail?.moduleName && <div style={{ fontSize: 13, color: "var(--ink-3)", fontStyle: "italic" }}>No details added.</div>}
+            </div>
+            <div style={{ background: "var(--surface)", border: "1px solid var(--line)", borderRadius: "var(--r)", padding: "16px 18px" }}>
+              <div style={{ fontSize: 11, fontWeight: 700, color: "var(--ink-3)", textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: 12 }}>Quick Actions</div>
+              {isActive ? (
+                <button className="psp-btn psp-btn-secondary" style={{ width: "100%", justifyContent: "center", color: "var(--danger)", borderColor: "var(--line)" }} onClick={handleClose} disabled={closing}>
+                  {closing ? <Loader2 size={13} style={{ animation: "spin 1s linear infinite" }} /> : <StopCircle size={13} />}
+                  Close Exam
+                </button>
+              ) : (
+                <div style={{ fontSize: 13, color: "var(--ink-3)", fontStyle: "italic" }}>No actions available.</div>
+              )}
+            </div>
+          </div>
+        </div>
+      </div>
+    </>
   );
 }
 
@@ -282,9 +340,10 @@ function ExamProblemsTab({ detail, assessmentId, onChanged }: { detail: any; ass
       </div>
 
       {problems.length === 0 ? (
-        <div className="psp-empty" style={{ padding: 48 }}>
-          <BookOpen size={32} color="var(--border)" style={{ margin: "0 auto 12px" }} />
-          <div className="psp-empty-title">No problems yet</div>
+        <div className="psp-empty" style={{ padding: "32px 24px" }}>
+          <BookOpen size={28} color="var(--ink-3)" style={{ margin: "0 auto 12px" }} />
+          <div className="psp-empty-title">No problems attached</div>
+          <div>Attach problems to this exam. Students won&apos;t be able to start until at least one is added.</div>
         </div>
       ) : (
         <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
@@ -401,7 +460,11 @@ function ExamMonitorTab({ assessmentId, detail }: { assessmentId: string; detail
       {loading ? (
         <div style={{ display: "flex", justifyContent: "center", padding: 40 }}><Loader2 size={20} style={{ animation: "spin 1s linear infinite" }} /></div>
       ) : submissions.length === 0 ? (
-        <div className="psp-empty"><div>No submissions recorded yet. Students join when they open the exam.</div></div>
+        <div className="psp-empty" style={{ padding: "32px 24px" }}>
+          <Send size={28} color="var(--ink-3)" style={{ margin: "0 auto 12px" }} />
+          <div className="psp-empty-title">No submissions yet</div>
+          <div>They&apos;ll appear here in real time once the event is active.</div>
+        </div>
       ) : (
         <table className="psp-table">
           <thead>

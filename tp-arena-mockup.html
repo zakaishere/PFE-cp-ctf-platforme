@@ -1,0 +1,203 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>iCODE — TP / Lab (mockup)</title>
+<style>
+  :root{
+    --bg:#0e1320;--panel:#141b2b;--line:#243047;--line-soft:#1c2638;
+    --txt:#e7ecf6;--muted:#8a96ad;--muted-2:#5f6c84;
+    --violet:#9b8cfa;--violet-dim:#3b3170;
+    --emerald:#34d399;--amber:#f6b73c;--rose:#fb7185;
+    --mono: ui-monospace,"SF Mono","JetBrains Mono",Menlo,Consolas,monospace;
+    --ui: system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
+  }
+  *{box-sizing:border-box}html,body{margin:0;height:100%}
+  body{background:radial-gradient(1100px 600px at 85% -10%,#1a1a3500,#0e1320 60%),var(--bg);
+    color:var(--txt);font-family:var(--ui);font-size:14px;-webkit-font-smoothing:antialiased}
+
+  .bar{display:flex;align-items:center;gap:18px;height:58px;padding:0 18px;border-bottom:1px solid var(--line);
+    background:linear-gradient(180deg,#141c2d,#111726)}
+  .brand{display:flex;align-items:center;gap:10px;min-width:230px}
+  .brand .mark{width:30px;height:30px;border-radius:8px;background:linear-gradient(135deg,var(--violet),#c4b9ff);
+    display:grid;place-items:center;font-weight:800;color:#15103a;font-family:var(--mono);font-size:13px}
+  .brand .title{font-weight:650}.brand .sub{font-size:11px;color:var(--muted)}
+  .chip{font-family:var(--mono);font-size:10.5px;letter-spacing:.8px;text-transform:uppercase;color:var(--violet);
+    border:1px solid var(--violet-dim);border-radius:999px;padding:3px 9px;background:#1a1638}
+  .spacer{flex:1}
+  .due{display:flex;align-items:center;gap:9px;background:#101725;border:1px solid var(--line);padding:7px 12px;border-radius:11px}
+  .due .lbl{font-size:10px;text-transform:uppercase;letter-spacing:1px;color:var(--muted)}
+  .due .val{font-size:13.5px;font-weight:600}
+  .score{display:flex;align-items:center;gap:10px;background:#16123040;border:1px solid var(--violet-dim);padding:7px 13px;border-radius:11px}
+  .score .lbl{font-size:10px;text-transform:uppercase;letter-spacing:1px;color:var(--muted)}
+  .score .val{font-family:var(--mono);font-size:16px;font-weight:600;color:var(--violet)}
+  .cand{display:flex;align-items:center;gap:9px;background:#131b2b;border:1px solid var(--line);border-radius:11px;padding:5px 11px 5px 6px}
+  .cand .av{width:26px;height:26px;border-radius:7px;background:linear-gradient(135deg,#9b8cfa,#34d399);display:grid;place-items:center;font-weight:800;color:#10131f;font-size:12px}
+  .cand .nm{font-size:12.5px;font-weight:600}.cand .id{font-family:var(--mono);font-size:11px;color:var(--muted)}
+
+  .work{display:grid;grid-template-columns:262px minmax(0,1fr) 420px;height:calc(100vh - 58px)}
+  .col{overflow:auto;min-height:0}
+  .col::-webkit-scrollbar{width:9px}.col::-webkit-scrollbar-thumb{background:#222d44;border-radius:9px;border:2px solid var(--bg)}
+
+  .rail{border-right:1px solid var(--line);background:#0f1623}
+  .rail-head{padding:14px 16px 10px;border-bottom:1px solid var(--line-soft);position:sticky;top:0;background:#0f1623;display:flex;justify-content:space-between;align-items:center}
+  .rail-head .h{font-size:11px;letter-spacing:1.4px;text-transform:uppercase;color:var(--muted)}
+  .rail-head .ov{font-family:var(--mono);font-size:11px;color:var(--violet)}
+  .tlist{padding:8px}
+  .trow{display:flex;flex-direction:column;gap:7px;padding:12px 12px;border-radius:11px;cursor:pointer;border:1px solid transparent}
+  .trow:hover{background:#141d2e}.trow.sel{background:#181438;border-color:#3b3170}
+  .trow .top{display:flex;align-items:center;gap:10px}
+  .tbadge{width:24px;height:24px;border-radius:7px;display:grid;place-items:center;font-family:var(--mono);font-weight:700;font-size:12px;background:#1b2740;color:var(--txt);flex:none}
+  .trow.done .tbadge{background:#0f2a22;color:var(--emerald)}
+  .tname{font-size:13px;font-weight:550;flex:1}
+  .tstat{font-family:var(--mono);font-size:11px}
+  .tstat.ok{color:var(--emerald)}.tstat.part{color:var(--amber)}.tstat.none{color:var(--muted-2)}
+  .tbar{height:5px;border-radius:5px;background:#1b2434;overflow:hidden}
+  .tbar i{display:block;height:100%;background:linear-gradient(90deg,var(--violet),#c4b9ff)}
+  .tbar.ok i{background:linear-gradient(90deg,var(--emerald),#7ff0c2)}
+
+  .center{padding:24px 30px 60px}
+  .crumbs{font-family:var(--mono);font-size:11px;color:var(--muted);margin-bottom:14px}
+  .ptitle h1{font-size:21px;margin:0;font-weight:650}
+  .meta{display:flex;gap:8px;flex-wrap:wrap;margin:14px 0 22px}
+  .tag{font-family:var(--mono);font-size:11px;color:var(--muted);border:1px solid var(--line);border-radius:7px;padding:5px 9px;background:#121a29}
+  .tag b{color:var(--txt)}
+  .body p{line-height:1.7;color:#cdd6e6;margin:0 0 14px}
+  .body h3{font-size:13px;letter-spacing:.4px;text-transform:uppercase;color:var(--muted);margin:24px 0 10px}
+  .io{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+  .io .box{border:1px solid var(--line);border-radius:11px;overflow:hidden;background:#0f1726}
+  .io .cap{font-size:11px;letter-spacing:.6px;text-transform:uppercase;color:var(--muted);padding:8px 12px;border-bottom:1px solid var(--line-soft);background:#121b2b}
+  .io pre{margin:0;padding:12px;font-family:var(--mono);font-size:12.5px;color:#d6deec;line-height:1.6}
+
+  .submit{border-left:1px solid var(--line);background:#0f1522;display:flex;flex-direction:column}
+  .sub-head{display:flex;align-items:center;gap:10px;padding:13px 16px;border-bottom:1px solid var(--line);position:sticky;top:0;background:#0f1522}
+  .sub-head .lbl{font-size:11px;text-transform:uppercase;letter-spacing:1px;color:var(--muted)}
+  .lang{display:flex;align-items:center;gap:8px;background:#131c2c;border:1px solid var(--line);border-radius:9px;padding:7px 11px;font-family:var(--mono);font-size:12.5px;cursor:pointer}
+  .lang .caret{color:var(--muted)}
+  .editor{flex:1;min-height:210px;display:flex;background:#0c121e;overflow:auto}
+  .gutter{padding:14px 0;text-align:right;color:#3c4a63;font-family:var(--mono);font-size:12.5px;line-height:1.65;width:42px;flex:none;border-right:1px solid var(--line-soft)}
+  .gutter span{display:block;padding:0 10px}
+  .code{padding:14px 16px;font-family:var(--mono);font-size:12.5px;line-height:1.65;white-space:pre;color:#cdd7e8}
+  .k{color:#7aa2ff}.t{color:#5ec8c0}.s{color:#e0a572}.c{color:#5b6781}.n{color:#d99}
+
+  .runner{border-top:1px solid var(--line);padding:14px 16px 16px;background:#0e1422}
+  .rtop{display:flex;align-items:center;justify-content:space-between;margin-bottom:11px}
+  .rtop .h{font-size:11px;letter-spacing:1px;text-transform:uppercase;color:var(--muted)}
+  .rtop .att{font-family:var(--mono);font-size:11px;color:var(--muted)}
+  .cases{display:flex;gap:7px;flex-wrap:wrap;margin-bottom:13px}
+  .case{width:34px;height:34px;border-radius:9px;display:grid;place-items:center;font-family:var(--mono);font-size:12px;border:1px solid var(--line);background:#121a29;color:var(--muted-2)}
+  .case.pass{background:#0f2a22;border-color:#1d5343;color:var(--emerald)}
+  .case.fail{background:#2a1620;border-color:#5a2230;color:var(--rose)}
+  .verdict{display:flex;align-items:center;justify-content:space-between;border:1px solid var(--line);border-radius:11px;padding:11px 14px;background:#101827;margin-bottom:12px}
+  .verdict .vb{font-family:var(--mono);font-weight:700;font-size:13px;color:var(--amber);border:1px solid #5a4516;background:#241c0c;border-radius:8px;padding:5px 10px}
+  .verdict .best{font-family:var(--mono);font-size:12px;color:var(--muted)}
+  .verdict .best b{color:var(--violet)}
+  .runbtns{display:flex;gap:10px}
+  .btn{flex:1;border:none;border-radius:10px;padding:12px;font-weight:650;font-size:13px;cursor:pointer;font-family:var(--ui)}
+  .btn.ghost{background:transparent;border:1px solid var(--line);color:var(--txt)}.btn.ghost:hover{background:#162032}
+  .btn.go{background:linear-gradient(180deg,#a99bff,#8b7cf6);color:#120f33}.btn.go:hover{filter:brightness(1.06)}
+
+  @media (max-width:1100px){.work{grid-template-columns:210px 1fr}.submit{display:none}}
+</style>
+</head>
+<body>
+
+  <div class="bar">
+    <div class="brand">
+      <div class="mark">iC</div>
+      <div><div class="title">Lab 5 — Hashing &amp; Maps</div><div class="sub">iCODE · Prof. Bennani</div></div>
+    </div>
+    <span class="chip">TP · Open practice</span>
+    <div class="spacer"></div>
+    <div class="due"><div><div class="lbl">Due</div><div class="val">in 3 days · Sat 18:00</div></div></div>
+    <div class="score"><div><div class="lbl">Your score</div><div class="val">39 / 75</div></div></div>
+    <div class="cand"><div class="av">YA</div><div><div class="nm">Yassine A.</div><div class="id">#STU-2241</div></div></div>
+  </div>
+
+  <div class="work">
+
+    <!-- TASK LIST with per-task best score -->
+    <div class="col rail">
+      <div class="rail-head"><span class="h">Tasks</span><span class="ov">39 / 75</span></div>
+      <div class="tlist">
+        <div class="trow done">
+          <div class="top"><div class="tbadge">1</div><span class="tname">Two-Sum Index</span><span class="tstat ok">25/25</span></div>
+          <div class="tbar ok"><i style="width:100%"></i></div>
+        </div>
+        <div class="trow sel">
+          <div class="top"><div class="tbadge">2</div><span class="tname">Group Anagrams</span><span class="tstat part">14/25</span></div>
+          <div class="tbar"><i style="width:56%"></i></div>
+        </div>
+        <div class="trow">
+          <div class="top"><div class="tbadge">3</div><span class="tname">LRU Cache</span><span class="tstat none">0/25</span></div>
+          <div class="tbar"><i style="width:0%"></i></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- TASK -->
+    <div class="col center">
+      <div class="crumbs">Lab 5 / Task 2 — Group Anagrams</div>
+      <div class="ptitle"><h1>Group Anagrams</h1></div>
+      <div class="meta">
+        <span class="tag">Worth: <b>25 pts</b></span>
+        <span class="tag">Time limit: <b>1500 ms</b></span>
+        <span class="tag">Partial credit: <b>on</b></span>
+      </div>
+      <div class="body">
+        <p>Given a list of <i>n</i> lowercase words, group together all words that are anagrams of one another. Output each group on its own line, words separated by spaces; groups sorted by their first appearance.</p>
+        <h3>Input</h3>
+        <p>Line 1: n (1 ≤ n ≤ 10⁵). Next n lines: one word each (total length ≤ 10⁶).</p>
+        <h3>Example</h3>
+        <div class="io">
+          <div class="box"><div class="cap">Input</div><pre>5
+eat
+tea
+tan
+ate
+nat</pre></div>
+          <div class="box"><div class="cap">Output</div><pre>eat tea ate
+tan nat</pre></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- SUBMIT: live results ARE shown (TP pushes your score), but no rank/scoreboard -->
+    <div class="col submit">
+      <div class="sub-head">
+        <span class="lbl">Solution</span><div class="spacer"></div>
+        <div class="lang">Java 17 <span class="caret">▾</span></div>
+      </div>
+      <div class="editor">
+        <div class="gutter"><span>1</span><span>2</span><span>3</span><span>4</span><span>5</span><span>6</span><span>7</span></div>
+        <div class="code"><span class="k">import</span> java.util.*;
+<span class="k">public class</span> <span class="t">Main</span> {
+  <span class="k">public static void</span> main(String[] a){
+    <span class="c">// sort letters as group key</span>
+    var sc = <span class="k">new</span> Scanner(System.in);
+    <span class="t">int</span> n = sc.nextInt();
+    Map&lt;String,List&lt;String&gt;&gt; g = <span class="k">new</span> LinkedHashMap&lt;&gt;();</div>
+      </div>
+
+      <div class="runner">
+        <div class="rtop"><span class="h">Last run</span><span class="att">Attempt 2 of 5</span></div>
+        <div class="cases">
+          <div class="case pass">1</div><div class="case pass">2</div><div class="case pass">3</div>
+          <div class="case pass">4</div><div class="case pass">5</div><div class="case pass">6</div>
+          <div class="case fail">7</div><div class="case fail">8</div>
+        </div>
+        <div class="verdict">
+          <div><span class="vb">PARTIAL</span></div>
+          <span class="best">6 / 8 cases · best score <b>14 / 25</b></span>
+        </div>
+        <div class="runbtns">
+          <button class="btn ghost">Run samples</button>
+          <button class="btn go">Submit</button>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</body>
+</html>

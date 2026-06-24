@@ -4,13 +4,14 @@ import { useCallback, useEffect, useState } from "react";
 import { useParams } from "next/navigation";
 import {
   Settings, BookOpen, BarChart3, Download, PlayCircle, StopCircle, Loader2, Plus, X,
-  GripVertical, ChevronDown, ChevronUp,
+  GripVertical, ChevronDown, ChevronUp, ChevronLeft, FlaskConical,
 } from "lucide-react";
 import { DndContext, closestCenter, KeyboardSensor, PointerSensor, useSensor, useSensors, DragEndEvent } from "@dnd-kit/core";
 import { SortableContext, sortableKeyboardCoordinates, useSortable, verticalListSortingStrategy, arrayMove } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 import { toast } from "@/components/ui/PSPToast";
-import ManageLayout from "@/components/manage/ManageLayout";
+import Navbar from "@/components/Navbar";
+import Link from "next/link";
 import {
   getAssessmentDetail, patchAssessmentSettings,
   addProblemToAssessment, removeAssessmentProblem, reorderAssessmentProblems,
@@ -78,36 +79,97 @@ export default function TPManagePage() {
     settings: "Settings", problems: "Problems", progress: "Student Progress", export: "Export",
   };
 
+  const statusPill = (s: string) => {
+    const map: Record<string, { bg: string; color: string; label: string }> = {
+      OPEN:   { bg: "var(--success-soft)", color: "var(--success)", label: "Open" },
+      CLOSED: { bg: "var(--bg-2)", color: "var(--ink-3)", label: "Closed" },
+    };
+    const st = map[s] ?? { bg: "var(--accent-soft)", color: "var(--brand)", label: s };
+    return <span style={{ fontSize: 11, fontWeight: 700, padding: "3px 10px", borderRadius: 9, background: st.bg, color: st.color, letterSpacing: "0.04em", flexShrink: 0 }}>{st.label}</span>;
+  };
+
   if (loading) {
     return (
-      <ManageLayout title="Loading…" status="OPEN" navGroups={NAV_GROUPS} activeTab={tab}
-        onTabChange={navigate} backHref="/teacher/exams" backLabel="Back to Exams" loading>
+      <>
+        <Navbar />
         <div style={{ display: "flex", justifyContent: "center", padding: 80 }}>
-          <Loader2 size={24} style={{ animation: "spin 1s linear infinite", color: "#6366f1" }} />
+          <Loader2 size={24} style={{ animation: "spin 1s linear infinite", color: "var(--brand)" }} />
         </div>
-      </ManageLayout>
+      </>
     );
   }
 
-  return (
-    <ManageLayout
-      title={detail?.title ?? "TP"}
-      status={status}
-      navGroups={NAV_GROUPS}
-      activeTab={tab}
-      onTabChange={navigate}
-      backHref="/teacher/exams"
-      backLabel="Back to Exams & TPs"
-    >
-      <div style={{ marginBottom: 20 }}>
-        <div style={{ fontSize: 18, fontWeight: 800, color: "var(--text-primary)" }}>{headings[tab]}</div>
-      </div>
+  const deadline = detail?.deadline ? new Date(detail.deadline).toLocaleString("en-GB", { day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit" } as Intl.DateTimeFormatOptions) : "—";
 
-      {tab === "settings" && <TPSettingsTab detail={detail} onSaved={loadDetail} />}
-      {tab === "problems" && <TPProblemsTab detail={detail} assessmentId={id} onChanged={loadDetail} />}
-      {tab === "progress" && <TPProgressTab assessmentId={id} />}
-      {tab === "export"   && <TPExportTab assessmentId={id} />}
-    </ManageLayout>
+  return (
+    <>
+      <Navbar />
+      <div className="psp-breadcrumb">
+        <Link href="/teacher/exams">Exams &amp; TPs</Link> ›{" "}
+        <span style={{ color: "var(--ink)" }}>{detail?.title ?? "TP"}</span>
+      </div>
+      <div className="psp-main">
+        {/* Header card */}
+        <div style={{ background: "var(--surface)", border: "1px solid var(--line)", borderRadius: "var(--r)", padding: "22px 24px", marginBottom: 16 }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 16 }}>
+            <div style={{ width: 40, height: 40, borderRadius: 9, background: "var(--violet-soft)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+              <FlaskConical size={20} color="var(--violet)" />
+            </div>
+            <div style={{ flex: 1, minWidth: 0 }}>
+              <div style={{ fontSize: 21, fontWeight: 700, color: "var(--ink)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{detail?.title ?? "TP"}</div>
+            </div>
+            {statusPill(status)}
+            <Link href="/teacher/exams" style={{ fontSize: 12, color: "var(--ink-3)", textDecoration: "none", display: "inline-flex", alignItems: "center", gap: 4, flexShrink: 0, marginLeft: 4 }}>
+              <ChevronLeft size={13} /> Back
+            </Link>
+          </div>
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 1, background: "var(--line)", borderRadius: 8, overflow: "hidden" }}>
+            {[
+              { label: "Deadline",     value: deadline },
+              { label: "Max Attempts", value: String(detail?.maxAttemptsAllowed ?? detail?.maxAttempts ?? "—") },
+              { label: "Problems",     value: String(detail?.problemsCount ?? "—") },
+              { label: "Submitted",    value: String(detail?.submissionCount ?? 0) },
+            ].map((s, i) => (
+              <div key={i} style={{ background: "var(--bg-2)", padding: "12px 16px" }}>
+                <div style={{ fontSize: 11, color: "var(--ink-3)", textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: 4 }}>{s.label}</div>
+                <div style={{ fontSize: 16, fontWeight: 600, color: "var(--ink)" }}>{s.value}</div>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {/* Two-column layout */}
+        <div style={{ display: "grid", gridTemplateColumns: "1fr 280px", gap: 20, alignItems: "start" }}>
+          <div>
+            <div style={{ display: "flex", gap: 2, marginBottom: 16, background: "var(--surface)", border: "1px solid var(--line)", borderRadius: "var(--r)", padding: 4, overflowX: "auto" }}>
+              {(Object.entries(headings) as [TabKey, string][]).map(([key, label]) => (
+                <button key={key} onClick={() => navigate(key)} style={{ padding: "7px 14px", borderRadius: 7, border: "none", cursor: "pointer", fontSize: 13, fontWeight: tab === key ? 600 : 400, background: tab === key ? "var(--brand)" : "transparent", color: tab === key ? "#fff" : "var(--ink-3)", transition: "all 0.1s", whiteSpace: "nowrap" }}>
+                  {label}
+                </button>
+              ))}
+            </div>
+            {tab === "settings" && <TPSettingsTab detail={detail} onSaved={loadDetail} />}
+            {tab === "problems" && <TPProblemsTab detail={detail} assessmentId={id} onChanged={loadDetail} />}
+            {tab === "progress" && <TPProgressTab assessmentId={id} />}
+            {tab === "export"   && <TPExportTab assessmentId={id} />}
+          </div>
+
+          <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
+            <div style={{ background: "var(--surface)", border: "1px solid var(--line)", borderRadius: "var(--r)", padding: "16px 18px" }}>
+              <div style={{ fontSize: 11, fontWeight: 700, color: "var(--ink-3)", textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: 12 }}>Info</div>
+              {detail?.description && <p style={{ fontSize: 13, color: "var(--ink-2)", margin: "0 0 10px", lineHeight: 1.5 }}>{detail.description}</p>}
+              {detail?.moduleName && <div style={{ fontSize: 12, color: "var(--ink-3)", marginBottom: 6 }}>Module: <span style={{ color: "var(--ink-2)" }}>{detail.moduleName}</span></div>}
+              {detail?.visibilityMode && <div style={{ fontSize: 12, color: "var(--ink-3)" }}>Visibility: <span style={{ color: "var(--ink-2)" }}>{(detail.visibilityMode as string).replace(/_/g, " ")}</span></div>}
+              {!detail?.description && !detail?.moduleName && <div style={{ fontSize: 13, color: "var(--ink-3)", fontStyle: "italic" }}>No details added.</div>}
+            </div>
+            <div style={{ background: "var(--surface)", border: "1px solid var(--line)", borderRadius: "var(--r)", padding: "16px 18px" }}>
+              <div style={{ fontSize: 11, fontWeight: 700, color: "var(--ink-3)", textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: 12 }}>Quick Actions</div>
+              <div style={{ fontSize: 13, color: "var(--ink-3)", fontStyle: "italic" }}>No actions available.</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </>
   );
 }
 
@@ -205,6 +267,14 @@ function TPProblemsTab({ detail, assessmentId, onChanged }: { detail: any; asses
         }}><Plus size={12} /> Add Problem</button>
       </div>
 
+      {problems.length === 0 && (
+        <div className="psp-empty" style={{ padding: "32px 24px" }}>
+          <FlaskConical size={28} color="var(--ink-3)" style={{ margin: "0 auto 12px" }} />
+          <div className="psp-empty-title">No tasks added</div>
+          <div>Add tasks from your problem bank. Each task can have its own point value and attempt limit.</div>
+        </div>
+      )}
+
       <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
         <SortableContext items={problems.map(p => p.problemId)} strategy={verticalListSortingStrategy}>
           {problems.map((p: any, i: number) => {
@@ -285,7 +355,7 @@ function TPProgressTab({ assessmentId }: { assessmentId: string }) {
         <thead><tr><th>Student</th><th>Score</th><th>Status</th><th>Last Active</th></tr></thead>
         <tbody>
           {submissions.length === 0 ? (
-            <tr><td colSpan={4} style={{ textAlign: "center", color: "var(--text-muted)", padding: 32 }}>No submissions yet.</td></tr>
+            <tr><td colSpan={4} style={{ textAlign: "center", color: "var(--text-muted)", padding: 32 }}>No submissions yet. They&apos;ll appear here in real time once the event is active.</td></tr>
           ) : submissions.map((s: any, i: number) => (
             <tr key={i}>
               <td>{s.studentFirstName ?? s.firstName ?? "—"} {s.studentLastName ?? s.lastName ?? ""}</td>

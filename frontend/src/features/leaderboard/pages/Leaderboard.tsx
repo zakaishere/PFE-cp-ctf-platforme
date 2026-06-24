@@ -115,7 +115,7 @@ export default function LeaderboardPage() {
                     );
                   })}
                   {filtered.length === 0 && (
-                    <tr><td colSpan={4} style={{ textAlign: "center", color: "var(--text-muted)", padding: 24, fontSize: 13 }}>No students found.</td></tr>
+                    <tr><td colSpan={4} style={{ textAlign: "center", color: "var(--text-muted)", padding: 24, fontSize: 13 }}>No rankings yet — solve practice problems to earn points and appear here.</td></tr>
                   )}
                 </tbody>
               </table>
