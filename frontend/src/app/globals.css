@@ -36,38 +36,40 @@
   --card-shadow:         0 1px 3px rgba(9,30,66,0.08);
 }
 
-/* ── DARK THEME — "Algora" deep-navy palette (single accent) ──────────
+/* ── DARK THEME — "Algora" lifted-charcoal palette ────────────────────
    This is the platform's one and only theme. Every legacy PSP token below
    is remapped onto an Algora token so the whole app recolors from here.
    ──────────────────────────────────────────────────────────────────── */
 [data-theme="dark"] {
 
   /* ── Algora source tokens (the single source of truth) ─────────── */
-  --bg:          #080b14;   /* app background, deepest */
-  --bg-2:        #0b0f1b;   /* inputs, recessed areas, table headers */
-  --surface:     #111726;   /* cards, panels */
-  --surface-2:   #161d2f;   /* hover, raised rows */
-  --line:        #1e2638;   /* hairline borders */
-  --line-strong: #2a3346;   /* stronger borders, button outlines */
+  --bg:          #0f1117;   /* app background */
+  --bg-2:        #141720;   /* inputs, recessed areas, table headers */
+  --surface:     #1c2132;   /* cards, panels — clearly elevated */
+  --surface-2:   #222840;   /* hover states, active rows */
+  --surface-3:   #28304a;   /* pressed / selected */
+  --line:        #252d3d;   /* borders — felt, not seen */
+  --line-strong: #3a4568;   /* stronger borders, button outlines */
 
-  --ink:   #e9edf7;         /* primary text */
-  --ink-2: #98a1ba;         /* secondary text */
-  --ink-3: #5e6880;         /* tertiary / muted */
+  --ink:   #edf0f7;         /* primary text */
+  --ink-2: #9aa3be;         /* secondary text */
+  --ink-3: #616b88;         /* tertiary / muted */
 
-  --brand:       #5d7cf7;   /* single brand accent — used platform-wide */
-  --brand-2:     #7a93ff;   /* accent hover / active text on dark */
-  --accent-soft: rgba(93,124,247,.13);
-  --accent-ring: rgba(93,124,247,.32);
+  --brand:       #5b7cf6;   /* single brand accent — used platform-wide */
+  --brand-2:     #7b96ff;   /* accent hover / active text on dark */
+  --accent-soft: rgba(91,124,246,.15);
+  --accent-ring: rgba(91,124,246,.35);
 
-  --success:#2dbd80;  --success-soft:rgba(45,189,128,.13);  --success-ink:#4cd49b;
-  --warn:   #e0a23c;  --warn-soft:rgba(224,162,60,.13);     --warn-ink:#eeb866;
-  --danger: #f0697e;  --danger-soft:rgba(240,105,126,.13);  --danger-ink:#ff8497;
+  --success:#2ec27e;  --success-soft:rgba(46,194,126,.15);  --success-ink:#4cd49b;
+  --warn:   #e8a030;  --warn-soft:rgba(232,160,48,.15);     --warn-ink:#eeb866;
+  --danger: #f0637a;  --danger-soft:rgba(240,99,122,.15);   --danger-ink:#ff8497;
+  --violet: #9b8cf6;  --violet-soft:rgba(155,140,246,.15);
 
   /* difficulty text */
   --easy:#4cd49b; --medium:#eeb866; --hard:#ff8497;
 
-  --r: 13px; --r-sm: 9px;
-  --radius: 13px;   /* shadcn primitives consume this */
+  --r: 12px; --r-sm: 8px;
+  --radius: 12px;   /* shadcn primitives consume this */
   --nav-h: 62px;    /* top navbar height (layout offsets reference this) */
 
   /* ── Legacy PSP aliases → Algora (do not hardcode hex in components) ── */
@@ -104,12 +106,18 @@
   --badge-bg:       var(--surface-2);
   --badge-text:     var(--ink-2);
 
-  --card-shadow:    0 1px 2px rgba(0,0,0,.45), 0 0 0 1px var(--line);
+  --card-shadow:    0 1px 3px rgba(0,0,0,.2), 0 0 0 1px rgba(255,255,255,.04);
 
   --navbar-bg:           var(--bg-2);
   --navbar-border:       var(--line);
   --navbar-text:         var(--ink-2);
   --navbar-text-active:  var(--ink);
+}
+
+/* ── Global micro-transitions on interactive elements (120ms = native feel) ── */
+.btn, .nav-item, .nlink, .na, .prow, .erow, .ftab, .tab, .act,
+.psp-btn, .psp-ftab, .psp-tab, .psp-nav-item {
+  transition: background 120ms ease, color 120ms ease, box-shadow 120ms ease, border-color 120ms ease;
 }
 
 @keyframes spin { to { transform: rotate(360deg); } }
@@ -241,7 +249,7 @@
     border-radius: 4px;
     display: flex; align-items: center; justify-content: center;
     color: var(--brand);
-    font-weight: 900;
+    font-weight: 700;
     font-size: 13px;
   }
 
@@ -369,7 +377,7 @@
   .psp-card {
     background: var(--bg-primary);
     border: 1px solid var(--border);
-    border-radius: 3px;
+    border-radius: var(--r);
     margin-bottom: 14px;
     overflow: hidden;
   }
@@ -409,7 +417,7 @@
   .ic-blue   { background: var(--accent-soft); color: var(--brand); }
   .ic-green  { background: var(--green-light); color: var(--success); }
   .ic-orange { background: var(--orange-light); color: var(--warn); }
-  .ic-purple { background: #eae6ff; color: #6554c0; }
+  .ic-purple { background: var(--violet-soft); color: var(--violet); }
   .ic-red    { background: var(--red-light); color: var(--danger); }
   .psp-stat-val { font-size: 24px; font-weight: 700; color: var(--text-primary); line-height: 1; }
   .psp-stat-lbl { font-size: 11px; color: var(--text-muted); margin-top: 3px; }
@@ -938,7 +946,7 @@ button, a, input, select, textarea, [role="button"] {
   align-items: center;
   gap: 4px;
 }
-.field-error::before { content: '!'; font-weight: 800; font-size: 11px; }
+.field-error::before { content: '!'; font-weight: 700; font-size: 11px; }
 
 .form-field { margin-bottom: 18px; }
 
@@ -1160,7 +1168,7 @@ button, a, input, select, textarea, [role="button"] {
 .card {
   background: var(--bg-primary);
   border: 1px solid var(--border);
-  border-radius: 8px;
+  border-radius: var(--r);
   overflow: hidden;
   transition: box-shadow 0.2s ease, border-color 0.2s ease, transform 0.15s ease;
 }
@@ -1195,7 +1203,7 @@ button, a, input, select, textarea, [role="button"] {
   display: flex; align-items: center; justify-content: center;
   font-size: 20px; flex-shrink: 0;
 }
-.stat-value { font-size: 26px; font-weight: 800; color: var(--text-primary); line-height: 1; letter-spacing: -0.5px; }
+.stat-value { font-size: 26px; font-weight: 700; color: var(--text-primary); line-height: 1; letter-spacing: -0.5px; }
 .stat-label { font-size: 12px; color: #7a869a; margin-top: 3px; font-weight: 500; }
 
 .section-title {
@@ -1345,7 +1353,7 @@ button, a, input, select, textarea, [role="button"] {
    TYPOGRAPHY
    ================================================================ */
 
-.h1 { font-size: 24px; font-weight: 800; color: var(--text-primary); letter-spacing: -0.5px; line-height: 1.25; }
+.h1 { font-size: 24px; font-weight: 700; color: var(--text-primary); letter-spacing: -0.5px; line-height: 1.25; }
 .h2 { font-size: 20px; font-weight: 700; color: var(--text-primary); letter-spacing: -0.3px; line-height: 1.3; }
 .h3 { font-size: 16px; font-weight: 700; color: var(--text-primary); letter-spacing: -0.2px; }
 .h4 { font-size: 14px; font-weight: 700; color: var(--text-primary); }
@@ -1358,7 +1366,7 @@ button, a, input, select, textarea, [role="button"] {
 
 .page-header { margin-bottom: 24px; }
 .page-header-title {
-  font-size: 22px; font-weight: 800; color: var(--text-primary);
+  font-size: 22px; font-weight: 700; color: var(--text-primary);
   letter-spacing: -0.4px;
   display: flex; align-items: center; gap: 10px;
 }
@@ -1928,6 +1936,7 @@ body,
   background: var(--bg-secondary);
   border-color: var(--border);
   color: var(--text-primary);
+  box-shadow: var(--card-shadow);
 }
 [data-theme="dark"] .psp-card-header {
   background: var(--bg-secondary);
