@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useRef } from "react";
 import Link from "next/link";
-import { AlertTriangle, CheckCircle2, Clock, FileText, Lock, Play, ShieldAlert } from "lucide-react";
+import { AlertTriangle, CheckCircle2, Clock, FileText, Lock, Play, ShieldAlert, List, Code2 } from "lucide-react";
 import { Client as StompClient } from "@stomp/stompjs";
 import SockJS from "sockjs-client";
 import {
@@ -47,6 +47,9 @@ export default function Arena({ examId, mode = "exam" }: ArenaProps) {
 
   // UI state
   const [activeProblemIdx, setActiveProblemIdx] = useState(0);
+  // Mobile single-column arena: which pane is visible via the bottom tab bar.
+  const isMobile = useIsMobile(768);
+  const [mobilePanel, setMobilePanel] = useState<"problems" | "statement" | "submit">("statement");
   const [lang, setLang]     = useState("java");
   const [code, setCode]     = useState(DEFAULT_CODE.java);
   const [judging, setJudging]   = useState(false);
@@ -196,12 +199,35 @@ export default function Arena({ examId, mode = "exam" }: ArenaProps) {
 
   const problems = examRoom?.problems ?? [];
 
-  // ── Workspace tab content (3-pane) ────────────────────────────────────────
+  // ── Responsive pane styles (desktop unchanged; mobile = single column) ─────
+  const leftPaneStyle: React.CSSProperties = {
+    background: "var(--line)", display: "flex", flexDirection: "column",
+    ...(isMobile
+      ? { width: "100%", flex: 1, minHeight: 0, ...(mobilePanel !== "problems" ? { display: "none" } : {}) }
+      : { width: 240, flexShrink: 0, borderRight: "1px solid var(--ink-2)" }),
+  };
+  const centerPaneStyle: React.CSSProperties = {
+    background: "var(--bg-primary)", display: "flex", flexDirection: "column", overflowY: "auto",
+    ...(isMobile
+      ? { width: "100%", flex: 1, minHeight: 0, ...(mobilePanel !== "statement" ? { display: "none" } : {}) }
+      : { flex: 1, borderRight: "1px solid var(--border)" }),
+  };
+  const rightPaneStyle: React.CSSProperties = {
+    display: "flex",
+    ...(isMobile
+      ? { width: "100%", flex: 1, minHeight: 0, ...(mobilePanel !== "submit" ? { display: "none" } : {}) }
+      : { width: 480, flexShrink: 0 }),
+  };
+
+  // ── Workspace tab content (3-pane on desktop, tabbed single-column on mobile) ─
   const workspaceContent = (
-    <div style={{ display: "flex", flex: 1, overflow: "hidden" }}>
+    <div style={{
+      display: "flex", flex: 1, overflow: "hidden",
+      ...(isMobile ? { flexDirection: "column", paddingBottom: 52 } : {}),
+    }}>
 
       {/* Left: problem list + progress */}
-      <div style={{ width: 240, background: "var(--line)", display: "flex", flexDirection: "column", flexShrink: 0, borderRight: "1px solid var(--ink-2)" }}>
+      <div style={leftPaneStyle}>
           <div style={{ padding: 12, flex: 1, overflowY: "auto" }}>
             <div style={{ fontSize: 10, fontWeight: 700, color: "rgba(255,255,255,0.4)", textTransform: "uppercase", letterSpacing: 0.5, marginBottom: 8 }}>
               Problems
@@ -214,7 +240,7 @@ export default function Arena({ examId, mode = "exam" }: ArenaProps) {
               problems.map((p, i) => (
                 <div
                   key={p.problemId}
-                  onClick={() => setActiveProblemIdx(i)}
+                  onClick={() => { setActiveProblemIdx(i); if (isMobile) setMobilePanel("statement"); }}
                   style={{
                     display: "flex", alignItems: "center", gap: 8,
                     padding: "8px 10px", borderRadius: 3, cursor: "pointer", marginBottom: 3,
@@ -253,7 +279,7 @@ export default function Arena({ examId, mode = "exam" }: ArenaProps) {
         </div>
 
         {/* Center: problem statement */}
-        <div style={{ flex: 1, background: "var(--bg-primary)", display: "flex", flexDirection: "column", overflowY: "auto", borderRight: "1px solid var(--border)" }}>
+        <div style={centerPaneStyle}>
           {!activeProblem ? (
             <div style={{ padding: 48, textAlign: "center", color: "var(--text-muted)", fontSize: 13 }}>
               Select a problem from the left panel.
@@ -334,7 +360,7 @@ export default function Arena({ examId, mode = "exam" }: ArenaProps) {
         </div>
 
         {/* Right: editor + results */}
-        <div style={{ width: 480, flexShrink: 0, display: "flex" }}>
+        <div style={rightPaneStyle}>
           <CodeWorkspace
             language={lang}
             onLanguageChange={handleLangChange}
@@ -351,6 +377,40 @@ export default function Arena({ examId, mode = "exam" }: ArenaProps) {
             isEndedMessage={isEnded ? "This exam has ended." : undefined}
           />
         </div>
+
+        {/* Mobile bottom tab bar — Problems / Statement / Submit */}
+        {isMobile && (
+          <div style={{
+            position: "fixed", bottom: 0, left: 0, right: 0, height: 52, zIndex: 60,
+            background: "var(--surface)", borderTop: "1px solid var(--line)", display: "flex",
+          }}>
+            {([
+              { key: "problems" as const,  label: "Problems",  icon: <List size={18} /> },
+              { key: "statement" as const, label: "Statement", icon: <FileText size={18} /> },
+              { key: "submit" as const,    label: "Submit",    icon: <Code2 size={18} /> },
+            ]).map(t => {
+              const on = mobilePanel === t.key;
+              return (
+                <button
+                  key={t.key}
+                  type="button"
+                  onClick={() => setMobilePanel(t.key)}
+                  style={{
+                    flex: 1, display: "flex", flexDirection: "column", alignItems: "center",
+                    justifyContent: "center", gap: 3, background: "none", cursor: "pointer",
+                    color: on ? "var(--brand-2)" : "var(--ink-3)",
+                    borderTop: on ? "2px solid var(--brand)" : "2px solid transparent",
+                    borderLeft: "none", borderRight: "none", borderBottom: "none",
+                    font: "600 11px var(--font)",
+                  }}
+                >
+                  {t.icon}
+                  {t.label}
+                </button>
+              );
+            })}
+          </div>
+        )}
     </div>
   );
 
@@ -468,6 +528,19 @@ function BriefingScreen({
       </div>
     </div>
   );
+}
+
+// Tracks whether the viewport is at/below a mobile breakpoint (client-only).
+function useIsMobile(breakpoint = 768) {
+  const [isMobile, setIsMobile] = useState(false);
+  useEffect(() => {
+    const mq = window.matchMedia(`(max-width: ${breakpoint}px)`);
+    const update = () => setIsMobile(mq.matches);
+    update();
+    mq.addEventListener("change", update);
+    return () => mq.removeEventListener("change", update);
+  }, [breakpoint]);
+  return isMobile;
 }
 
 function Stat({ label, value }: { label: string; value: string }) {

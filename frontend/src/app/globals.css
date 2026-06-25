@@ -2175,3 +2175,11 @@ body,
   .anav-search, .anav-me .anav-meta { display: none; }
   .anav-link span { display: none; }
 }
+
+/* ── Mobile responsiveness for browse/list/manage pages (Prompt 5e) ── */
+@media (max-width: 768px) {
+  /* Stat tiles: 2×2 grid instead of 4-in-a-row */
+  .psp-stats { grid-template-columns: 1fr 1fr; }
+  /* Tighter page gutters on small screens */
+  .psp-main { padding: 16px; }
+}
