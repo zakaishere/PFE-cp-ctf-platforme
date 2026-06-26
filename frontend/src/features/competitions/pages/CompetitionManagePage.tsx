@@ -54,6 +54,42 @@ function fmtDate(iso?: string | null) {
   return new Date(iso).toLocaleString("en-GB", { day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit" });
 }
 
+// ── Join-request row helpers ──────────────────────────────────────────────────
+
+function reqInitials(first?: string, last?: string) {
+  const a = (first ?? "").trim().charAt(0);
+  const b = (last ?? "").trim().charAt(0);
+  return (a + b).toUpperCase() || "?";
+}
+
+const REQ_AVATAR_GRADIENTS = [
+  "linear-gradient(135deg,#5b7cf6,#7b96ff)",
+  "linear-gradient(135deg,#2ec27e,#4cd49b)",
+  "linear-gradient(135deg,#e8a030,#eeb866)",
+  "linear-gradient(135deg,#9b8cf6,#b8acff)",
+  "linear-gradient(135deg,#f0637a,#ff8fa3)",
+  "linear-gradient(135deg,#00b8d9,#36b37e)",
+];
+
+function reqAvatarGradient(seed: string) {
+  let h = 0;
+  for (let i = 0; i < seed.length; i++) h = (h * 31 + seed.charCodeAt(i)) >>> 0;
+  return REQ_AVATAR_GRADIENTS[h % REQ_AVATAR_GRADIENTS.length];
+}
+
+function reqTimeAgo(iso: string) {
+  const then = new Date(iso).getTime();
+  if (Number.isNaN(then)) return "";
+  const secs = Math.max(0, Math.floor((Date.now() - then) / 1000));
+  if (secs < 60) return "just now";
+  const mins = Math.floor(secs / 60);
+  if (mins < 60) return `${mins}m ago`;
+  const hrs = Math.floor(mins / 60);
+  if (hrs < 24) return `${hrs}h ago`;
+  const days = Math.floor(hrs / 24);
+  return `${days}d ago`;
+}
+
 // ── Main page ─────────────────────────────────────────────────────────────────
 
 export default function CompetitionManagePage() {
@@ -593,16 +629,16 @@ function TeamsTab({ competitionId }: { competitionId: string }) {
       .finally(() => setLoading(false));
   }, [competitionId]);
 
-  async function approve(id: string) {
-    setActing(id);
-    try { await approveJoinRequest(id); setRequests(r => r.filter(x => x.id !== id)); toast.success("Approved"); }
+  async function approve(requestId: string) {
+    setActing(requestId);
+    try { await approveJoinRequest(requestId); setRequests(r => r.filter(x => x.requestId !== requestId)); toast.success("Approved"); }
     catch { /* toast */ }
     finally { setActing(null); }
   }
 
-  async function reject(id: string) {
-    setActing(id);
-    try { await rejectJoinRequest(id); setRequests(r => r.filter(x => x.id !== id)); toast.success("Rejected"); }
+  async function reject(requestId: string) {
+    setActing(requestId);
+    try { await rejectJoinRequest(requestId); setRequests(r => r.filter(x => x.requestId !== requestId)); toast.success("Rejected"); }
     catch { /* toast */ }
     finally { setActing(null); }
   }
@@ -619,24 +655,86 @@ function TeamsTab({ competitionId }: { competitionId: string }) {
         </div>
       ) : (
         <>
-          <div style={{ display: "flex", justifyContent: "flex-end", marginBottom: 12 }}>
+          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 12 }}>
+            <span style={{ fontSize: 13, color: "var(--ink-2)" }}>
+              {requests.length} pending request{requests.length !== 1 ? "s" : ""}
+            </span>
             <button className="psp-btn psp-btn-primary psp-btn-sm"
-              onClick={() => bulkApproveCompetitionRequests(competitionId, requests.map(r => r.id)).then(() => setRequests([]))}>
+              onClick={() => bulkApproveCompetitionRequests(competitionId, requests.map(r => r.requestId)).then(() => setRequests([]))}>
               Approve All
             </button>
           </div>
-          {requests.map((r: any) => (
-            <div key={r.id} style={{ display: "flex", alignItems: "center", gap: 10, padding: "10px 0", borderBottom: "1px solid var(--border)" }}>
-              <div style={{ flex: 1 }}>
-                <div style={{ fontWeight: 600, fontSize: 13 }}>{r.studentFirstName} {r.studentLastName}</div>
-                <div style={{ fontSize: 11, color: "var(--text-muted)" }}>{r.studentEmail}</div>
-              </div>
-              <button className="psp-btn psp-btn-secondary psp-btn-sm" style={{ background: "var(--green-light)", color: "#006644" }}
-                disabled={acting === r.id} onClick={() => approve(r.id)}>Approve</button>
-              <button className="psp-btn psp-btn-secondary psp-btn-sm" style={{ background: "var(--red-light)", color: "#de350b" }}
-                disabled={acting === r.id} onClick={() => reject(r.id)}>Reject</button>
-            </div>
-          ))}
+          <div style={{ background: "var(--surface)", border: "1px solid var(--line)", borderRadius: "var(--r)", overflow: "hidden" }}>
+            {requests.map((r: any, i: number) => {
+              const fullName = [r.firstName, r.lastName].filter(Boolean).join(" ") || "Unknown student";
+              const filiereLine = [r.divisionName, r.semesterName].filter(Boolean).join(" · ");
+              const busy = acting === r.requestId;
+              return (
+                <div
+                  key={r.requestId}
+                  style={{
+                    display: "flex", alignItems: "center", gap: 14, padding: "14px 18px",
+                    borderBottom: i < requests.length - 1 ? "1px solid var(--line)" : "none",
+                    transition: "background 0.1s",
+                  }}
+                  onMouseOver={e => (e.currentTarget.style.background = "var(--surface-2)")}
+                  onMouseOut={e => (e.currentTarget.style.background = "")}
+                >
+                  {/* Avatar */}
+                  <div style={{
+                    width: 32, height: 32, borderRadius: 8, flexShrink: 0,
+                    display: "flex", alignItems: "center", justifyContent: "center",
+                    fontSize: 12, fontWeight: 700, color: "#fff",
+                    background: reqAvatarGradient(fullName),
+                  }}>
+                    {reqInitials(r.firstName, r.lastName)}
+                  </div>
+
+                  {/* Name + apogée */}
+                  <div style={{ minWidth: 0, flex: "0 0 auto", width: 200 }}>
+                    <div style={{ fontWeight: 650, fontSize: 13.5, color: "var(--ink)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                      {fullName}
+                    </div>
+                    {r.apogeeNumber && (
+                      <div style={{ fontSize: 11.5, color: "var(--ink-3)", fontFamily: "ui-monospace, monospace" }}>
+                        {r.apogeeNumber}
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Filière · semester */}
+                  <div style={{ flex: 1, minWidth: 0, fontSize: 13, color: "var(--ink-2)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                    {filiereLine || <span style={{ color: "var(--ink-3)" }}>—</span>}
+                  </div>
+
+                  {/* Requested time */}
+                  <div style={{ flexShrink: 0, fontSize: 12, color: "var(--ink-3)", fontFamily: "ui-monospace, monospace" }}>
+                    {r.requestedAt ? `Requested ${reqTimeAgo(r.requestedAt)}` : ""}
+                  </div>
+
+                  {/* Actions */}
+                  <div style={{ display: "flex", gap: 6, flexShrink: 0 }}>
+                    <button
+                      className="psp-btn psp-btn-sm"
+                      disabled={busy}
+                      onClick={() => approve(r.requestId)}
+                      style={{ background: "var(--success-soft)", color: "#5dd4a0", border: "1px solid var(--success)" }}
+                    >
+                      Approve
+                    </button>
+                    <button
+                      className="psp-btn psp-btn-sm"
+                      disabled={busy}
+                      onClick={() => reject(r.requestId)}
+                      style={{ background: "var(--danger-soft)", color: "#ff8fa3", border: "1px solid var(--danger)" }}
+                    >
+                      Reject
+                    </button>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
         </>
       )}
     </div>
