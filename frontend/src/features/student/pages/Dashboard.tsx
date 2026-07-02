@@ -7,9 +7,9 @@ import Navbar from "@/components/Navbar";
 import { ClipboardList, CheckCircle2, Trophy, Megaphone, Settings, Medal, Code2 } from "lucide-react";
 import { getStudentProfile, getLeaderboard, type StudentProfile, type LeaderboardEntry } from "@/lib/api";
 import StudentOnboardingModal from "@/features/student/components/StudentOnboardingModal";
+import { Avatar, EmptyState } from "@/components/ui/algora";
 
 const MEDAL_COLORS = ["#f5c451", "#c7cdd9", "#cd8a52"]; // gold, silver, bronze
-const AVATAR_COLORS = ["var(--brand)","#6554c0","#00875a","var(--warn)","#ff5630","#36b37e","#00b8d9","#de350b"];
 
 function greetingForHour(h: number) {
   if (h < 12) return "Good morning";
@@ -142,7 +142,6 @@ export default function StudentDashboard() {
             {topStudents.slice(0, 5).map((u, i) => {
               const isMe = u.studentId === profile?.userId;
               const ini = `${u.firstName.charAt(0)}${u.lastName.charAt(0)}`.toUpperCase();
-              const color = AVATAR_COLORS[i % AVATAR_COLORS.length];
               return (
                 <div key={u.studentId} style={{
                   display: "flex", alignItems: "center", padding: "9px 14px",
@@ -153,20 +152,19 @@ export default function StudentDashboard() {
                   <div style={{ width: 22, display: "flex", justifyContent: "center", alignItems: "center", fontWeight: 700, fontSize: 12 }}>
                     {i < 3 ? <Medal size={15} color={MEDAL_COLORS[i]} /> : <span style={{ color: "var(--text-muted)" }}>{i + 1}</span>}
                   </div>
-                  <div style={{ width: 26, height: 26, borderRadius: "50%", background: color, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 10, fontWeight: 700, color: "white", flexShrink: 0 }}>
-                    {ini}
-                  </div>
+                  <Avatar initials={ini} size="sm" />
                   <div style={{ flex: 1, fontSize: 12, fontWeight: 500 }}>{isMe ? <strong>You</strong> : `${u.firstName} ${u.lastName}`}</div>
                   <div style={{ fontWeight: 700, color: "var(--brand)", fontSize: 12 }}>{u.totalPoints}</div>
                 </div>
               );
             })}
             {topStudents.length === 0 && (
-              <div className="psp-empty" style={{ padding: "32px 16px" }}>
-                <Medal size={28} color="var(--ink-3)" style={{ margin: "0 auto 12px" }} />
-                <div className="psp-empty-title">No rankings yet</div>
-                <div>Solve practice problems to earn points and appear here.</div>
-              </div>
+              <EmptyState
+                icon={Medal}
+                title="No rankings yet"
+                description="Solve practice problems to earn points and appear here."
+                style={{ padding: "32px 16px" }}
+              />
             )}
           </div>
         </div>
