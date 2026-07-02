@@ -1,7 +1,6 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
-import { APP_NAME } from "@/lib/brand";
 import Link from "next/link";
 import Navbar from "@/components/Navbar";
 import { Trophy, Clock, Users, Plus, ChevronRight, Zap, Lock, Calendar } from "lucide-react";
@@ -262,12 +261,6 @@ export default function CTFCompetitionsPage() {
   return (
     <>
       <Navbar />
-      <div className="psp-breadcrumb">
-        <Link href="/dashboard">{APP_NAME}</Link> ›{" "}
-        <Link href="/ctf">CTF</Link> ›{" "}
-        <span style={{ color: "var(--text-primary)" }}>Competitions</span>
-      </div>
-
       <div className="psp-main" style={{ maxWidth: 1000 }}>
         {/* Page header */}
         <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", marginBottom: 28 }}>

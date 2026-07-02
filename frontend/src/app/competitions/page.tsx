@@ -1,8 +1,6 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { APP_NAME } from "@/lib/brand";
-import Link from "next/link";
 import { useRouter } from "next/navigation";
 import Navbar from "@/components/Navbar";
 import Spinner from "@/components/ui/Spinner";
@@ -373,9 +371,6 @@ export default function CompetitionsPage() {
   return (
     <>
       <Navbar />
-      <div className="psp-breadcrumb">
-        <Link href="/dashboard">{APP_NAME}</Link> › <span style={{ color: "var(--text-primary)" }}>Competitions</span>
-      </div>
       <div className="psp-main">
 
         {/* Header */}

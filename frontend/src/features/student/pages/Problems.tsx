@@ -2,7 +2,6 @@
 
 import { useState, useRef } from "react";
 import { Check, Search } from "lucide-react";
-import { APP_NAME } from "@/lib/brand";
 import Link from "next/link";
 import Navbar from "@/components/Navbar";
 import { useInfiniteProblems } from "@/hooks/useInfiniteProblems";
@@ -48,9 +47,6 @@ export default function ProblemsPage() {
   return (
     <>
       <Navbar />
-      <div className="psp-breadcrumb">
-        <Link href="/dashboard">{APP_NAME}</Link> › <span style={{ color: "var(--ink)" }}>Problems</span>
-      </div>
       <div className="psp-main">
         <div style={{ marginBottom: 20 }}>
           <div style={{ display: "flex", alignItems: "baseline", gap: 10 }}>

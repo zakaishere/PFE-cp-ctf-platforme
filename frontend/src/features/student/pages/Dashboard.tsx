@@ -63,10 +63,6 @@ export default function StudentDashboard() {
     <>
       <StudentOnboardingModal open={showOnboarding} onComplete={handleOnboardingComplete} />
       <Navbar />
-      <div className="psp-breadcrumb">
-        <Link href="/dashboard">{APP_NAME}</Link> ›{" "}
-        <span style={{ color: "var(--text-primary)" }}>Dashboard</span>
-      </div>
       <div className="psp-main">
 
         {/* Greeting */}

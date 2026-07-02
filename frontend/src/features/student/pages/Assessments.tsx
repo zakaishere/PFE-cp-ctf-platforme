@@ -1,7 +1,6 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
-import { APP_NAME } from "@/lib/brand";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import Navbar from "@/components/Navbar";
@@ -188,10 +187,6 @@ export default function ExamsTpsPage() {
   return (
     <>
       <Navbar />
-      <div className="psp-breadcrumb">
-        <Link href="/dashboard">{APP_NAME}</Link> ›{" "}
-        <span style={{ color: "var(--text-primary)" }}>Exams &amp; TPs</span>
-      </div>
 
       <div className="psp-main">
         {/* Page header */}

@@ -1,8 +1,6 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { APP_NAME } from "@/lib/brand";
-import Link from "next/link";
 import Navbar from "@/components/Navbar";
 import { Trophy, Loader2, Medal } from "lucide-react";
 import { getLeaderboard, type LeaderboardEntry } from "@/lib/api";
@@ -39,9 +37,6 @@ export default function LeaderboardPage() {
   return (
     <>
       <Navbar />
-      <div className="psp-breadcrumb">
-        <Link href="/dashboard">{APP_NAME}</Link> › <span style={{ color: "var(--text-primary)" }}>Leaderboard</span>
-      </div>
       <div className="psp-main">
         <div style={{ marginBottom: 20 }}>
           <div style={{ fontSize: 20, fontWeight: 600, color: "var(--text-primary)", display: "flex", alignItems: "center", gap: 8 }}>

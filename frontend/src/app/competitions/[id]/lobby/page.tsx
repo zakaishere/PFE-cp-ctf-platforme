@@ -614,12 +614,6 @@ export default function CompetitionLobbyPage() {
         }
       `}</style>
 
-      {/* ── BREADCRUMB ── */}
-      <div className="breadcrumb">
-        <Link href="/competitions">Competitions</Link>
-        {" › "}
-        <span style={{ color: "var(--text-primary)" }}>{lobby.title}</span>
-      </div>
 
       {/* ══════════════════════════════════════════════════════════════════ */}
       {/* HERO BANNER                                                       */}

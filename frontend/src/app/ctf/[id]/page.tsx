@@ -1,7 +1,6 @@
 "use client";
 
 import { useState, useEffect, useRef } from "react";
-import { APP_NAME } from "@/lib/brand";
 import Link from "next/link";
 import { useParams } from "next/navigation";
 import Navbar from "@/components/Navbar";
@@ -278,12 +277,6 @@ export default function CTFDetailPage() {
   return (
     <>
       <Navbar />
-      <div className="psp-breadcrumb">
-        <Link href="/dashboard">{APP_NAME}</Link> ›{" "}
-        <Link href="/ctf">CTF</Link> ›{" "}
-        <span style={{ color: "var(--text-primary)" }}>{challenge.title}</span>
-      </div>
-
       <div className="psp-main">
         <div style={{
           display: "grid",
