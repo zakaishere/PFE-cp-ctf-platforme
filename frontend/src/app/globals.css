@@ -1505,8 +1505,20 @@ body,
 
 /* ── Cards ───────────────────────────────────────────────────────── */
 [data-theme="dark"] .card {
-  background: var(--bg-secondary);
-  border-color: var(--border);
+  background: var(--surface);
+  border-color: var(--line-2);
+  border-radius: var(--r);
+  box-shadow: var(--card-shadow);
+  transition: border-color 140ms ease, box-shadow 140ms ease;
+}
+[data-theme="dark"] .card:hover,
+[data-theme="dark"] .card-hover:hover {
+  border-color: var(--accent-ring);
+  box-shadow: var(--card-hover);
+  transform: none;
+}
+[data-theme="dark"] .card.no-hover:hover {
+  border-color: var(--line-2);
   box-shadow: var(--card-shadow);
 }
 [data-theme="dark"] .card-header {
@@ -1564,6 +1576,25 @@ body,
 }
 
 /* ── Buttons ─────────────────────────────────────────────────────── */
+/* Section 2 — primary button = green on near-black, glowing on hover.
+   140ms interactions across shared interactive elements.               */
+[data-theme="dark"] .btn, [data-theme="dark"] .psp-btn,
+[data-theme="dark"] .nav-link, [data-theme="dark"] .anav-link,
+[data-theme="dark"] .prob-item, [data-theme="dark"] .ftab,
+[data-theme="dark"] .tab, [data-theme="dark"] .psp-ftab {
+  transition: background 140ms ease, color 140ms ease, border-color 140ms ease, box-shadow 140ms ease;
+}
+[data-theme="dark"] .btn-primary,
+[data-theme="dark"] .psp-btn-primary {
+  background: var(--accent); color: #0a0a0a; font-weight: 700;
+  border-radius: 10px; box-shadow: none;
+}
+[data-theme="dark"] .btn-primary:hover:not(:disabled),
+[data-theme="dark"] .psp-btn-primary:hover:not(:disabled) {
+  background: var(--accent-2); color: #0a0a0a;
+  box-shadow: 0 0 14px rgba(0,200,150,.3);
+  transform: none;
+}
 [data-theme="dark"] .psp-btn-secondary {
   background: var(--bg-elevated);
   color: var(--text-secondary);
