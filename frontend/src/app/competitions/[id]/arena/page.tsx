@@ -23,7 +23,8 @@ import { useAntiCheat, type ViolationEvent } from "@/hooks/useAntiCheat";
 import { useAuth } from "@/features/auth/contexts/AuthContext";
 import ArenaShell, { type ArenaTab } from "@/features/arena/components/ArenaShell";
 import CPScoreboard from "@/features/competitions/components/CPScoreboard";
-import { Code, Play, ShieldAlert, Trophy, Medal, Flag, AlertTriangle, X, HardDrive, Clock, Check, Lock } from "lucide-react";
+import { Code, Play, ShieldAlert, Trophy, Medal, Flag, AlertTriangle, X, HardDrive, Clock, Check, Lock, Send } from "lucide-react";
+import { APP_MARK } from "@/lib/brand";
 
 const MEDAL_COLORS = ["#f5c451", "#c7cdd9", "#cd8a52"]; // gold, silver, bronze
 
@@ -51,17 +52,6 @@ const DEFAULT_CODE: Record<string, string> = {
   javascript: `const lines = require('fs').readFileSync('/dev/stdin','utf8').trim().split('\\n');\n// TODO: solve here`,
 };
 
-const DIFF_STYLE: Record<string, { bg: string; text: string }> = {
-  EASY:   { bg: "var(--success-soft)", text: "var(--success-ink)" },
-  MEDIUM: { bg: "var(--warn-soft)", text: "var(--warn-ink)" },
-  HARD:   { bg: "var(--danger-soft)", text: "var(--danger-ink)" },
-};
-
-const SOLVE_DOT: Record<string, string> = {
-  SOLVED:    "var(--success)",
-  ATTEMPTED: "var(--warn)",
-  UNSOLVED:  "#5e6c84",
-};
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -110,7 +100,7 @@ function verdictColor(v: string): string {
   if (v === "AC")  return "var(--success)";
   if (v === "WA")  return "var(--danger-ink)";
   if (v === "TLE" || v === "MLE") return "var(--warn-ink)";
-  return "#5e6c84";
+  return "var(--ink-3)";
 }
 
 function verdictLabel(v: string): string {
@@ -287,7 +277,7 @@ export default function ArenaPage() {
     getCompetitionArena(competitionId)
       .then(data => {
         setArena(data);
-        if (data.remainingSeconds <= 0) {
+        if (data.endTime && new Date(data.endTime).getTime() <= Date.now()) {
           setCompetitionEnded(true);
           setShowEndOverlay(true);
         }
@@ -302,7 +292,8 @@ export default function ArenaPage() {
 
   // Detect timer hitting 0
   useEffect(() => {
-    if (countdown.raw <= 0 && arena && !competitionEnded) {
+    if (!arena || competitionEnded) return;
+    if (arena.endTime && new Date(arena.endTime).getTime() <= Date.now()) {
       setCompetitionEnded(true);
       setTimeout(() => setShowEndOverlay(true), 3000);
     }
@@ -316,7 +307,7 @@ export default function ArenaPage() {
       try {
         const fresh = await getCompetitionArena(competitionId);
         setArena(prev => prev ? { ...prev, problems: fresh.problems } : fresh);
-        if (fresh.remainingSeconds <= 0 && !competitionEnded) {
+        if (fresh.endTime && new Date(fresh.endTime).getTime() <= Date.now() && !competitionEnded) {
           setCompetitionEnded(true);
           clearInterval(id);
           setTimeout(() => setShowEndOverlay(true), 3000);
@@ -381,19 +372,30 @@ export default function ArenaPage() {
 
     refreshActivity();
 
-    const sub = client.subscribe(
-      `/topic/competition/${competitionId}/team/${arena.myTeam.teamId}`,
-      msg => {
-        const event = JSON.parse(msg.body);
-        if (event.type === "TEAMMATE_SUBMITTED") {
-          getCompetitionArena(competitionId)
-            .then(fresh => setArena(prev => prev ? { ...prev, problems: fresh.problems } : fresh))
-            .catch(() => {});
-          refreshActivity();
+    let sub: { unsubscribe: () => void } | null = null;
+
+    const doSubscribe = () => {
+      sub = client.subscribe(
+        `/topic/competition/${competitionId}/team/${arena.myTeam!.teamId}`,
+        msg => {
+          const event = JSON.parse(msg.body);
+          if (event.type === "TEAMMATE_SUBMITTED") {
+            getCompetitionArena(competitionId)
+              .then(fresh => setArena(prev => prev ? { ...prev, problems: fresh.problems } : fresh))
+              .catch(() => {});
+            refreshActivity();
+          }
         }
-      }
-    );
-    return () => { sub.unsubscribe(); };
+      );
+    };
+
+    if (client.connected) {
+      doSubscribe();
+    } else {
+      client.onConnect = doSubscribe;
+    }
+
+    return () => { sub?.unsubscribe(); };
   }, [arena?.myTeam?.teamId, competitionId]);
 
   // ─── Keyboard shortcuts ──────────────────────────────────────────────────────
@@ -674,21 +676,21 @@ function BriefingScreen({
   return (
     <div style={{
       height: "100vh", display: "flex", alignItems: "center", justifyContent: "center",
-      background: "#0d1426", color: "#f8fafc",
-      fontFamily: "-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif",
+      background: "var(--bg)", color: "var(--ink)",
     }}>
       <div style={{
-        background: "var(--bg-2)", borderRadius: 10, padding: "32px 36px",
-        maxWidth: 520, width: "100%", boxShadow: "0 16px 40px rgba(0,0,0,0.4)",
+        background: "var(--surface)", border: "1px solid var(--line-2)", borderRadius: 12, padding: "32px 36px",
+        maxWidth: 520, width: "100%", boxShadow: "0 16px 40px rgba(0,0,0,0.5)",
       }}>
         <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 18 }}>
           <div style={{
-            width: 36, height: 36, background: "var(--brand)", borderRadius: 6,
-            display: "flex", alignItems: "center", justifyContent: "center",
-            color: "white", fontWeight: 900, fontSize: 16,
-          }}>P</div>
+            width: 36, height: 36, background: "var(--accent)", borderRadius: 9,
+            display: "grid", placeItems: "center",
+            color: "#0a0a0a", font: "700 15px var(--font-mono)",
+            boxShadow: "0 0 12px rgba(0,200,150,.4)",
+          }}>{APP_MARK}</div>
           <div>
-            <div style={{ fontSize: 11, color: "#94a3b8", textTransform: "uppercase", letterSpacing: 0.6 }}>
+            <div style={{ fontSize: 11, color: "var(--ink-3)", textTransform: "uppercase", letterSpacing: 0.6 }}>
               Entering competition
             </div>
             <div style={{ fontSize: 17, fontWeight: 700 }}>{title}</div>
@@ -702,13 +704,13 @@ function BriefingScreen({
         </div>
 
         <div style={{
-          background: "rgba(222,53,11,0.12)", border: "1px solid rgba(222,53,11,0.4)",
-          borderRadius: 6, padding: "10px 12px", marginBottom: 18,
+          background: "var(--danger-soft)", border: "1px solid rgba(240,99,122,.3)",
+          borderRadius: 8, padding: "10px 12px", marginBottom: 18,
           display: "flex", gap: 10, alignItems: "flex-start",
         }}>
-          <ShieldAlert size={16} color="#f87171" style={{ flexShrink: 0, marginTop: 2 }} />
-          <div style={{ fontSize: 12, lineHeight: 1.55, color: "#fecaca" }}>
-            <strong style={{ color: "#fee2e2" }}>Anti-cheat is active.</strong>{" "}
+          <ShieldAlert size={16} color="var(--danger)" style={{ flexShrink: 0, marginTop: 2 }} />
+          <div style={{ fontSize: 12, lineHeight: 1.55, color: "var(--danger-ink)" }}>
+            <strong style={{ color: "var(--danger-ink)" }}>Anti-cheat is active.</strong>{" "}
             Fullscreen is required to submit. Tab switches, copy/paste outside
             the editor, dev-tools shortcuts and right-click are logged.
           </div>
@@ -718,10 +720,11 @@ function BriefingScreen({
           type="button"
           onClick={onEnter}
           style={{
-            width: "100%", height: 42, background: "var(--brand)",
-            color: "white", border: "none", borderRadius: 6,
+            width: "100%", height: 42, background: "var(--accent)",
+            color: "#0a0a0a", border: "none", borderRadius: 10,
             fontSize: 14, fontWeight: 700, cursor: "pointer",
             display: "flex", alignItems: "center", justifyContent: "center", gap: 8,
+            boxShadow: "0 0 14px rgba(0,200,150,.3)",
           }}
         >
           <Play size={14} />
@@ -734,7 +737,7 @@ function BriefingScreen({
             onClick={onCancel}
             style={{
               background: "transparent", border: "none",
-              fontSize: 12, color: "#94a3b8", cursor: "pointer",
+              fontSize: 12, color: "var(--ink-2)", cursor: "pointer",
             }}
           >
             ← Back to lobby
@@ -748,15 +751,15 @@ function BriefingScreen({
 function BriefStat({ label, value }: { label: string; value: string }) {
   return (
     <div style={{
-      background: "rgba(255,255,255,0.04)",
-      border: "1px solid rgba(255,255,255,0.08)",
-      borderRadius: 6, padding: "10px 12px",
+      background: "var(--surface-2)",
+      border: "1px solid var(--line-2)",
+      borderRadius: 8, padding: "10px 12px",
     }}>
-      <div style={{ fontSize: 10, color: "#94a3b8", textTransform: "uppercase", letterSpacing: 0.6 }}>
+      <div style={{ fontSize: 10, color: "var(--ink-3)", textTransform: "uppercase", letterSpacing: 0.6 }}>
         {label}
       </div>
       <div style={{
-        fontSize: 14, fontWeight: 700, color: "#f8fafc", marginTop: 2,
+        fontSize: 14, fontWeight: 700, color: "var(--ink)", marginTop: 2,
         overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
       }}>
         {value}
@@ -779,33 +782,40 @@ function CPTopBarExtras({
 }) {
   return (
     <>
-      {teamName && (
-        <span style={{
-          color: "rgba(255,255,255,0.6)", fontSize: 12, fontWeight: 500,
-          maxWidth: 140, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
-        }}>
-          {teamName}
-        </span>
-      )}
-
       {violationCount > 0 && (
         <button
           onClick={() => setShowViolations(!showViolations)}
           style={{
             display: "flex", alignItems: "center", gap: 6,
-            background: "rgba(222,53,11,0.2)", border: "1px solid rgba(222,53,11,0.4)",
-            borderRadius: 3, padding: "3px 10px", cursor: "pointer",
+            background: "var(--warn-soft)", border: "1px solid rgba(232,160,48,.2)",
+            borderRadius: 8, padding: "5px 10px", cursor: "pointer",
           }}
         >
-          <AlertTriangle size={12} color="var(--danger-ink)" />
-          <span style={{ color: "var(--danger-ink)", fontSize: 11, fontWeight: 600 }}>
+          <AlertTriangle size={14} color="var(--warn)" />
+          <span style={{ color: "var(--warn)", fontSize: 12, fontWeight: 600 }}>
             {violationCount} violation{violationCount !== 1 ? "s" : ""}
           </span>
         </button>
       )}
 
+      {teamName && (
+        <span style={{
+          display: "flex", alignItems: "center", gap: 8,
+          background: "var(--surface-2)", border: "1px solid var(--line-2)",
+          borderRadius: 8, padding: "5px 10px 5px 6px",
+        }}>
+          <span style={{ width: 24, height: 24, borderRadius: 6, background: "var(--accent)", display: "grid", placeItems: "center", color: "#0a0a0a", font: "700 10px var(--font-sans)" }}>
+            {teamName.slice(0, 2).toUpperCase()}
+          </span>
+          <span style={{
+            color: "var(--ink)", font: "600 12.5px var(--font-sans)",
+            maxWidth: 120, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
+          }}>{teamName}</span>
+        </span>
+      )}
+
       {firstName && (
-        <span style={{ color: "rgba(255,255,255,0.55)", fontSize: 12 }}>{firstName}</span>
+        <span style={{ color: "var(--ink-2)", fontSize: 12 }}>{firstName}</span>
       )}
 
       {showViolations && (
@@ -819,7 +829,7 @@ function CPTopBarExtras({
             <span style={{ color: "white", fontWeight: 700, fontSize: 13 }}>Your Violations</span>
             <button onClick={() => setShowViolations(false)} style={{ background: "transparent", border: "none", color: "rgba(255,255,255,0.5)", cursor: "pointer", fontSize: 16 }} aria-label="Close"><X size={16} /></button>
           </div>
-          <div style={{ padding: "10px 16px", background: "rgba(222,53,11,0.12)", borderBottom: "1px solid var(--line)" }}>
+          <div style={{ padding: "10px 16px", background: "var(--danger-soft)", borderBottom: "1px solid var(--line)" }}>
             <p style={{ fontSize: 12, color: "var(--danger-ink)", display: "flex", alignItems: "center", gap: 6 }}><AlertTriangle size={12} /> These are logged and visible to the teacher</p>
           </div>
           <div style={{ flex: 1, overflowY: "auto", padding: 16 }}>
@@ -861,65 +871,78 @@ function LeftPanel({
   const progressPct = problems.length > 0 ? (solvedCount / problems.length) * 100 : 0;
 
   return (
-    <div style={{ width: 220, background: "var(--line)", display: "flex", flexDirection: "column", flexShrink: 0, borderRight: "1px solid #344563", overflowY: "auto" }}>
-      <div style={{ padding: 12, borderBottom: "1px solid #344563" }}>
-        <div style={{ fontSize: 10, fontWeight: 700, color: "rgba(255,255,255,0.4)", textTransform: "uppercase", letterSpacing: "0.5px", marginBottom: 8 }}>Problems</div>
-        {problems.map((p, i) => (
-          <button key={p.problemId} onClick={() => setActiveProblemIdx(i)} style={{
-            display: "flex", alignItems: "center", gap: 8, padding: "7px 10px",
-            borderRadius: 3, cursor: "pointer", marginBottom: 3, width: "100%", textAlign: "left",
-            background: activeProblemIdx === i ? "var(--brand)" : "transparent", border: "none",
-          }}>
-            <div style={{ width: 8, height: 8, borderRadius: "50%", flexShrink: 0, background: SOLVE_DOT[p.solveStatus] ?? "#5e6c84" }} />
-            <span style={{ fontSize: 12, color: "rgba(255,255,255,0.85)", fontWeight: 500, flex: 1 }}>
-              {p.label}. {p.title}
-            </span>
-            <span style={{ fontSize: 10, color: "rgba(255,255,255,0.4)", flexShrink: 0 }}>{p.points}</span>
-          </button>
-        ))}
+    <div style={{ width: 220, background: "var(--bg)", display: "flex", flexDirection: "column", flexShrink: 0, borderRight: "1px solid var(--line-2)", overflowY: "auto" }}>
+      <div style={{ padding: "14px 14px 10px", borderBottom: "1px solid var(--line-2)", display: "flex", alignItems: "center", justifyContent: "space-between", position: "sticky", top: 0, background: "var(--bg)", zIndex: 2 }}>
+        <span style={{ fontSize: 10, fontWeight: 700, color: "var(--ink-3)", textTransform: "uppercase", letterSpacing: "0.1em" }}>Problems</span>
+        <span style={{ font: "600 11.5px var(--font-mono)", color: "var(--accent)" }}>{solvedCount} / {problems.length}</span>
       </div>
 
-      <div style={{ padding: 12, borderBottom: "1px solid #344563" }}>
-        <div style={{ fontSize: 10, fontWeight: 700, color: "rgba(255,255,255,0.4)", textTransform: "uppercase", letterSpacing: "0.5px", marginBottom: 6 }}>Progress</div>
-        <div style={{ fontSize: 12, color: "rgba(255,255,255,0.65)", marginBottom: 6 }}>{solvedCount} / {problems.length} solved</div>
-        <div style={{ background: "#344563", height: 4, borderRadius: 2 }}>
-          <div style={{ background: "var(--success)", height: 4, borderRadius: 2, width: `${progressPct}%`, transition: "width 0.3s" }} />
+      <div style={{ padding: 8 }}>
+        {problems.map((p, i) => {
+          const solved  = p.solveStatus === "SOLVED";
+          const wrong   = p.solveStatus === "ATTEMPTED";
+          const active  = activeProblemIdx === i;
+          const badgeStyle: React.CSSProperties = solved
+            ? { background: "rgba(0,200,150,.12)", color: "var(--accent)", border: "1px solid var(--accent-ring)" }
+            : wrong
+            ? { background: "var(--danger-soft)", color: "var(--danger)" }
+            : active
+            ? { background: "var(--accent-glow)", color: "var(--accent)" }
+            : { background: "var(--surface-2)", color: "var(--ink-2)" };
+          return (
+            <button key={p.problemId} onClick={() => setActiveProblemIdx(i)} style={{
+              display: "flex", alignItems: "center", gap: 9, padding: "9px 10px",
+              borderRadius: 9, cursor: "pointer", marginBottom: 3, width: "100%", textAlign: "left",
+              background: active ? "var(--accent-dim)" : "transparent",
+              border: active ? "1px solid var(--accent-ring)" : "1px solid transparent",
+            }}>
+              <div style={{ width: 28, height: 28, borderRadius: 7, display: "grid", placeItems: "center", font: "700 12px var(--font-mono)", flexShrink: 0, ...badgeStyle }}>
+                {p.label}
+              </div>
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <div style={{ fontSize: 13, color: "var(--ink)", fontWeight: 600, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{p.title}</div>
+                <div style={{ font: "500 11px var(--font-mono)", color: "var(--ink-3)", marginTop: 2 }}>{p.points} pts</div>
+              </div>
+              <span style={{ font: "650 11.5px var(--font-mono)", flexShrink: 0, color: solved ? "var(--accent)" : wrong ? "var(--danger)" : "var(--ink-3)" }}>
+                {solved ? <Check size={13} /> : wrong ? `×${p.attempts}` : "—"}
+              </span>
+            </button>
+          );
+        })}
+      </div>
+
+      <div style={{ padding: 14, borderTop: "1px solid var(--line-2)" }}>
+        <div style={{ fontSize: 10, fontWeight: 700, color: "var(--ink-3)", textTransform: "uppercase", letterSpacing: "0.1em", marginBottom: 10 }}>Progress</div>
+        <div style={{ background: "var(--surface-3)", height: 4, borderRadius: 4, overflow: "hidden", marginBottom: 8 }}>
+          <div style={{ background: "var(--accent)", height: 4, borderRadius: 4, width: `${progressPct}%`, boxShadow: "0 0 8px rgba(0,200,150,.5)", transition: "width 0.3s" }} />
+        </div>
+        <div style={{ font: "600 12px var(--font-mono)", color: "var(--ink-2)", marginBottom: 12 }}>{solvedCount} / {problems.length} solved</div>
+        <div style={{ display: "flex", flexDirection: "column", gap: 5 }}>
+          {([["Solved", "var(--accent)"], ["Attempted", "var(--warn)"], ["Unsolved", "var(--ink-3)"]] as const).map(([label, color]) => (
+            <div key={label} style={{ display: "flex", alignItems: "center", gap: 7, fontSize: 12, color: "var(--ink-2)" }}>
+              <div style={{ width: 7, height: 7, borderRadius: "50%", background: color, flexShrink: 0 }} />
+              {label}
+            </div>
+          ))}
         </div>
       </div>
 
-      <div style={{ padding: 12, borderBottom: "1px solid #344563" }}>
-        {[["SOLVED", "00875a"], ["ATTEMPTED", "ff8b00"], ["UNSOLVED", "5e6c84"]].map(([label, color]) => (
-          <div key={label} style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 4 }}>
-            <div style={{ width: 7, height: 7, borderRadius: "50%", background: `#${color}`, flexShrink: 0 }} />
-            <span style={{ fontSize: 10, color: "rgba(255,255,255,0.45)", textTransform: "capitalize" }}>{label.toLowerCase()}</span>
-          </div>
-        ))}
-      </div>
-
       {mode === "TEAM" && (
-        <div style={{ padding: 12, flex: 1 }}>
-          <div style={{ fontSize: 10, fontWeight: 700, color: "rgba(255,255,255,0.4)", textTransform: "uppercase", letterSpacing: "0.5px", marginBottom: 8 }}>Team Activity</div>
+        <div style={{ padding: 14, borderTop: "1px solid var(--line-2)", flex: 1 }}>
+          <div style={{ fontSize: 10, fontWeight: 700, color: "var(--ink-3)", textTransform: "uppercase", letterSpacing: "0.1em", marginBottom: 10 }}>Team activity</div>
           {activity.length === 0 ? (
-            <div style={{ fontSize: 11, color: "rgba(255,255,255,0.3)", textAlign: "center", paddingTop: 8 }}>No submissions yet</div>
+            <div style={{ fontSize: 11, color: "var(--ink-3)", textAlign: "center", paddingTop: 8 }}>No submissions yet</div>
           ) : activity.map((a, i) => (
-            <div key={i} style={{ marginBottom: 8, padding: "6px 8px", background: "rgba(255,255,255,0.05)", borderRadius: 3 }}>
-              <div style={{ fontSize: 11, color: "rgba(255,255,255,0.75)", fontWeight: 500 }}>{a.studentName}</div>
-              <div style={{ fontSize: 10, color: "rgba(255,255,255,0.45)", marginTop: 2 }}>
-                Prob {a.problemLabel} —{" "}
-                <span style={{ color: verdictColor(a.verdict), fontWeight: 600 }}>{a.verdict}</span>
+            <div key={i} style={{ display: "flex", alignItems: "center", gap: 8, padding: "7px 0", borderBottom: "1px solid var(--line-2)" }}>
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <div style={{ fontSize: 12, color: "var(--ink)", fontWeight: 600, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{a.studentName}</div>
+                <div style={{ font: "500 11px var(--font-mono)", color: "var(--ink-3)", marginTop: 2 }}>Problem {a.problemLabel}</div>
               </div>
+              <span style={{ font: "650 11px var(--font-mono)", color: verdictColor(a.verdict) }}>{a.verdict}</span>
             </div>
           ))}
         </div>
       )}
-
-      <div style={{ padding: 12, borderTop: "1px solid #344563", marginTop: "auto" }}>
-        <div style={{ fontSize: 10, color: "rgba(255,255,255,0.3)", lineHeight: 1.5 }}>
-          Alt+1–5: jump problem<br />
-          Ctrl+Enter: submit<br />
-          Ctrl+R: run
-        </div>
-      </div>
     </div>
   );
 }
@@ -929,18 +952,17 @@ function LeftPanel({
 // ─────────────────────────────────────────────────────────────────────────────
 
 function ProblemStatement({ problem }: { problem: ArenaProblem }) {
-  const diff = DIFF_STYLE[problem.difficultyLevel] ?? DIFF_STYLE.EASY;
-
   return (
-    <div style={{ flex: 1, background: "var(--bg-primary)", display: "flex", flexDirection: "column", overflow: "hidden", borderRight: "1px solid var(--border)" }}>
-      <div style={{ padding: "14px 20px", borderBottom: "1px solid var(--border)", flexShrink: 0 }}>
-        <div className="problem-title" style={{ fontSize: 16, fontWeight: 700, color: "var(--text-primary)", marginBottom: 8 }}>
-          {problem.label}. {problem.title}
+    <div style={{ flex: 1, background: "var(--bg)", display: "flex", flexDirection: "column", overflow: "hidden", borderRight: "1px solid var(--line-2)" }}>
+      <div style={{ padding: "16px 20px", borderBottom: "1px solid var(--line-2)", flexShrink: 0 }}>
+        <div className="problem-title" style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 10 }}>
+          <span style={{ font: "700 24px var(--font-mono)", color: "var(--accent)" }}>{problem.label}.</span>
+          <span style={{ fontSize: 20, fontWeight: 700, color: "var(--ink)", letterSpacing: "-0.02em" }}>{problem.title}</span>
         </div>
-        <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
+        <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
           <MetaChip><Clock size={11} /> {problem.timeLimitMs} ms</MetaChip>
           <MetaChip><HardDrive size={11} /> {problem.memoryLimitMb} MB</MetaChip>
-          <MetaChip style={{ background: diff.bg, color: diff.text }}>{problem.difficultyLevel}</MetaChip>
+          <MetaChip style={{ background: "var(--accent-dim)", color: "var(--accent)", borderColor: "var(--accent-ring)" }}>{problem.difficultyLevel}</MetaChip>
           <MetaChip>{problem.points} pts</MetaChip>
           {problem.attempts > 0 && (
             <MetaChip style={{
@@ -1013,41 +1035,42 @@ function RightEditorPanel({
   else if (judging) submitLabel = "Judging…";
   else if (!isFullscreen) submitLabel = "Fullscreen required";
 
-  let submitBg = "var(--brand)";
+  let submitBg = "var(--accent)";
+  let submitColor = "#0a0a0a";
   if (problem.solveStatus === "SOLVED") submitBg = "var(--success)";
-  else if (submitDisabled) submitBg = "#97a0af";
+  else if (submitDisabled) { submitBg = "var(--surface-3)"; submitColor = "var(--ink-3)"; }
 
   return (
-    <div style={{ width: 500, display: "flex", flexDirection: "column", flexShrink: 0, background: "var(--bg-primary)" }}>
-      <div style={{ padding: "6px 12px", borderBottom: "1px solid var(--border)", display: "flex", alignItems: "center", gap: 8, background: "var(--bg-tertiary)", flexShrink: 0 }}>
-        <span style={{ fontSize: 12, fontWeight: 600, color: "var(--text-muted)" }}>Language</span>
+    <div style={{ width: 500, display: "flex", flexDirection: "column", flexShrink: 0, background: "var(--bg-2)", borderLeft: "1px solid var(--line-2)" }}>
+      <div style={{ padding: "8px 14px", borderBottom: "1px solid var(--line-2)", display: "flex", alignItems: "center", gap: 8, background: "var(--bg-2)", flexShrink: 0 }}>
+        <span style={{ fontSize: 10, fontWeight: 700, color: "var(--ink-3)", textTransform: "uppercase", letterSpacing: "0.1em" }}>Solution</span>
         <select
           value={lang}
           onChange={e => setLang(e.target.value)}
-          style={{ border: "1px solid var(--border)", borderRadius: 3, padding: "0 8px", height: 28, fontSize: 12, color: "var(--text-primary)", outline: "none", background: "var(--bg-primary)" }}
+          style={{ border: "1px solid var(--line-2)", borderRadius: 8, padding: "0 10px", height: 28, font: "500 12.5px var(--font-mono)", color: "var(--ink)", outline: "none", background: "var(--surface)", cursor: "pointer" }}
         >
           {LANG_OPTIONS.map(l => <option key={l.value} value={l.value}>{l.label}</option>)}
         </select>
         <button
           onClick={() => setCode(DEFAULT_CODE[lang] ?? "")}
-          style={{ background: "transparent", color: "var(--text-muted)", border: "none", fontSize: 12, cursor: "pointer", padding: "0 4px" }}
+          style={{ background: "transparent", color: "var(--ink-3)", border: "none", fontSize: 14, cursor: "pointer", padding: "0 4px" }}
           title="Reset to template"
         >↺</button>
         <div style={{ marginLeft: "auto", display: "flex", gap: 6 }}>
           <button
             onClick={onRun}
             disabled={running || judging}
-            style={{ background: "var(--bg-primary)", color: "var(--text-primary)", border: "1px solid var(--border)", borderRadius: 3, height: 28, padding: "0 14px", fontSize: 12, cursor: running || judging ? "not-allowed" : "pointer", fontWeight: 500 }}
+            style={{ display: "flex", alignItems: "center", gap: 6, background: "var(--surface)", color: "var(--ink)", border: "1px solid var(--line-2)", borderRadius: 8, height: 28, padding: "0 14px", fontSize: 12, fontWeight: 600, cursor: running || judging ? "not-allowed" : "pointer" }}
           >
-            {running ? "Running…" : "▷ Run"}
+            <Play size={12} /> {running ? "Running…" : "Run"}
           </button>
           <button
             onClick={onSubmit}
             disabled={submitDisabled}
             title={!isFullscreen ? "Enter fullscreen to submit" : undefined}
-            style={{ background: submitBg, color: "white", border: "none", borderRadius: 3, height: 28, padding: "0 16px", fontSize: 12, cursor: submitDisabled ? "not-allowed" : "pointer", fontWeight: 600 }}
+            style={{ display: "flex", alignItems: "center", gap: 6, background: submitBg, color: submitColor, border: "none", borderRadius: 8, height: 28, padding: "0 16px", fontSize: 12, cursor: submitDisabled ? "not-allowed" : "pointer", fontWeight: 700 }}
           >
-            {submitLabel}
+            {submitLabel} <Send size={12} />
           </button>
         </div>
       </div>
@@ -1078,6 +1101,16 @@ function RightEditorPanel({
           )}
         </div>
       )}
+
+      {/* Keyboard hints */}
+      <div style={{ padding: "8px 14px", borderTop: "1px solid var(--line-2)", display: "flex", gap: 16, background: "var(--bg-2)", flexShrink: 0 }}>
+        {([["Ctrl+Enter", "Submit"], ["Ctrl+R", "Run"], ["Alt+1–6", "Jump"]] as const).map(([key, label]) => (
+          <span key={key} style={{ font: "500 11px var(--font-mono)", color: "var(--ink-3)", display: "flex", alignItems: "center", gap: 5 }}>
+            <span style={{ background: "var(--surface-3)", border: "1px solid var(--line-2)", borderRadius: 4, padding: "1px 5px", font: "500 10px var(--font-mono)", color: "var(--ink-2)" }}>{key}</span>
+            {label}
+          </span>
+        ))}
+      </div>
     </div>
   );
 }
@@ -1216,7 +1249,7 @@ function RunResultRow({ result, idx }: { result: RunResult; idx: number }) {
 
 function MetaChip({ children, style }: { children: React.ReactNode; style?: React.CSSProperties }) {
   return (
-    <span style={{ background: "var(--bg-secondary)", border: "1px solid var(--border)", borderRadius: 3, padding: "2px 8px", fontSize: 11, color: "var(--text-muted)", ...style }}>
+    <span style={{ display: "inline-flex", alignItems: "center", gap: 4, background: "var(--surface-2)", border: "1px solid var(--line-2)", borderRadius: 7, padding: "5px 9px", font: "500 11.5px var(--font-mono)", color: "var(--ink-2)", ...style }}>
       {children}
     </span>
   );

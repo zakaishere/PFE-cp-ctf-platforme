@@ -2,9 +2,10 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
-import { AlertTriangle, ChevronLeft, Loader2, Lock } from "lucide-react";
+import { AlertTriangle, Loader2, Lock, LogOut } from "lucide-react";
 import { FullscreenGate } from "@/components/arena/FullscreenGate";
 import { useAntiCheat, type ViolationEvent } from "@/hooks/useAntiCheat";
+import { APP_NAME, APP_MARK } from "@/lib/brand";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -233,44 +234,47 @@ function TopBar({ title, backHref, backLabel, remainingSeconds, isEnded, extras 
 
   return (
     <div style={{
-      background: "var(--bg-2)", height: 44, display: "flex", alignItems: "center",
-      padding: "0 16px", gap: 16, flexShrink: 0, borderBottom: "1px solid var(--line)",
+      background: "var(--bg)", height: 52, display: "flex", alignItems: "center",
+      padding: "0 16px", gap: 12, flexShrink: 0, borderBottom: "1px solid var(--line-2)",
     }}>
       <div style={{
-        display: "flex", alignItems: "center", gap: 6,
-        color: "white", fontWeight: 700, fontSize: 13,
+        display: "flex", alignItems: "center", gap: 8,
+        color: "var(--ink)", fontWeight: 700, fontSize: 15,
+        paddingRight: 14, borderRight: "1px solid var(--line-2)",
       }}>
         <div style={{
-          width: 22, height: 22, background: "var(--brand)", borderRadius: 3,
-          display: "flex", alignItems: "center", justifyContent: "center",
-          color: "white", fontWeight: 900, fontSize: 11,
-        }}>P</div>
-        PSP
+          width: 26, height: 26, background: "var(--accent)", borderRadius: 7,
+          display: "grid", placeItems: "center",
+          color: "#0a0a0a", font: "700 11px var(--font-mono)",
+          boxShadow: "0 0 10px rgba(0,200,150,.4)",
+        }}>{APP_MARK}</div>
+        {APP_NAME}
       </div>
-      <span style={{ color: "rgba(255,255,255,0.25)" }}>|</span>
       <span style={{
-        color: "rgba(255,255,255,0.85)", fontSize: 13, fontWeight: 500,
+        color: "var(--ink-2)", fontSize: 14, fontWeight: 600,
         maxWidth: 360, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
       }}>
         {title}
       </span>
 
-      <div style={{ marginLeft: "auto", display: "flex", alignItems: "center", gap: 16 }}>
+      <div style={{ marginLeft: "auto", display: "flex", alignItems: "center", gap: 12 }}>
         {extras}
         {showTimer && (
           <span style={{
-            fontFamily: "ui-monospace, monospace", fontSize: 15, fontWeight: 700,
-            color: isEnded ? "var(--ink-3)" : isUrgent ? "var(--danger)" : "var(--warn)",
+            font: "600 18px var(--font-mono)", letterSpacing: 1, padding: "0 4px",
+            color: isEnded ? "var(--ink-3)" : isUrgent ? "var(--danger)" : "var(--accent)",
+            textShadow: isEnded ? "none" : isUrgent ? "0 0 14px rgba(240,99,122,.5)" : "0 0 14px rgba(0,200,150,.5)",
           }}>
             {isEnded ? "00:00:00" : timerStr}
           </span>
         )}
         <Link href={backHref} style={{
-          background: "var(--danger)", color: "white", border: "none", borderRadius: 3,
-          padding: "0 12px", height: 28, fontSize: 12, fontWeight: 600,
-          cursor: "pointer", display: "flex", alignItems: "center", textDecoration: "none",
+          background: "var(--danger-soft)", color: "var(--danger)",
+          border: "1px solid rgba(240,99,122,.2)", borderRadius: 8,
+          padding: "0 12px", height: 30, fontSize: 13, fontWeight: 600,
+          cursor: "pointer", display: "flex", alignItems: "center", gap: 6, textDecoration: "none",
         }}>
-          {backLabel}
+          <LogOut size={14} /> {backLabel}
         </Link>
       </div>
     </div>
@@ -284,9 +288,9 @@ function NavTabs({ tabs, activeKey, onSelect }: {
 }) {
   return (
     <nav style={{
-      background: "var(--bg)", borderBottom: "1px solid var(--line)",
+      background: "var(--bg)", borderBottom: "1px solid var(--line-2)",
       display: "flex", alignItems: "center",
-      padding: "0 12px", gap: 4, flexShrink: 0, height: 38,
+      padding: "0 16px", gap: 0, flexShrink: 0, height: 38,
     }}>
       {tabs.map((t) => {
         const active = t.key === activeKey;
@@ -296,21 +300,21 @@ function NavTabs({ tabs, activeKey, onSelect }: {
             type="button"
             onClick={() => onSelect(t.key)}
             style={{
-              background: active ? "var(--surface-2)" : "transparent",
-              color: active ? "var(--ink)" : "var(--ink-2)",
+              background: "transparent",
+              color: active ? "var(--accent)" : "var(--ink-3)",
               border: "none",
-              borderBottom: active ? "2px solid var(--brand)" : "2px solid transparent",
-              borderRadius: "4px 4px 0 0",
-              padding: "0 12px", height: 36,
-              display: "inline-flex", alignItems: "center", gap: 6,
-              fontSize: 12, fontWeight: 600, cursor: "pointer",
+              borderBottom: active ? "2px solid var(--accent)" : "2px solid transparent",
+              marginBottom: -1,
+              padding: "0 14px", height: 38,
+              display: "inline-flex", alignItems: "center", gap: 7,
+              fontSize: 13, fontWeight: 600, cursor: "pointer",
             }}
           >
             {t.icon}
             <span>{t.label}</span>
             {t.badge !== undefined && t.badge > 0 && (
               <span style={{
-                background: "var(--brand)", color: "white",
+                background: "var(--accent)", color: "#0a0a0a",
                 borderRadius: 10, padding: "1px 6px",
                 fontSize: 10, fontWeight: 700, lineHeight: 1,
               }}>
