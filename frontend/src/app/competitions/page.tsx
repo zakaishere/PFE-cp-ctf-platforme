@@ -189,7 +189,7 @@ function CompetitionCard({ c, onAction }: { c: any; onAction: (action: string, i
   const isReg   = status === "REGISTRATION" || status === "REGISTRATION_OPEN";
 
   const borderColor =
-    isActive ? "#de350b" :
+    isActive ? "var(--danger)" :
     isReg    ? "var(--brand)" :
                "var(--border)";
 
@@ -403,7 +403,7 @@ export default function CompetitionsPage() {
             <FilterTabs tabs={tabs} active={filter} onChange={k => setFilter(k as FilterTab)} />
           </div>
           <div style={{ display: "flex", alignItems: "center", gap: 6, border: "1px solid var(--border)", borderRadius: 6, padding: "0 10px", height: 34, marginBottom: 20, flexShrink: 0 }}>
-            <Search size={12} color="#97a0af" />
+            <Search size={12} color="var(--ink-3)" />
             <input
               placeholder="Search competitions…"
               value={search}
@@ -442,7 +442,7 @@ export default function CompetitionsPage() {
                 alignItems: "center",
                 gap: 16,
               }}>
-                <Trophy size={32} color="#c1c7d0" />
+                <Trophy size={32} color="var(--ink-3)" />
                 <div>
                   <div style={{ fontSize: 14, fontWeight: 700, color: "var(--text-secondary)", marginBottom: 4 }}>
                     No active competitions right now
