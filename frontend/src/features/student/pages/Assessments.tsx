@@ -1,28 +1,22 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
-import Link from "next/link";
+import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import Navbar from "@/components/Navbar";
 import Spinner from "@/components/ui/Spinner";
-import TimeProgress from "@/components/ui/TimeProgress";
-import { JoinActionButton } from "@/components/ui/JoinActionButton";
-import {
-  Calendar, Timer, FileText, FlaskConical, Globe, RefreshCw,
-  Search, BookOpen, Lock, Clock,
-} from "lucide-react";
+import { FileText, Calendar, Search, BookOpen } from "lucide-react";
 import { getAssessments, requestToJoinAssessment } from "@/lib/api";
 import { useToast } from "@/hooks/use-toast";
+import { EventCard, type EventStatus } from "@/components/ui/EventCard";
 
 type AssessmentStatus = "LIVE" | "UPCOMING" | "OPEN" | "CLOSED" | string;
-type AssessmentType   = "LIVE_EXAM" | "OPEN_TP" | string;
 
 // ── helpers ──────────────────────────────────────────────────────────────────
 
 function formatDate(iso: string | null | undefined) {
   if (!iso) return "—";
   return new Date(iso).toLocaleDateString("en-US", {
-    month: "short", day: "numeric", year: "numeric",
+    month: "short", day: "numeric",
     hour: "2-digit", minute: "2-digit",
   });
 }
@@ -59,31 +53,14 @@ function sortAssessments(list: any[]): any[] {
   });
 }
 
-// ── countdown pill ─────────────────────────────────────────────────────────────
-
-function ComingInBadge({ targetDate }: { targetDate: string }) {
-  const [label, setLabel] = useState<string>("");
-  const compute = useCallback(() => {
-    const diff = new Date(targetDate).getTime() - Date.now();
-    if (diff <= 0) { setLabel("Starting…"); return; }
-    const d = Math.floor(diff / 86_400_000);
-    const h = Math.floor((diff % 86_400_000) / 3_600_000);
-    const m = Math.floor((diff % 3_600_000) / 60_000);
-    const s = Math.floor((diff % 60_000) / 1_000);
-    if (d > 0) setLabel(`In ${d}d ${h}h`);
-    else if (h > 0) setLabel(`In ${h}h ${m}m`);
-    else setLabel(`In ${m}m ${s}s`);
-  }, [targetDate]);
-  useEffect(() => { compute(); const id = setInterval(compute, 1000); return () => clearInterval(id); }, [compute]);
-  return (
-    <span style={{
-      display: "inline-flex", alignItems: "center", gap: 4,
-      background: "var(--accent-soft)", color: "var(--brand)",
-      fontSize: 11, fontWeight: 700, padding: "2px 9px", borderRadius: 20,
-    }}>
-      <Clock size={10} />{label || "Coming Soon"}
-    </span>
-  );
+function assessmentStatus(status: string): EventStatus {
+  switch (status) {
+    case "LIVE":     return "live";
+    case "OPEN":     return "open";
+    case "UPCOMING": return "scheduled";
+    case "CLOSED":   return "closed";
+    default:         return "closed";
+  }
 }
 
 // ── Page ──────────────────────────────────────────────────────────────────────
@@ -128,6 +105,8 @@ export default function ExamsTpsPage() {
           else router.push(`/arena/exam/${id}`);
           break;
         case "view-results":
+          if (a?.type === "OPEN_TP") router.push(`/arena/tp/${id}`);
+          else router.push(`/arena/exam/${id}`);
           break;
       }
     } catch (e: any) {
@@ -139,10 +118,32 @@ export default function ExamsTpsPage() {
     }
   };
 
+  /** Primary card action, mirroring JoinActionButton's decision path. */
+  const cardAction = (a: any): { label: string; disabled?: boolean; run: () => void } => {
+    const st  = a.status as AssessmentStatus;
+    const isExam = a.type === "LIVE_EXAM";
+    const vis = (a.visibilityMode || (a.strictAccessCode ? "ACCESS_CODE" : "MODULE_ONLY")).toUpperCase();
+    const js  = (a.myJoinStatus || "NONE").toUpperCase();
+    const enter = () => handleAction("enter", a.id);
+    const enterLabel = isExam ? "Enter exam" : "Open";
+
+    if (st === "CLOSED") {
+      return (a.problemsCount ?? 0) > 0
+        ? { label: "View result", run: () => handleAction("view-results", a.id) }
+        : { label: "Closed", disabled: true, run: () => {} };
+    }
+    if (st === "UPCOMING") {
+      return { label: a.scheduledStartTime ? `Starts ${formatDate(a.scheduledStartTime)}` : "Scheduled", disabled: true, run: () => {} };
+    }
+    if (js === "APPROVED") return { label: enterLabel, run: enter };
+    if (js === "PENDING")  return { label: "Request pending", disabled: true, run: () => {} };
+    if (js === "REJECTED") return { label: "Request rejected", disabled: true, run: () => {} };
+    if (vis === "REQUEST_BASED") return { label: "Request to join", run: () => handleAction("request", a.id) };
+    if (vis === "ACCESS_CODE")   return { label: "Enter code", run: enter };
+    return { label: enterLabel, run: enter }; // MODULE_ONLY / PUBLIC_OPEN / default
+  };
+
   // ── derived counts ──────────────────────────────────────────────────────────
-  const liveNow  = assessments.filter(a => a.status === "LIVE");
-  const openTps  = assessments.filter(a => a.type === "OPEN_TP" && a.status === "OPEN");
-  const upcoming = assessments.filter(a => a.status === "UPCOMING");
   const closed   = assessments.filter(a => a.status === "CLOSED");
   const exams    = assessments.filter(a => a.type === "LIVE_EXAM");
   const tps      = assessments.filter(a => a.type === "OPEN_TP");
@@ -164,24 +165,29 @@ export default function ExamsTpsPage() {
     { key: "Closed",     label: "Closed",     count: closed.length },
   ];
 
-  // ── row rendering helpers ────────────────────────────────────────────────────
+  // ── meta line builders ────────────────────────────────────────────────────────
 
-  const typeBadge = (a: any) => {
-    if (a.type === "LIVE_EXAM") return (
-      <span className="psp-badge" style={{ background: "var(--warn-soft)", color: "var(--warn-ink)" }}>Exam</span>
-    );
-    return (
-      <span className="psp-badge" style={{ background: "var(--violet-soft)", color: "var(--violet)" }}>TP</span>
-    );
+  const buildMeta1 = (a: any): string => {
+    const isExam = a.type === "LIVE_EXAM";
+    const unit = isExam ? "problems" : "tasks";
+    return [
+      a.moduleName,
+      (a.problemsCount ?? 0) > 0 ? `${a.problemsCount} ${unit}` : "",
+    ].filter(Boolean).join(" · ") || (isExam ? "Live Exam" : "TP");
   };
 
-  const statusBadge = (a: any) => {
-    const s = a.status as AssessmentStatus;
-    if (s === "LIVE")     return <span className="psp-badge b-live">Live</span>;
-    if (s === "OPEN")     return <span className="psp-badge b-tp">Open</span>;
-    if (s === "UPCOMING") return <span className="psp-badge b-pending">Upcoming</span>;
-    if (s === "CLOSED")   return <span className="psp-badge b-priv">Closed</span>;
-    return null;
+  const buildMeta2 = (a: any): string | undefined => {
+    const isExam = a.type === "LIVE_EXAM";
+    if (isExam) {
+      return [
+        a.durationMinutes ? `${a.durationMinutes} min` : "",
+        a.scheduledStartTime ? formatDate(a.scheduledStartTime) : "",
+      ].filter(Boolean).join(" · ") || undefined;
+    }
+    // TP
+    const deadline = a.status === "OPEN" ? formatDeadline(a.deadline) : (a.deadline ? `Due ${formatDate(a.deadline)}` : "");
+    const attempts = a.maxAttempts ? `${a.attemptsUsed ?? 0}/${a.maxAttempts} attempts` : "";
+    return [deadline, attempts].filter(Boolean).join(" · ") || undefined;
   };
 
   return (
@@ -200,35 +206,15 @@ export default function ExamsTpsPage() {
           </div>
         </div>
 
-        {/* Stats row */}
-        {!loading && (
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(4,1fr)", gap: 12, marginBottom: 24 }}>
-            {[
-              { val: assessments.length, lbl: "Total",    col: "var(--ink)" },
-              { val: liveNow.length,     lbl: "Live Now", col: liveNow.length > 0 ? "var(--danger-ink)" : "var(--ink-3)" },
-              { val: openTps.length,     lbl: "Open TPs", col: openTps.length > 0 ? "var(--success-ink)" : "var(--ink-3)" },
-              { val: upcoming.length,    lbl: "Upcoming", col: upcoming.length > 0 ? "var(--brand)" : "var(--ink-3)" },
-            ].map(({ val, lbl, col }) => (
-              <div key={lbl} style={{
-                background: "var(--surface)", border: "1px solid var(--line)", borderRadius: "var(--r)",
-                padding: "14px 16px",
-              }}>
-                <div style={{ fontSize: 26, fontWeight: 800, color: col, letterSpacing: "-1px", lineHeight: 1, marginBottom: 3 }}>{val}</div>
-                <div style={{ fontSize: 12, color: "var(--ink-3)", fontWeight: 500 }}>{lbl}</div>
-              </div>
-            ))}
-          </div>
-        )}
-
         {/* Filter bar */}
-        <div style={{ display: "flex", alignItems: "center", gap: 4, marginBottom: 12, flexWrap: "wrap" }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 4, marginBottom: 20, flexWrap: "wrap" }}>
           {TABS.map(t => (
             <button
               key={t.key}
               className={`psp-ftab${activeTab === t.key ? " on" : ""}`}
               onClick={() => setActiveTab(t.key)}
             >
-              {t.label} ({t.count})
+              {t.label} <span style={{ fontFamily: "var(--font-mono)", fontSize: 11 }}>({t.count})</span>
             </button>
           ))}
           <div style={{ marginLeft: "auto", position: "relative", display: "flex", alignItems: "center" }}>
@@ -243,7 +229,7 @@ export default function ExamsTpsPage() {
           </div>
         </div>
 
-        {/* List */}
+        {/* Grid */}
         {loading ? (
           <div style={{ display: "flex", justifyContent: "center", padding: 80 }}>
             <Spinner size={28} />
@@ -257,163 +243,31 @@ export default function ExamsTpsPage() {
             <div>{q ? "No results for that search. Try a different title." : "Your teacher will share an access code when one is ready."}</div>
           </div>
         ) : (
-          <div style={{ background: "var(--surface)", border: "1px solid var(--line)", borderRadius: "var(--r)", overflow: "hidden" }}>
-            {sorted.map((a, i) => {
-              const isExam    = a.type === "LIVE_EXAM";
-              const isLive    = a.status === "LIVE";
-              const isOpen    = a.status === "OPEN";
-              const isUpcoming = a.status === "UPCOMING";
-              const isClosed  = a.status === "CLOSED";
-              const deadline  = formatDeadline(a.deadline);
-
+          <div
+            style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 16 }}
+            className="card-grid stagger"
+          >
+            {sorted.map(a => {
+              const act = cardAction(a);
               return (
-                <div
+                <EventCard
                   key={a.id}
-                  style={{
-                    display: "flex", alignItems: "center", gap: 14, padding: "14px 18px",
-                    borderBottom: i < sorted.length - 1 ? "1px solid var(--line)" : "none",
-                    opacity: isClosed ? 0.6 : 1,
-                    transition: "background 0.1s",
-                  }}
-                  onMouseOver={e => { if (!isClosed) e.currentTarget.style.background = "var(--surface-2)"; }}
-                  onMouseOut={e => (e.currentTarget.style.background = "")}
-                >
-                  {/* Icon tile */}
-                  <div style={{
-                    width: 40, height: 40, borderRadius: 8, flexShrink: 0,
-                    display: "flex", alignItems: "center", justifyContent: "center",
-                    background: isClosed
-                      ? "var(--bg-2)"
-                      : isExam ? "var(--warn-soft)" : "var(--violet-soft)",
-                  }}>
-                    {isExam
-                      ? <FileText size={18} color={isClosed ? "var(--ink-3)" : "var(--warn)"} />
-                      : <FlaskConical size={18} color={isClosed ? "var(--ink-3)" : "var(--violet)"} />
-                    }
-                  </div>
-
-                  {/* Content */}
-                  <div style={{ flex: 1, minWidth: 0 }}>
-                    <div style={{ display: "flex", alignItems: "center", gap: 7, marginBottom: 4, flexWrap: "wrap" }}>
-                      {isLive && (
-                        <span style={{
-                          display: "inline-flex", alignItems: "center", gap: 5,
-                          background: "linear-gradient(135deg,#de350b,#ff5630)",
-                          color: "#fff", fontSize: 11, fontWeight: 800,
-                          padding: "2px 9px", borderRadius: 20, letterSpacing: "0.04em",
-                        }}>
-                          <span style={{ width: 6, height: 6, borderRadius: "50%", background: "#fff", animation: "blink 1s infinite" }} />
-                          Happening Now
-                        </span>
-                      )}
-                      {isUpcoming && a.scheduledStartTime && <ComingInBadge targetDate={a.scheduledStartTime} />}
-                      <span style={{
-                        fontWeight: 600, color: isClosed ? "var(--ink-3)" : "var(--ink)",
-                        overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
-                      }}>
-                        {a.title}
-                      </span>
-                      {statusBadge(a)}
-                      {typeBadge(a)}
-                    </div>
-                    <div style={{ fontSize: 12, color: "var(--ink-2)", display: "flex", gap: 12, flexWrap: "wrap", alignItems: "center" }}>
-                      {a.moduleName && <span>{a.moduleName}</span>}
-                      {isExam && a.scheduledStartTime && (
-                        <span style={{ display: "inline-flex", alignItems: "center", gap: 4 }}>
-                          <Calendar size={10} /> {formatDate(a.scheduledStartTime)}
-                        </span>
-                      )}
-                      {a.durationMinutes && (
-                        <span style={{ display: "inline-flex", alignItems: "center", gap: 4 }}>
-                          <Timer size={10} /> {a.durationMinutes} min
-                        </span>
-                      )}
-                      {!isExam && a.deadline && (
-                        <span style={{ display: "inline-flex", alignItems: "center", gap: 4 }}>
-                          <Calendar size={10} /> Deadline: {formatDate(a.deadline)}
-                        </span>
-                      )}
-                      {a.maxAttempts && (
-                        <span style={{ display: "inline-flex", alignItems: "center", gap: 4 }}>
-                          <RefreshCw size={10} /> Max {a.maxAttempts} attempts
-                        </span>
-                      )}
-                      {(a.problemsCount ?? 0) > 0 && (
-                        <span style={{ display: "inline-flex", alignItems: "center", gap: 4 }}>
-                          <FileText size={10} /> {a.problemsCount} problems
-                        </span>
-                      )}
-                      {a.visibilityMode === "REQUEST_BASED" && (
-                        <span style={{ display: "inline-flex", alignItems: "center", gap: 4 }}>
-                          <Lock size={10} /> Request Based
-                        </span>
-                      )}
-                      {(a.visibilityMode === "ACCESS_CODE" || a.strictAccessCode) && (
-                        <span style={{ display: "inline-flex", alignItems: "center", gap: 4 }}>
-                          <Lock size={10} /> Access Code
-                        </span>
-                      )}
-                      {!isExam && isOpen && deadline && (
-                        <span style={{ background: "var(--warn-soft)", color: "var(--warn-ink)", fontSize: 11, padding: "1px 7px", borderRadius: 4, fontWeight: 600 }}>
-                          {deadline}
-                        </span>
-                      )}
-                    </div>
-                    {/* Attempts progress for open TPs */}
-                    {!isExam && a.maxAttempts && (isOpen || isClosed) && (
-                      <div style={{ marginTop: 6, maxWidth: 260 }}>
-                        <TimeProgress
-                          used={a.attemptsUsed ?? 0}
-                          total={a.maxAttempts}
-                          label="Attempts used"
-                          color={isOpen ? "var(--brand)" : "var(--ink-3)"}
-                        />
-                      </div>
-                    )}
-                  </div>
-
-                  {/* Action */}
-                  <div style={{ flexShrink: 0 }}>
-                    {isClosed ? (
-                      (a.problemsCount ?? 0) > 0 ? (
-                        <Link
-                          href={isExam ? `/arena/exam/${a.id}` : `/arena/tp/${a.id}`}
-                          style={{
-                            display: "inline-flex", alignItems: "center", gap: 5,
-                            fontSize: 12, color: "var(--ink-2)", textDecoration: "none",
-                            padding: "5px 12px", border: "1px solid var(--line)", borderRadius: 6,
-                            fontWeight: 500, transition: "all 0.1s",
-                          }}
-                        >
-                          <FileText size={12} /> View
-                        </Link>
-                      ) : (
-                        <span style={{ fontSize: 12, color: "var(--ink-3)", fontStyle: "italic" }}>Closed</span>
-                      )
-                    ) : (
-                      <JoinActionButton
-                        id={a.id}
-                        type={isExam ? "EXAM" : "TP"}
-                        visibility={a.visibilityMode || (a.strictAccessCode ? "ACCESS_CODE" : "MODULE_ONLY")}
-                        itemStatus={a.status}
-                        myJoinStatus={a.myJoinStatus || "NONE"}
-                        onAction={handleAction}
-                      />
-                    )}
-                  </div>
-                </div>
+                  type={a.type === "LIVE_EXAM" ? "exam" : "tp"}
+                  title={a.title}
+                  status={assessmentStatus(a.status)}
+                  meta1={buildMeta1(a)}
+                  meta2={buildMeta2(a)}
+                  meta1Icon={FileText}
+                  meta2Icon={Calendar}
+                  action={act.label}
+                  actionDisabled={act.disabled}
+                  onClick={act.disabled ? undefined : act.run}
+                />
               );
             })}
           </div>
         )}
       </div>
-
-      <style jsx>{`
-        @keyframes blink {
-          0%,100% { opacity: 1; }
-          50%      { opacity: 0.25; }
-        }
-      `}</style>
     </>
   );
 }
