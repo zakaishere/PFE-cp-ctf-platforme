@@ -209,7 +209,7 @@ function CountdownBoxes({ h, m, s, isUrgent, isCritical }: {
   h: string; m: string; s: string;
   isUrgent: boolean; isCritical: boolean;
 }) {
-  const numColor = isCritical ? "var(--danger-ink)" : isUrgent ? "var(--warn-ink)" : "var(--ink)";
+  const numColor = isCritical ? "var(--danger-ink)" : isUrgent ? "var(--warn-ink)" : "var(--accent)";
   const cls = isCritical ? "countdown-critical" : isUrgent ? "countdown-urgent" : "";
 
   return (
@@ -433,7 +433,7 @@ export default function CompetitionLobbyPage() {
         /* ── countdown boxes ── */
         .countdown-box {
           background: var(--surface-2);
-          border: 1px solid var(--line);
+          border: 1px solid var(--line-2);
           border-radius: var(--r-sm);
           padding: 8px 16px;
           min-width: 64px;
@@ -441,10 +441,11 @@ export default function CompetitionLobbyPage() {
         }
         .countdown-number {
           font-size: 48px;
-          font-weight: 600;
-          font-family: ui-monospace, 'Cascadia Code', monospace;
+          font-weight: 700;
+          font-family: var(--font-mono), ui-monospace, monospace;
           line-height: 1;
-          color: var(--ink);
+          color: var(--accent);
+          text-shadow: 0 0 14px rgba(0,200,150,.5);
         }
         .countdown-label {
           font-size: 10px;
@@ -470,16 +471,16 @@ export default function CompetitionLobbyPage() {
         .invite-code-box {
           width: 44px;
           height: 52px;
-          background: var(--bg-2);
-          border: 2px solid var(--border);
-          border-radius: 3px;
+          background: var(--surface-2);
+          border: 2px solid var(--line-2);
+          border-radius: var(--r-sm);
           display: flex;
           align-items: center;
           justify-content: center;
           font-size: 22px;
           font-weight: 800;
-          font-family: ui-monospace, monospace;
-          color: var(--brand);
+          font-family: var(--font-mono), ui-monospace, monospace;
+          color: var(--accent);
         }
 
         /* ── enter arena button ── */
@@ -966,10 +967,10 @@ export default function CompetitionLobbyPage() {
                           style={{
                             width: "100%",
                             height: 40,
-                            background: !teamNameInput.trim() || teamAction !== "idle" ? "var(--ink-3)" : "var(--brand)",
-                            color: "white",
+                            background: !teamNameInput.trim() || teamAction !== "idle" ? "var(--surface-3)" : "var(--accent)",
+                            color: !teamNameInput.trim() || teamAction !== "idle" ? "var(--ink-3)" : "#0a0a0a",
                             border: "none",
-                            borderRadius: 3,
+                            borderRadius: 10,
                             fontSize: 13,
                             fontWeight: 700,
                             cursor: !teamNameInput.trim() || teamAction !== "idle" ? "not-allowed" : "pointer",
@@ -1184,10 +1185,11 @@ export default function CompetitionLobbyPage() {
                 {!canEnterArena && (
                   <>
                     <div style={{
-                      fontFamily: "ui-monospace, monospace",
+                      fontFamily: "var(--font-mono), ui-monospace, monospace",
                       fontSize: 32,
                       fontWeight: 800,
-                      color: countdown.isCritical ? "var(--danger)" : countdown.isUrgent ? "var(--warn)" : "var(--ink)",
+                      color: countdown.isCritical ? "var(--danger)" : countdown.isUrgent ? "var(--warn)" : "var(--accent)",
+                      textShadow: countdown.isCritical || countdown.isUrgent ? "none" : "0 0 14px rgba(0,200,150,.5)",
                       textAlign: "center",
                       padding: "8px 0 4px",
                       letterSpacing: 2,
