@@ -36,7 +36,9 @@ export default {
           foreground: "hsl(var(--muted-foreground))",
         },
         accent: {
-          DEFAULT: "hsl(var(--accent))",
+          /* Dedicated shadcn surface var so the design-system --accent
+             (green hex) can own the --accent name without colliding. */
+          DEFAULT: "hsl(var(--sh-accent))",
           foreground: "hsl(var(--accent-foreground))",
         },
         popover: {

@@ -42,35 +42,48 @@
    ──────────────────────────────────────────────────────────────────── */
 [data-theme="dark"] {
 
-  /* ── Algora source tokens (the single source of truth) ─────────── */
-  --bg:          #0f1117;   /* app background */
-  --bg-2:        #141720;   /* inputs, recessed areas, table headers */
-  --surface:     #1c2132;   /* cards, panels — clearly elevated */
-  --surface-2:   #222840;   /* hover states, active rows */
-  --surface-3:   #28304a;   /* pressed / selected */
-  --line:        #252d3d;   /* borders — felt, not seen */
-  --line-strong: #3a4568;   /* stronger borders, button outlines */
+  /* ── Algora source tokens (the single source of truth) ─────────────
+     Dark-green palette. Every legacy alias below repoints to these, so
+     recoloring the platform happens entirely from this block. ──────── */
+  --bg:          #0a0a0a;   /* app background */
+  --bg-2:        #111111;   /* inputs, recessed areas, table headers */
+  --surface:     #161616;   /* cards, panels — clearly elevated */
+  --surface-2:   #1e1e1e;   /* hover states, active rows */
+  --surface-3:   #252525;   /* pressed / selected */
+  --line:        #1e1e1e;   /* borders — felt, not seen */
+  --line-2:      #2a2a2a;   /* stronger borders, dividers */
+  --line-strong: var(--line-2);  /* legacy alias → line-2 */
 
-  --ink:   #edf0f7;         /* primary text */
-  --ink-2: #9aa3be;         /* secondary text */
-  --ink-3: #616b88;         /* tertiary / muted */
+  --ink:   #eef2ee;         /* primary text (green-tinted off-white) */
+  --ink-2: #7a8f7a;         /* secondary text */
+  --ink-3: #3d4d3d;         /* tertiary / muted */
 
-  --brand:       #5b7cf6;   /* single brand accent — used platform-wide */
-  --brand-2:     #7b96ff;   /* accent hover / active text on dark */
-  --accent-soft: rgba(91,124,246,.15);
-  --accent-ring: rgba(91,124,246,.35);
+  /* Green accent — the single platform accent. --brand aliases it so the
+     entire existing app (which references --brand) recolors to green. */
+  --accent:     #00c896;
+  --accent-2:   #00e6aa;
+  --accent-dim: rgba(0,200,150,.10);
+  --accent-ring:rgba(0,200,150,.25);
+  --accent-glow:rgba(0,200,150,.15);
 
-  --success:#2ec27e;  --success-soft:rgba(46,194,126,.15);  --success-ink:#4cd49b;
-  --warn:   #e8a030;  --warn-soft:rgba(232,160,48,.15);     --warn-ink:#eeb866;
-  --danger: #f0637a;  --danger-soft:rgba(240,99,122,.15);   --danger-ink:#ff8497;
-  --violet: #9b8cf6;  --violet-soft:rgba(155,140,246,.15);
+  --brand:       var(--accent);    /* platform-wide accent → green */
+  --brand-2:     var(--accent-2);  /* accent hover / active text */
+  --accent-soft: var(--accent-dim);
 
-  /* difficulty text */
-  --easy:#4cd49b; --medium:#eeb866; --hard:#ff8497;
+  /* success shares the green accent hue */
+  --success:#00c896;  --success-soft:rgba(0,200,150,.12);   --success-ink:#00e6aa;
+  --warn:   #e8a030;  --warn-soft:rgba(232,160,48,.12);     --warn-ink:#ffc069;
+  --danger: #f0637a;  --danger-soft:rgba(240,99,122,.12);   --danger-ink:#ff8fa3;
+  --violet: #9b8cf6;  --violet-soft:rgba(155,140,246,.12);
+
+  /* difficulty text — Easy=accent, Medium=amber, Hard=rose */
+  --easy:var(--accent); --medium:#ffc069; --hard:#ff8fa3;
 
   --r: 12px; --r-sm: 8px;
   --radius: 12px;   /* shadcn primitives consume this */
   --nav-h: 62px;    /* top navbar height (layout offsets reference this) */
+
+  --card-hover: 0 0 0 1px var(--accent), 0 0 20px rgba(0,200,150,.12);
 
   /* ── Legacy PSP aliases → Algora (do not hardcode hex in components) ── */
   --bg-primary:     var(--bg);         /* page background */
@@ -106,7 +119,7 @@
   --badge-bg:       var(--surface-2);
   --badge-text:     var(--ink-2);
 
-  --card-shadow:    0 1px 3px rgba(0,0,0,.2), 0 0 0 1px rgba(255,255,255,.04);
+  --card-shadow:    0 1px 3px rgba(0,0,0,.4), 0 0 0 1px rgba(255,255,255,.03);
 
   --navbar-bg:           var(--bg-2);
   --navbar-border:       var(--line);
@@ -173,6 +186,7 @@
     --muted: 216 14% 95%;
     --muted-foreground: 215 16% 47%;
     --accent: 216 14% 93%;
+    --sh-accent: 216 14% 93%;
     --accent-foreground: 215 41% 20%;
     --destructive: 12 95% 47%;
     --destructive-foreground: 0 0% 100%;
@@ -2080,19 +2094,19 @@ body,
   --card-foreground: 223 47% 94%;
   --popover: 223 38% 11%;
   --popover-foreground: 223 47% 94%;
-  --primary: 228 91% 67%;         /* --brand  #5d7cf7 */
-  --primary-foreground: 0 0% 100%;
-  --secondary: 223 36% 14%;       /* --surface-2 #161d2f */
-  --secondary-foreground: 223 47% 94%;
-  --muted: 223 36% 14%;
-  --muted-foreground: 224 20% 66%; /* --ink-2 #98a1ba */
-  --accent: 223 36% 14%;
-  --accent-foreground: 223 47% 94%;
-  --destructive: 351 82% 68%;     /* --danger #f0697e */
+  --primary: 165 100% 39%;        /* --accent #00c896 */
+  --primary-foreground: 0 0% 4%;
+  --secondary: 0 0% 12%;          /* --surface-2 #1e1e1e */
+  --secondary-foreground: 120 8% 94%;
+  --muted: 0 0% 12%;
+  --muted-foreground: 120 9% 52%; /* --ink-2 #7a8f7a */
+  --sh-accent: 0 0% 12%;          /* shadcn hover surface (--surface-2) */
+  --accent-foreground: 120 8% 94%;
+  --destructive: 351 82% 68%;     /* --danger #f0637a */
   --destructive-foreground: 0 0% 100%;
-  --border: 222 30% 17%;          /* --line   #1e2638 */
-  --input: 222 30% 17%;
-  --ring: 228 91% 67%;
+  --border: 0 0% 16%;             /* --line-2 #2a2a2a */
+  --input: 0 0% 16%;
+  --ring: 165 100% 39%;
 }
 
 /* ================================================================
@@ -2117,10 +2131,11 @@ body,
 }
 .anav-mark {
   width: 30px; height: 30px; border-radius: 9px;
-  background: linear-gradient(150deg, var(--brand), #9db0ff);
+  background: var(--accent);
   display: grid; place-items: center;
-  color: #0a0e18; font-family: var(--font-mono), monospace;
+  color: #0a0a0a; font-family: var(--font-mono), monospace;
   font-weight: 700; font-size: 13px; flex-shrink: 0;
+  box-shadow: 0 0 12px rgba(0,200,150,.4);
 }
 .anav-links { display: flex; align-items: center; gap: 2px; }
 .anav-link {
