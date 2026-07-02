@@ -244,7 +244,6 @@ export default function ExamsTpsPage() {
           </div>
         ) : (
           <div
-            style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 16 }}
             className="card-grid stagger"
           >
             {sorted.map(a => {

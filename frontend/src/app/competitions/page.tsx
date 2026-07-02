@@ -229,7 +229,6 @@ export default function CompetitionsPage() {
           </div>
         ) : (
           <div
-            style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 16 }}
             className="card-grid stagger"
           >
             {filtered.map(c => {
