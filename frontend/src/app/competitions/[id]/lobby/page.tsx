@@ -11,6 +11,7 @@ import {
   getApiBaseUrl,
 } from "@/lib/api";
 import { Trophy, Crown, Copy, Check, AlertTriangle, ClipboardList, Clock } from "lucide-react";
+import { EmptyState } from "@/components/ui/algora";
 import { toast } from "@/components/ui/PSPToast";
 import { useCountdown } from "@/hooks/useCountdown";
 import { useAuth } from "@/features/auth/contexts/AuthContext";
@@ -509,13 +510,14 @@ export default function CompetitionLobbyPage() {
         .lobby-grid { display: grid; grid-template-columns: 1fr 320px; gap: 16px; }
         .lobby-card {
           background: var(--surface);
-          border: 1px solid var(--border);
-          border-radius: 3px;
+          border: 1px solid var(--line-2);
+          border-radius: 12px;
           margin-bottom: 14px;
+          overflow: hidden;
         }
         .lobby-card-hd {
-          padding: 12px 16px;
-          border-bottom: 1px solid var(--bg-2);
+          padding: 14px 18px;
+          border-bottom: 1px solid var(--line-2);
           font-size: 13px;
           font-weight: 700;
           color: var(--ink);
@@ -947,13 +949,18 @@ export default function CompetitionLobbyPage() {
                         </div>
                         <input
                           className="input"
-                          style={{ marginBottom: 10 }}
+                          style={{
+                            marginBottom: 10,
+                            background: "var(--bg-2)",
+                            border: "1px solid var(--line-2)",
+                            borderRadius: 10,
+                          }}
                           placeholder="Team name"
                           value={teamNameInput}
                           onChange={e => setTeamNameInput(e.target.value)}
                           maxLength={40}
-                          onFocus={e => e.currentTarget.style.borderColor = "var(--brand)"}
-                          onBlur={e => e.currentTarget.style.borderColor = "var(--border)"}
+                          onFocus={e => e.currentTarget.style.borderColor = "var(--accent)"}
+                          onBlur={e => e.currentTarget.style.borderColor = "var(--line-2)"}
                         />
                         <button
                           type="submit"
@@ -1012,10 +1019,10 @@ export default function CompetitionLobbyPage() {
                           style={{
                             width: "100%",
                             height: 40,
-                            background: "var(--bg-primary)",
-                            color: codeInput.replace(/ /g, "").length < 6 ? "var(--ink-3)" : "var(--brand)",
-                            border: `1px solid ${codeInput.replace(/ /g, "").length < 6 ? "var(--border)" : "var(--brand)"}`,
-                            borderRadius: 3,
+                            background: "transparent",
+                            color: codeInput.replace(/ /g, "").length < 6 ? "var(--ink-3)" : "var(--ink)",
+                            border: `1px solid ${codeInput.replace(/ /g, "").length < 6 ? "var(--line-2)" : "var(--accent)"}`,
+                            borderRadius: 10,
                             fontSize: 13,
                             fontWeight: 700,
                             cursor: codeInput.replace(/ /g, "").length < 6 ? "not-allowed" : "pointer",
@@ -1064,9 +1071,12 @@ export default function CompetitionLobbyPage() {
                 </span>
               </div>
               {lobby.problems.length === 0 ? (
-                <div style={{ padding: "16px 14px", fontSize: 13, color: "var(--text-muted)" }}>
-                  No problems added yet.
-                </div>
+                <EmptyState
+                  icon={ClipboardList}
+                  title="No problems added yet"
+                  description="Problems will appear here when the teacher adds them."
+                  style={{ padding: "32px 16px" }}
+                />
               ) : (
                 <>
                   {lobby.problems.map((p, i) => (
