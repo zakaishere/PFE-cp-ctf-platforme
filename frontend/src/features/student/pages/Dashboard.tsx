@@ -5,7 +5,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import Navbar from "@/components/Navbar";
 import {
-  ClipboardList, CheckCircle2, Trophy, Megaphone, Settings, Medal, Code2,
+  Trophy, Megaphone, Medal, Code2,
   Zap, FlaskConical, ArrowRight,
 } from "lucide-react";
 import {
@@ -122,25 +122,11 @@ export default function StudentDashboard() {
       <div className="psp-main">
 
         {/* Greeting */}
-        <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", marginBottom: 4, gap: 16 }}>
-          <div>
-            <div style={{ fontSize: 25, fontWeight: 700, color: "var(--ink)", letterSpacing: "-0.02em" }}>
-              {greeting}, <span style={{ color: "var(--accent)" }}>{firstName}</span>
-            </div>
-            <div style={{ fontSize: 14, color: "var(--ink-2)", marginTop: 3 }}>{dateLine}</div>
+        <div style={{ marginBottom: 4 }}>
+          <div style={{ fontSize: 25, fontWeight: 700, color: "var(--ink)", letterSpacing: "-0.02em" }}>
+            {greeting}, <span style={{ color: "var(--accent)" }}>{firstName}</span>
           </div>
-          <div style={{ display: "flex", gap: 8, flexShrink: 0 }}>
-            <button
-              className="psp-btn psp-btn-secondary"
-              onClick={() => setShowOnboarding(true)}
-              title="Update profile"
-              style={{ display: "flex", alignItems: "center", gap: 6 }}
-            >
-              <Settings size={13} /> Profile
-            </button>
-            <Link href="/problems" className="psp-btn psp-btn-secondary"><CheckCircle2 size={13} /> Practice</Link>
-            <Link href="/assessments" className="psp-btn psp-btn-primary"><ClipboardList size={13} /> My Assessments</Link>
-          </div>
+          <div style={{ fontSize: 14, color: "var(--ink-2)", marginTop: 3 }}>{dateLine}</div>
         </div>
 
         {/* Profile incomplete banner */}
