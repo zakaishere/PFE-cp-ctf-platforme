@@ -13,7 +13,7 @@ const diffLabel = (d: string) =>
   ({ EASY: "Easy", MEDIUM: "Medium", HARD: "Hard" }[d] ?? d);
 
 const diffColor = (d: string) =>
-  ({ EASY: "var(--success-ink)", MEDIUM: "var(--warn-ink)", HARD: "var(--danger-ink)" }[d] ?? "var(--ink-2)");
+  ({ EASY: "var(--accent)", MEDIUM: "var(--warn)", HARD: "var(--danger)" }[d] ?? "var(--ink-2)");
 
 type SolvedFilter = "all" | "solved" | "unsolved";
 
