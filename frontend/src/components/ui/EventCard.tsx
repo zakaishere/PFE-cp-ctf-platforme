@@ -108,10 +108,10 @@ export function EventCard({
       <div
         style={{
           flex: 1,
-          padding: "20px 20px 16px",
+          padding: "16px 18px",
           display: "flex",
           flexDirection: "column",
-          justifyContent: "flex-end",
+          justifyContent: "space-between",
           position: "relative",
           overflow: "hidden",
           background:
@@ -148,13 +148,31 @@ export function EventCard({
           <Pill variant={STATUS_PILL[status]}>{STATUS_LABEL[status]}</Pill>
         </div>
 
+        {/* decorative watermark letters */}
+        <span
+          aria-hidden
+          style={{
+            position: "absolute",
+            bottom: -10,
+            right: 12,
+            fontSize: 80,
+            fontWeight: 800,
+            opacity: 0.04,
+            color: "#ffffff",
+            fontFamily: "var(--font-mono), ui-monospace, monospace",
+            lineHeight: 1,
+            userSelect: "none",
+            pointerEvents: "none",
+          }}
+        >
+          {type === "cp" ? "CP" : type === "exam" ? "EX" : type === "tp" ? "TP" : "CTF"}
+        </span>
         <div
           style={{
             font: "650 10px var(--font-ui)",
             letterSpacing: ".1em",
             textTransform: "uppercase",
             color: accent,
-            marginBottom: 8,
             position: "relative",
             zIndex: 1,
           }}
@@ -163,7 +181,7 @@ export function EventCard({
         </div>
         <div
           style={{
-            font: "800 20px var(--font-ui)",
+            font: "800 22px var(--font-ui)",
             letterSpacing: "-.02em",
             color: dimmed ? "var(--ink-2)" : "var(--ink)",
             lineHeight: 1.2,
