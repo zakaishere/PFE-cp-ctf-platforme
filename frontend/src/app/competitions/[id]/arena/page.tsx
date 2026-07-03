@@ -890,11 +890,15 @@ function LeftPanel({
             ? { background: "var(--accent-glow)", color: "var(--accent)" }
             : { background: "var(--surface-2)", color: "var(--ink-2)" };
           return (
-            <button key={p.problemId} onClick={() => setActiveProblemIdx(i)} style={{
+            <button key={p.problemId} onClick={() => setActiveProblemIdx(i)}
+              onMouseEnter={e => { if (!active) e.currentTarget.style.background = "var(--surface-2)"; }}
+              onMouseLeave={e => { if (!active) e.currentTarget.style.background = "transparent"; }}
+              style={{
               display: "flex", alignItems: "center", gap: 9, padding: "9px 10px",
               borderRadius: 9, cursor: "pointer", marginBottom: 3, width: "100%", textAlign: "left",
               background: active ? "var(--accent-dim)" : "transparent",
               border: active ? "1px solid var(--accent-ring)" : "1px solid transparent",
+              transition: "background 0.1s",
             }}>
               <div style={{ width: 28, height: 28, borderRadius: 7, display: "grid", placeItems: "center", font: "700 12px var(--font-mono)", flexShrink: 0, ...badgeStyle }}>
                 {p.label}
@@ -1086,12 +1090,12 @@ function RightEditorPanel({
       </div>
 
       {hasResults && (
-        <div style={{ borderTop: "1px solid var(--border)", flexShrink: 0, maxHeight: "45%", display: "flex", flexDirection: "column", overflowY: "auto" }}>
+        <div style={{ borderTop: "1px solid var(--line-2)", background: "var(--surface)", flexShrink: 0, maxHeight: "45%", display: "flex", flexDirection: "column", overflowY: "auto" }}>
           {judgeResult && <JudgeResultBanner result={judgeResult} />}
           {runResults && (
             <>
-              <div style={{ padding: "7px 12px", background: "var(--bg-tertiary)", borderBottom: "1px solid var(--border)", flexShrink: 0, display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-                <span style={{ fontSize: 12, fontWeight: 600, color: "var(--text-primary)" }}>Run Results</span>
+              <div style={{ padding: "7px 12px", background: "var(--surface)", borderBottom: "1px solid var(--line-2)", flexShrink: 0, display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+                <span style={{ fontSize: 12, fontWeight: 600, color: "var(--ink)" }}>Run Results</span>
                 <span style={{ fontSize: 11, color: "var(--text-muted)" }}>
                   {runResults.filter(r => r.passed).length}/{runResults.length} passed
                 </span>

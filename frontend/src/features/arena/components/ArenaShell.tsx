@@ -234,8 +234,9 @@ function TopBar({ title, backHref, backLabel, remainingSeconds, isEnded, extras 
 
   return (
     <div style={{
-      background: "var(--bg)", height: 52, display: "flex", alignItems: "center",
+      background: "rgba(10,10,10,.95)", height: 52, display: "flex", alignItems: "center",
       padding: "0 16px", gap: 12, flexShrink: 0, borderBottom: "1px solid var(--line-2)",
+      boxShadow: "0 1px 0 0 rgba(0,200,150,.08)",
     }}>
       <div style={{
         display: "flex", alignItems: "center", gap: 8,
