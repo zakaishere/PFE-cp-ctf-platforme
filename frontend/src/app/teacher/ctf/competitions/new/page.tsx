@@ -1,7 +1,6 @@
 "use client";
 
 import { useState } from "react";
-import { APP_NAME } from "@/lib/brand";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import Navbar from "@/components/Navbar";
@@ -163,13 +162,6 @@ export default function NewTeacherCTFCompetitionPage() {
   return (
     <>
       <Navbar />
-      <div className="psp-breadcrumb">
-        <Link href="/teacher">{APP_NAME}</Link> ›{" "}
-        <Link href="/teacher/ctf">CTF</Link> ›{" "}
-        <Link href="/teacher/ctf/competitions">Competitions</Link> ›{" "}
-        <span style={{ color: "var(--text-primary)" }}>New</span>
-      </div>
-
       <div className="psp-main" style={{ maxWidth: 780 }}>
         <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 6 }}>
           <Trophy size={20} color="#a78bfa" />

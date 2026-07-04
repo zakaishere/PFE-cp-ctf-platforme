@@ -133,6 +133,14 @@ export default function ExamsTpsPage() {
         : { label: "Closed", disabled: true, run: () => {} };
     }
     if (st === "UPCOMING") {
+      // Scheduled exams open a waiting room (info + countdown + access code).
+      // The card is clickable; the label still communicates the start time.
+      if (isExam) {
+        return {
+          label: a.scheduledStartTime ? `Starts ${formatDate(a.scheduledStartTime)}` : "View details",
+          run: () => router.push(`/assessments/${a.id}`),
+        };
+      }
       return { label: a.scheduledStartTime ? `Starts ${formatDate(a.scheduledStartTime)}` : "Scheduled", disabled: true, run: () => {} };
     }
     if (js === "APPROVED") return { label: enterLabel, run: enter };

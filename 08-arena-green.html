@@ -1,0 +1,711 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1.0"/>
+<title>Algora — CP Arena (green theme)</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap');
+:root{
+  --bg:#0a0a0a;
+  --bg-2:#111111;
+  --surface:#161616;
+  --surface-2:#1e1e1e;
+  --surface-3:#252525;
+  --line:#1e1e1e;
+  --line-2:#2a2a2a;
+  --ink:#eef2ee;
+  --ink-2:#7a8f7a;
+  --ink-3:#3d4d3d;
+  --accent:#00c896;
+  --accent-2:#00e6aa;
+  --accent-dim:rgba(0,200,150,.1);
+  --accent-glow:rgba(0,200,150,.15);
+  --danger:#f0637a;
+  --danger-soft:rgba(240,99,122,.12);
+  --warn:#e8a030;
+  --warn-soft:rgba(232,160,48,.12);
+  --mono:'JetBrains Mono',ui-monospace,monospace;
+  --font:'Plus Jakarta Sans',system-ui,sans-serif;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{height:100%;background:var(--bg);color:var(--ink);font-family:var(--font);font-size:14px;-webkit-font-smoothing:antialiased;overflow:hidden}
+::-webkit-scrollbar{width:6px;height:6px}
+::-webkit-scrollbar-thumb{background:var(--surface-3);border-radius:6px}
+
+/* ── TOP BAR ── */
+.topbar{
+  height:52px;
+  background:var(--bg);
+  border-bottom:1px solid var(--line-2);
+  display:flex;align-items:center;
+  padding:0 16px;gap:12px;
+  position:relative;z-index:10;
+}
+.tb-logo{
+  display:flex;align-items:center;gap:8px;
+  font:700 15px var(--font);letter-spacing:-.01em;
+  padding-right:14px;border-right:1px solid var(--line-2);
+}
+.tb-logo .m{
+  width:26px;height:26px;border-radius:7px;
+  background:var(--accent);display:grid;place-items:center;
+  color:#0a0a0a;font:700 11px var(--mono);
+  box-shadow:0 0 10px rgba(0,200,150,.4);
+}
+.tb-name{font:600 14px var(--font);color:var(--ink-2);padding-left:2px}
+.tb-tabs{display:flex;gap:2px;margin-left:4px}
+.tb-tab{
+  display:flex;align-items:center;gap:7px;
+  padding:6px 12px;border-radius:8px;
+  font:600 13px var(--font);color:var(--ink-2);cursor:pointer;
+}
+.tb-tab svg{width:15px;height:15px}
+.tb-tab:hover{background:var(--surface-2);color:var(--ink)}
+.tb-tab.on{background:var(--accent-dim);color:var(--accent)}
+.tb-tab.on svg{color:var(--accent)}
+.tb-sp{flex:1}
+.tb-violations{
+  display:flex;align-items:center;gap:6px;
+  font:600 12px var(--font);color:var(--warn);
+  background:var(--warn-soft);border:1px solid rgba(232,160,48,.2);
+  border-radius:8px;padding:5px 10px;cursor:pointer;
+}
+.tb-violations svg{width:14px;height:14px}
+.tb-team{
+  display:flex;align-items:center;gap:8px;
+  background:var(--surface-2);border:1px solid var(--line-2);
+  border-radius:8px;padding:5px 10px 5px 6px;
+}
+.tb-team .av{
+  width:24px;height:24px;border-radius:6px;
+  background:var(--accent);display:grid;place-items:center;
+  color:#0a0a0a;font:700 10px var(--font);
+}
+.tb-team .tn{font:600 12.5px var(--font)}
+.tb-team .tr{font:500 11px var(--mono);color:var(--ink-3)}
+.tb-timer{
+  font:600 18px var(--mono);color:var(--accent);
+  letter-spacing:1px;
+  text-shadow:0 0 14px rgba(0,200,150,.5);
+  padding:0 4px;
+}
+.tb-timer.warn{color:var(--danger);text-shadow:0 0 14px rgba(240,99,122,.5)}
+.tb-leave{
+  display:flex;align-items:center;gap:6px;
+  background:var(--danger-soft);border:1px solid rgba(240,99,122,.2);
+  color:var(--danger);font:600 13px var(--font);
+  padding:6px 12px;border-radius:8px;cursor:pointer;
+}
+.tb-leave:hover{background:rgba(240,99,122,.18)}
+.tb-leave svg{width:14px;height:14px}
+
+/* ── WORKSPACE ── */
+.workspace{
+  display:grid;
+  grid-template-columns:220px minmax(0,1fr) 400px;
+  height:calc(100vh - 52px);
+  overflow:hidden;
+}
+.col{overflow-y:auto;overflow-x:hidden}
+
+/* ── RAIL (left) ── */
+.rail{
+  border-right:1px solid var(--line-2);
+  background:var(--bg);
+  display:flex;flex-direction:column;
+}
+.rail-head{
+  padding:14px 14px 10px;
+  border-bottom:1px solid var(--line-2);
+  display:flex;align-items:center;justify-content:space-between;
+  position:sticky;top:0;background:var(--bg);z-index:2;
+}
+.rail-head .rh{font:650 10px var(--font);letter-spacing:.1em;text-transform:uppercase;color:var(--ink-3)}
+.rail-head .rs{font:600 11.5px var(--mono);color:var(--accent)}
+.prob-list{padding:8px;flex:1}
+.prob-item{
+  display:flex;align-items:center;gap:9px;
+  padding:9px 10px;border-radius:9px;cursor:pointer;
+  border:1px solid transparent;margin-bottom:3px;
+}
+.prob-item:hover{background:var(--surface-2)}
+.prob-item.active{background:var(--accent-dim);border-color:rgba(0,200,150,.2)}
+.prob-badge{
+  width:28px;height:28px;border-radius:7px;
+  display:grid;place-items:center;
+  font:700 12px var(--mono);flex:none;
+  background:var(--surface-2);color:var(--ink-2);
+}
+.prob-item.solved .prob-badge{background:rgba(0,200,150,.12);color:var(--accent);border:1px solid rgba(0,200,150,.2)}
+.prob-item.wrong .prob-badge{background:var(--danger-soft);color:var(--danger)}
+.prob-item.active .prob-badge{background:rgba(0,200,150,.15);color:var(--accent)}
+.prob-meta{flex:1;min-width:0}
+.prob-title{font:600 13px var(--font);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-bottom:2px}
+.prob-pts{font:500 11px var(--mono);color:var(--ink-3)}
+.prob-status{font:650 11.5px var(--font);flex:none}
+.prob-status.ok{color:var(--accent)}
+.prob-status.bad{color:var(--danger)}
+.prob-status.none{color:var(--ink-3)}
+
+/* progress section */
+.progress-section{
+  border-top:1px solid var(--line-2);
+  padding:14px;
+}
+.ps-title{font:650 10px var(--font);letter-spacing:.1em;text-transform:uppercase;color:var(--ink-3);margin-bottom:10px}
+.ps-bar{height:4px;border-radius:4px;background:var(--surface-3);overflow:hidden;margin-bottom:8px}
+.ps-bar i{display:block;height:100%;background:var(--accent);border-radius:4px;box-shadow:0 0 8px rgba(0,200,150,.5)}
+.ps-count{font:600 12px var(--mono);color:var(--ink-2);margin-bottom:12px}
+.ps-legend{display:flex;flex-direction:column;gap:5px}
+.ps-leg{display:flex;align-items:center;gap:7px;font-size:12px;color:var(--ink-2)}
+.ps-dot{width:7px;height:7px;border-radius:50%}
+
+/* team activity */
+.activity-section{
+  border-top:1px solid var(--line-2);
+  padding:14px;
+}
+.as-title{font:650 10px var(--font);letter-spacing:.1em;text-transform:uppercase;color:var(--ink-3);margin-bottom:10px}
+.act-item{display:flex;align-items:center;gap:8px;padding:7px 0;border-bottom:1px solid var(--line-2)}
+.act-item:last-child{border-bottom:none}
+.act-av{width:22px;height:22px;border-radius:6px;background:var(--accent);display:grid;place-items:center;color:#0a0a0a;font:700 9px var(--font);flex:none}
+.act-info{flex:1;min-width:0}
+.act-info .an{font:600 12px var(--font);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.act-info .am{font:500 11px var(--mono);color:var(--ink-3)}
+.act-verdict{font:650 11px var(--mono)}
+.act-verdict.ok{color:var(--accent)}.act-verdict.bad{color:var(--danger)}.act-verdict.warn{color:var(--warn)}
+
+/* ── STATEMENT (center) ── */
+.statement{
+  padding:24px 28px 60px;
+  background:var(--bg);
+  border-right:1px solid var(--line-2);
+}
+.stmt-crumb{font:500 11.5px var(--mono);color:var(--ink-3);margin-bottom:14px}
+.stmt-header{display:flex;align-items:center;gap:12px;margin-bottom:10px}
+.stmt-letter{font:700 24px var(--mono);color:var(--accent)}
+.stmt-title{font:700 22px var(--font);letter-spacing:-.02em}
+.stmt-meta{display:flex;gap:8px;flex-wrap:wrap;margin:14px 0 22px}
+.stmt-tag{
+  font:500 11.5px var(--mono);color:var(--ink-2);
+  border:1px solid var(--line-2);border-radius:7px;
+  padding:5px 10px;background:var(--surface-2);
+}
+.stmt-tag.acc{color:var(--accent);border-color:rgba(0,200,150,.2);background:var(--accent-dim)}
+.stmt-body p{line-height:1.75;color:#b8ccb8;margin-bottom:14px;font-size:14px}
+.stmt-body strong{color:var(--ink)}
+.stmt-body h3{
+  font:650 11px var(--font);letter-spacing:.09em;text-transform:uppercase;
+  color:var(--ink-3);margin:24px 0 10px;
+}
+.stmt-constraints{
+  font:400 13.5px var(--mono);color:#8a9e8a;line-height:1.9;
+  border-left:2px solid rgba(0,200,150,.3);padding-left:14px;
+}
+.io-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:8px}
+.io-box{border:1px solid var(--line-2);border-radius:10px;overflow:hidden;background:var(--bg-2)}
+.io-cap{
+  font:650 10px var(--font);letter-spacing:.08em;text-transform:uppercase;color:var(--ink-3);
+  padding:8px 12px;border-bottom:1px solid var(--line-2);background:var(--surface-2);
+}
+.io-box pre{font:400 12.5px var(--mono);padding:12px;color:#a0b8a0;line-height:1.6}
+
+/* ── SUBMIT (right) ── */
+.submit-panel{
+  background:var(--bg-2);
+  display:flex;flex-direction:column;
+  height:100%;
+}
+.submit-head{
+  display:flex;align-items:center;gap:10px;
+  padding:10px 14px;border-bottom:1px solid var(--line-2);
+  position:sticky;top:0;background:var(--bg-2);z-index:2;
+  flex:none;
+}
+.submit-head .sh-label{font:650 10px var(--font);letter-spacing:.1em;text-transform:uppercase;color:var(--ink-3)}
+.lang-pick{
+  display:flex;align-items:center;gap:6px;
+  background:var(--surface);border:1px solid var(--line-2);border-radius:8px;
+  padding:6px 10px;font:500 12.5px var(--mono);cursor:pointer;color:var(--ink);
+}
+.lang-pick svg{width:13px;height:13px;color:var(--ink-3)}
+
+/* editor */
+.editor-wrap{flex:1;display:flex;background:#0c0c0c;min-height:0;overflow:hidden}
+.editor-gutter{
+  padding:14px 0;width:38px;flex:none;
+  text-align:right;border-right:1px solid var(--line);
+  font:400 12px var(--mono);line-height:1.65;color:#2a3a2a;
+}
+.editor-gutter span{display:block;padding:0 8px}
+.editor-code{
+  padding:14px 16px;flex:1;
+  font:400 12.5px var(--mono);line-height:1.65;
+  white-space:pre;color:#b8d0b8;overflow:auto;
+}
+/* syntax */
+.k{color:#00c896}.t{color:#4ab8b0}.s{color:#b89060}.cm{color:#2d4a2d}.n{color:#c86060}.f{color:#9ab0d0}
+
+/* runner */
+.runner{
+  flex:none;border-top:1px solid var(--line-2);
+  padding:14px 14px 16px;background:var(--bg);
+}
+.runner-top{display:flex;align-items:center;justify-content:space-between;margin-bottom:10px}
+.runner-top .rt-label{font:650 10px var(--font);letter-spacing:.1em;text-transform:uppercase;color:var(--ink-3)}
+.runner-top .rt-status{font:500 12px var(--mono);color:var(--accent);display:flex;align-items:center;gap:6px}
+.spin{width:10px;height:10px;border-radius:50%;border:2px solid rgba(0,200,150,.2);border-top-color:var(--accent);animation:spin .7s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+.cases{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:12px}
+.case{
+  width:30px;height:30px;border-radius:7px;
+  display:grid;place-items:center;
+  font:500 11.5px var(--mono);
+  border:1px solid var(--line-2);background:var(--surface);color:var(--ink-3);
+}
+.case.pass{background:rgba(0,200,150,.1);border-color:rgba(0,200,150,.25);color:var(--accent)}
+.case.fail{background:var(--danger-soft);border-color:rgba(240,99,122,.25);color:var(--danger)}
+.case.run{
+  background:rgba(0,200,150,.08);border-color:rgba(0,200,150,.2);color:var(--accent);
+  animation:pulse 1s ease infinite;
+}
+.case.hidden{background:var(--surface-2);border-color:var(--line-2);color:var(--ink-3)}
+@keyframes pulse{0%,100%{box-shadow:0 0 0 0 rgba(0,200,150,.2)}50%{box-shadow:0 0 0 4px transparent}}
+.verdict-row{
+  display:flex;align-items:center;justify-content:space-between;
+  border:1px solid var(--line-2);border-radius:9px;
+  padding:10px 12px;background:var(--surface);margin-bottom:12px;
+}
+.verdict-badge{
+  font:700 12px var(--mono);
+  padding:4px 9px;border-radius:6px;
+}
+.verdict-badge.judging{color:var(--accent);background:var(--accent-dim);border:1px solid rgba(0,200,150,.2)}
+.verdict-badge.ac{color:#0a0a0a;background:var(--accent);border:1px solid var(--accent)}
+.verdict-badge.wa{color:var(--danger);background:var(--danger-soft);border:1px solid rgba(240,99,122,.2)}
+.verdict-badge.tle{color:var(--warn);background:var(--warn-soft);border:1px solid rgba(232,160,48,.2)}
+.verdict-meta{font:500 12px var(--mono);color:var(--ink-3)}
+.run-btns{display:grid;grid-template-columns:1fr 1.4fr;gap:8px}
+.btn{
+  display:flex;align-items:center;justify-content:center;gap:7px;
+  border-radius:9px;font:600 13px var(--font);cursor:pointer;padding:10px;
+  border:1px solid var(--line-2);background:var(--surface);color:var(--ink);
+}
+.btn:hover{background:var(--surface-2)}
+.btn svg{width:14px;height:14px}
+.btn.primary{
+  background:var(--accent);border-color:var(--accent);color:#0a0a0a;font-weight:700;
+}
+.btn.primary:hover{background:var(--accent-2);box-shadow:0 0 14px rgba(0,200,150,.3)}
+
+/* ── SCOREBOARD VIEW ── */
+.scoreboard{padding:20px;background:var(--bg)}
+.sb-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:16px}
+.sb-head h2{font:700 17px var(--font);display:flex;align-items:center;gap:10px}
+.freeze-chip{font:650 10px var(--font);letter-spacing:.07em;text-transform:uppercase;color:var(--warn);background:var(--warn-soft);border:1px solid rgba(232,160,48,.2);border-radius:6px;padding:3px 8px}
+.sb-table{width:100%;border-collapse:collapse;font-size:13px}
+.sb-table th{text-align:left;font:650 10px var(--font);letter-spacing:.07em;text-transform:uppercase;color:var(--ink-3);padding:10px 12px;border-bottom:1px solid var(--line-2);background:var(--bg-2)}
+.sb-table td{padding:11px 12px;border-bottom:1px solid var(--line-2)}
+.sb-table tr:hover td{background:var(--surface-2)}
+.sb-table tr.me td{background:var(--accent-dim)}
+.rank{font:700 14px var(--mono);color:var(--ink-2);width:40px}
+.rank.top{color:var(--accent)}
+.team-name{font:650 14px var(--font)}
+.sb-prob{
+  width:36px;height:30px;border-radius:6px;
+  display:grid;place-items:center;
+  font:600 12px var(--mono);
+  background:var(--surface-2);color:var(--ink-3);
+}
+.sb-prob.ac{background:rgba(0,200,150,.12);color:var(--accent);border:1px solid rgba(0,200,150,.2)}
+.sb-prob.wa{background:var(--danger-soft);color:var(--danger)}
+.sb-prob.frozen{background:var(--warn-soft);color:var(--warn)}
+.sb-probs{display:flex;gap:5px}
+.sb-score{font:700 14px var(--mono);color:var(--ink)}
+.sb-penalty{font:500 12px var(--mono);color:var(--ink-3)}
+
+/* TABS for workspace/scoreboard toggle */
+.ws-tabs{display:flex;gap:0;border-bottom:1px solid var(--line-2);background:var(--bg);padding:0 16px;flex:none}
+.ws-tab{display:flex;align-items:center;gap:7px;padding:10px 14px;font:600 13px var(--font);color:var(--ink-3);cursor:pointer;border-bottom:2px solid transparent;margin-bottom:-1px}
+.ws-tab svg{width:15px;height:15px}
+.ws-tab:hover{color:var(--ink-2)}
+.ws-tab.on{color:var(--accent);border-bottom-color:var(--accent)}
+.ws-tab.on svg{color:var(--accent)}
+.main-area{flex:1;display:flex;flex-direction:column;overflow:hidden}
+
+/* keyboard hint */
+.kb-hints{padding:8px 14px;border-top:1px solid var(--line-2);display:flex;gap:16px;background:var(--bg-2);flex:none}
+.kb-hint{font:500 11px var(--mono);color:var(--ink-3);display:flex;align-items:center;gap:5px}
+.kb-key{background:var(--surface-3);border:1px solid var(--line-2);border-radius:4px;padding:1px 5px;font:500 10px var(--mono);color:var(--ink-2)}
+
+/* view toggle */
+.panel[hidden]{display:none}
+</style>
+</head>
+<body>
+
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <symbol id="i-code" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="m8 9-3 3 3 3"/><path d="m16 9 3 3-3 3"/><path d="m13.5 7-3 10"/></symbol>
+  <symbol id="i-trophy" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M7 4h10v5a5 5 0 0 1-10 0Z"/><path d="M7 6H4v1a3 3 0 0 0 3 3"/><path d="M17 6h3v1a3 3 0 0 1-3 3"/><path d="M10 14h4l-.5 4h-3Z"/><path d="M8 21h8"/></symbol>
+  <symbol id="i-list" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M8 6h13M8 12h13M8 18h13M3 6h.01M3 12h.01M3 18h.01"/></symbol>
+  <symbol id="i-users" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="8" r="3.2"/><path d="M3.5 20a5.5 5.5 0 0 1 11 0"/><path d="M16 5.5a3.2 3.2 0 0 1 0 6"/><path d="M17.5 14.5a5.5 5.5 0 0 1 3 5"/></symbol>
+  <symbol id="i-alert" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M10.3 3.3 2 20h20L13.7 3.3a2 2 0 0 0-3.4 0Z"/><path d="M12 9v4M12 17h.01"/></symbol>
+  <symbol id="i-log-out" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><path d="m16 17 5-5-5-5"/><path d="M21 12H9"/></symbol>
+  <symbol id="i-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m6 9 6 6 6-6"/></symbol>
+  <symbol id="i-send" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="m22 2-11 11"/><path d="m22 2-7 20-4-9-9-4 20-7Z"/></symbol>
+  <symbol id="i-play" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><polygon points="5,3 19,12 5,21"/></symbol>
+  <symbol id="i-check" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="m5 12 4.5 4.5L19 7"/></symbol>
+  <symbol id="i-x" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6 6 18M6 6l12 12"/></symbol>
+  <symbol id="i-medal" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="14" r="5"/><path d="m8.5 9.5-2-6h4l2 3"/><path d="m15.5 9.5 2-6h-4l-2 3"/></symbol>
+</svg>
+
+<!-- TOP BAR -->
+<div class="topbar">
+  <div class="tb-logo">
+    <div class="m">A</div>
+    Algora
+  </div>
+  <span class="tb-name">ohohhahah</span>
+
+  <div class="tb-sp"></div>
+
+  <div class="tb-violations">
+    <svg><use href="#i-alert"/></svg>
+    4 violations
+  </div>
+
+  <div class="tb-team">
+    <div class="av">sd</div>
+    <div>
+      <div class="tn">ze3aterz</div>
+      <div class="tr">rank #3</div>
+    </div>
+  </div>
+
+  <div class="tb-timer">01:10:01</div>
+
+  <div class="tb-leave">
+    <svg><use href="#i-log-out"/></svg>
+    Leave
+  </div>
+</div>
+
+<!-- WORKSPACE / SCOREBOARD TABS -->
+<div style="display:flex;flex-direction:column;height:calc(100vh - 52px)">
+  <div class="ws-tabs">
+    <div class="ws-tab on" onclick="switchTab('workspace')">
+      <svg><use href="#i-code"/></svg>Workspace
+    </div>
+    <div class="ws-tab" onclick="switchTab('scoreboard')">
+      <svg><use href="#i-medal"/></svg>Scoreboard
+    </div>
+  </div>
+
+  <!-- WORKSPACE PANEL -->
+  <div class="panel" id="panel-workspace" style="flex:1;display:flex;overflow:hidden">
+    <div class="workspace" style="flex:1;height:100%">
+
+      <!-- LEFT RAIL -->
+      <div class="col rail">
+        <div class="rail-head">
+          <span class="rh">Problems</span>
+          <span class="rs">3 / 6</span>
+        </div>
+        <div class="prob-list">
+          <div class="prob-item solved">
+            <div class="prob-badge">A</div>
+            <div class="prob-meta">
+              <div class="prob-title">Warm Handshake</div>
+              <div class="prob-pts">100 pts</div>
+            </div>
+            <div class="prob-status ok">✓</div>
+          </div>
+          <div class="prob-item solved">
+            <div class="prob-badge">B</div>
+            <div class="prob-meta">
+              <div class="prob-title">Prefix Parity</div>
+              <div class="prob-pts">100 pts</div>
+            </div>
+            <div class="prob-status ok">✓</div>
+          </div>
+          <div class="prob-item active">
+            <div class="prob-badge">C</div>
+            <div class="prob-meta">
+              <div class="prob-title">Balanced Subarrays</div>
+              <div class="prob-pts">300 pts</div>
+            </div>
+            <div class="prob-status none">—</div>
+          </div>
+          <div class="prob-item wrong">
+            <div class="prob-badge">D</div>
+            <div class="prob-meta">
+              <div class="prob-title">Tetouan Transit</div>
+              <div class="prob-pts">400 pts</div>
+            </div>
+            <div class="prob-status bad">×2</div>
+          </div>
+          <div class="prob-item solved">
+            <div class="prob-badge">E</div>
+            <div class="prob-meta">
+              <div class="prob-title">Coin Machine</div>
+              <div class="prob-pts">500 pts</div>
+            </div>
+            <div class="prob-status ok">✓</div>
+          </div>
+          <div class="prob-item">
+            <div class="prob-badge">F</div>
+            <div class="prob-meta">
+              <div class="prob-title">Median of Medians</div>
+              <div class="prob-pts">700 pts</div>
+            </div>
+            <div class="prob-status none">—</div>
+          </div>
+        </div>
+
+        <!-- PROGRESS -->
+        <div class="progress-section">
+          <div class="ps-title">Progress</div>
+          <div class="ps-bar"><i style="width:50%"></i></div>
+          <div class="ps-count">3 / 6 solved</div>
+          <div class="ps-legend">
+            <div class="ps-leg"><div class="ps-dot" style="background:var(--accent)"></div>Solved</div>
+            <div class="ps-leg"><div class="ps-dot" style="background:var(--warn)"></div>Attempted</div>
+            <div class="ps-leg"><div class="ps-dot" style="background:var(--ink-3)"></div>Unsolved</div>
+          </div>
+        </div>
+
+        <!-- TEAM ACTIVITY -->
+        <div class="activity-section">
+          <div class="as-title">Team activity</div>
+          <div class="act-item">
+            <div class="act-av">ZE</div>
+            <div class="act-info">
+              <div class="an">Zakariae</div>
+              <div class="am">Problem A · 14m ago</div>
+            </div>
+            <div class="act-verdict ok">AC</div>
+          </div>
+          <div class="act-item">
+            <div class="act-av" style="background:#6a5ccc">MK</div>
+            <div class="act-info">
+              <div class="an">Mehdi</div>
+              <div class="am">Problem D · 8m ago</div>
+            </div>
+            <div class="act-verdict bad">WA</div>
+          </div>
+          <div class="act-item">
+            <div class="act-av" style="background:#c06080">SR</div>
+            <div class="act-info">
+              <div class="an">Salma</div>
+              <div class="am">Problem B · 3m ago</div>
+            </div>
+            <div class="act-verdict ok">AC</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- CENTER: STATEMENT -->
+      <div class="col statement">
+        <div class="stmt-crumb">Problems / C — Balanced Subarrays</div>
+        <div class="stmt-header">
+          <span class="stmt-letter">C.</span>
+          <span class="stmt-title">Balanced Subarrays</span>
+        </div>
+        <div class="stmt-meta">
+          <span class="stmt-tag acc">Medium</span>
+          <span class="stmt-tag">Time: 1000 ms</span>
+          <span class="stmt-tag">Memory: 256 MB</span>
+          <span class="stmt-tag">300 pts</span>
+        </div>
+        <div class="stmt-body">
+          <p>You are given an array of <strong>n</strong> integers. A subarray is called <strong>balanced</strong> if the number of even elements equals the number of odd elements inside it.</p>
+          <p>Count how many non-empty subarrays are balanced. Two subarrays are different if their start or end index differs.</p>
+          <h3>Input</h3>
+          <div class="stmt-constraints">
+            The first line contains an integer n (1 ≤ n ≤ 2·10⁵).<br>
+            The second line contains n integers a₁ … aₙ (1 ≤ aᵢ ≤ 10⁹).
+          </div>
+          <h3>Output</h3>
+          <div class="stmt-constraints">Print a single integer — the number of balanced subarrays.</div>
+          <h3>Example</h3>
+          <div class="io-grid">
+            <div class="io-box">
+              <div class="io-cap">Input</div>
+              <pre>4
+1 2 3 4</pre>
+            </div>
+            <div class="io-box">
+              <div class="io-cap">Output</div>
+              <pre>4</pre>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- RIGHT: SUBMIT + JUDGE -->
+      <div class="submit-panel">
+        <div class="submit-head">
+          <span class="sh-label">Solution</span>
+          <div style="flex:1"></div>
+          <div class="lang-pick">
+            C++ 17 <svg><use href="#i-chevron"/></svg>
+          </div>
+        </div>
+
+        <div class="editor-wrap">
+          <div class="editor-gutter">
+            <span>1</span><span>2</span><span>3</span><span>4</span>
+            <span>5</span><span>6</span><span>7</span><span>8</span>
+            <span>9</span><span>10</span><span>11</span>
+          </div>
+          <div class="editor-code"><span class="cm">// prefix balance trick</span>
+<span class="k">#include</span> <span class="s">&lt;bits/stdc++.h&gt;</span>
+<span class="k">using namespace</span> std;
+<span class="t">int</span> <span class="f">main</span>(){
+    <span class="t">int</span> n; cin &gt;&gt; n;
+    <span class="t">long long</span> ans=<span class="n">0</span>, bal=<span class="n">0</span>;
+    map&lt;<span class="t">ll</span>,<span class="t">ll</span>&gt; cnt;
+    cnt[<span class="n">0</span>]=<span class="n">1</span>;
+    <span class="k">for</span>(<span class="t">int</span> i=<span class="n">0</span>;i&lt;n;i++){
+      <span class="t">ll</span> x; cin&gt;&gt;x;
+      bal+=(x&amp;<span class="n">1</span>)?<span class="n">1</span>:-<span class="n">1</span>; ans+=cnt[bal]++;}
+    cout&lt;&lt;ans;}</div>
+        </div>
+
+        <div class="runner">
+          <div class="runner-top">
+            <span class="rt-label">Test cases</span>
+            <span class="rt-status"><span class="spin"></span> Running 4 / 8</span>
+          </div>
+          <div class="cases">
+            <div class="case pass">1</div>
+            <div class="case pass">2</div>
+            <div class="case pass">3</div>
+            <div class="case run">4</div>
+            <div class="case">5</div>
+            <div class="case hidden">6</div>
+            <div class="case hidden">7</div>
+            <div class="case hidden">8</div>
+          </div>
+          <div class="verdict-row">
+            <span class="verdict-badge judging">JUDGING</span>
+            <span class="verdict-meta">3 passed · case 4 running · 86 ms</span>
+          </div>
+          <div class="run-btns">
+            <button class="btn">
+              <svg><use href="#i-play"/></svg>Run samples
+            </button>
+            <button class="btn primary">
+              Submit <svg><use href="#i-send"/></svg>
+            </button>
+          </div>
+        </div>
+
+        <div class="kb-hints">
+          <div class="kb-hint"><span class="kb-key">Ctrl+Enter</span> Submit</div>
+          <div class="kb-hint"><span class="kb-key">Ctrl+R</span> Run</div>
+          <div class="kb-hint"><span class="kb-key">Alt+1–6</span> Jump problem</div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- SCOREBOARD PANEL -->
+  <div class="panel" id="panel-scoreboard" hidden style="flex:1;overflow:auto;background:var(--bg)">
+    <div class="scoreboard">
+      <div class="sb-head">
+        <h2>
+          Live scoreboard
+          <span class="freeze-chip">Frozen — last 60 min</span>
+        </h2>
+        <span style="font:500 12px var(--mono);color:var(--ink-3)">Updated 12s ago</span>
+      </div>
+      <table class="sb-table">
+        <thead>
+          <tr>
+            <th>#</th>
+            <th>Team</th>
+            <th>A</th><th>B</th><th>C</th><th>D</th><th>E</th><th>F</th>
+            <th>Solved</th>
+            <th>Penalty</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td class="rank top">1</td>
+            <td class="team-name">ByteForce</td>
+            <td><div class="sb-prob ac">✓</div></td>
+            <td><div class="sb-prob ac">✓</div></td>
+            <td><div class="sb-prob ac">✓</div></td>
+            <td><div class="sb-prob wa">×1</div></td>
+            <td><div class="sb-prob ac">✓</div></td>
+            <td><div class="sb-prob frozen">?</div></td>
+            <td class="sb-score">4</td>
+            <td class="sb-penalty">142</td>
+          </tr>
+          <tr>
+            <td class="rank top">2</td>
+            <td class="team-name">NullPtr</td>
+            <td><div class="sb-prob ac">✓</div></td>
+            <td><div class="sb-prob ac">✓</div></td>
+            <td><div class="sb-prob frozen">?</div></td>
+            <td><div class="sb-prob">—</div></td>
+            <td><div class="sb-prob ac">✓</div></td>
+            <td><div class="sb-prob">—</div></td>
+            <td class="sb-score">3</td>
+            <td class="sb-penalty">98</td>
+          </tr>
+          <tr class="me">
+            <td class="rank top">3</td>
+            <td class="team-name">ze3aterz <span style="font-size:11px;color:var(--accent);background:var(--accent-dim);padding:2px 6px;border-radius:5px;margin-left:6px">YOU</span></td>
+            <td><div class="sb-prob ac">✓</div></td>
+            <td><div class="sb-prob ac">✓</div></td>
+            <td><div class="sb-prob">—</div></td>
+            <td><div class="sb-prob wa">×2</div></td>
+            <td><div class="sb-prob ac">✓</div></td>
+            <td><div class="sb-prob">—</div></td>
+            <td class="sb-score">3</td>
+            <td class="sb-penalty">114</td>
+          </tr>
+          <tr>
+            <td class="rank">4</td>
+            <td class="team-name">RecursionGang</td>
+            <td><div class="sb-prob ac">✓</div></td>
+            <td><div class="sb-prob wa">×1</div></td>
+            <td><div class="sb-prob">—</div></td>
+            <td><div class="sb-prob">—</div></td>
+            <td><div class="sb-prob frozen">?</div></td>
+            <td><div class="sb-prob">—</div></td>
+            <td class="sb-score">1</td>
+            <td class="sb-penalty">34</td>
+          </tr>
+          <tr>
+            <td class="rank">5</td>
+            <td class="team-name">SegFault</td>
+            <td><div class="sb-prob ac">✓</div></td>
+            <td><div class="sb-prob">—</div></td>
+            <td><div class="sb-prob">—</div></td>
+            <td><div class="sb-prob">—</div></td>
+            <td><div class="sb-prob">—</div></td>
+            <td><div class="sb-prob">—</div></td>
+            <td class="sb-score">1</div></td>
+            <td class="sb-penalty">22</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<script>
+function switchTab(tab){
+  document.querySelectorAll('.ws-tab').forEach(t=>t.classList.remove('on'));
+  document.querySelectorAll('.panel').forEach(p=>p.hidden=true);
+  document.querySelector(`[onclick="switchTab('${tab}')"]`).classList.add('on');
+  document.getElementById(`panel-${tab}`).hidden=false;
+}
+</script>
+</body>
+</html>

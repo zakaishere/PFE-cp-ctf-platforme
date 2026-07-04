@@ -1,8 +1,6 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
-import { APP_NAME } from "@/lib/brand";
-import Link from "next/link";
 import { useRouter } from "next/navigation";
 import Navbar from "@/components/Navbar";
 import { Trophy, Plus, Calendar, Users, Search } from "lucide-react";
@@ -161,10 +159,6 @@ export default function CompetitionManagerV2() {
   return (
     <>
       <Navbar />
-      <div className="psp-breadcrumb">
-        <Link href="/teacher">{APP_NAME}</Link> › <span style={{ color: "var(--text-primary)" }}>Competitions</span>
-      </div>
-
       <div className="psp-main">
         {/* Page header */}
         <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", marginBottom: 20, gap: 16 }}>

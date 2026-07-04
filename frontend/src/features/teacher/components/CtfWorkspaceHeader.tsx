@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { ChevronRight, ArrowLeft, LogOut, User } from "lucide-react";
+import { ArrowLeft, LogOut, User } from "lucide-react";
 import {
   DropdownMenu, DropdownMenuContent, DropdownMenuItem,
   DropdownMenuSeparator, DropdownMenuTrigger,
@@ -117,27 +117,6 @@ export default function CtfWorkspaceHeader({ comp }: Props) {
           <ArrowLeft size={13} />
           Back to CTFs
         </Link>
-
-        {/* Breadcrumb trail */}
-        <div style={{
-          display: "flex", alignItems: "center", gap: 4,
-          color: "var(--text-muted)", fontSize: 12, minWidth: 0,
-        }}>
-          <ChevronRight size={13} style={{ flexShrink: 0 }} />
-          <span style={{ flexShrink: 0 }}>CTF</span>
-          <ChevronRight size={13} style={{ flexShrink: 0 }} />
-          {comp ? (
-            <span style={{
-              color: "var(--text-primary)", fontWeight: 600,
-              overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
-              maxWidth: 260,
-            }}>
-              {comp.title}
-            </span>
-          ) : (
-            <span className="skel" style={{ width: 120, height: 14, borderRadius: 3, display: "inline-block" }} />
-          )}
-        </div>
       </div>
 
       {/* ── Center: CTF name + status (desktop) ─────────────────────────── */}

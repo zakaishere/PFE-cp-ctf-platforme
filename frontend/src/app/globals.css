@@ -539,41 +539,57 @@
   .psp-prog-wrap { background: var(--border); border-radius: 2px; height: 4px; }
   .psp-prog-fill { background: var(--brand); height: 4px; border-radius: 2px; }
 
-  /* ── FORM ELEMENTS ── */
+  /* ── FORM ELEMENTS ──
+     Inputs use a white-tinted border (rgba white .12) on the recessed --bg-2
+     surface. A white-tinted border stays perceptible on any dark background
+     regardless of exact value, which fixes the "invisible field" problem the
+     old #2a2a2a-on-#0a0a0a borders had. */
   .psp-form-label {
-    display: block; font-size: 12px; font-weight: 600; color: var(--text-primary); margin-bottom: 4px;
+    display: block; font-size: 13px; font-weight: 600; color: var(--text-primary);
+    margin-bottom: 7px;
   }
+  .psp-form-label .req { color: var(--accent); }
   .psp-form-input {
-    width: 100%; border: 1px solid var(--border); border-radius: 3px;
-    padding: 0 10px; height: 36px; font-size: 13px; color: var(--text-primary);
-    outline: none; background: var(--bg-primary); transition: border-color 0.12s;
+    width: 100%; border: 1px solid rgba(255,255,255,.12); border-radius: 8px;
+    padding: 0 12px; height: 38px; font-size: 13.5px; color: var(--ink);
+    outline: none; background: var(--bg-2); font-family: var(--font-sans);
+    transition: border-color 140ms ease, box-shadow 140ms ease;
   }
-  .psp-form-input:focus { border-color: var(--brand-2); box-shadow: 0 0 0 2px var(--brand-2)33; }
-  .psp-form-input::placeholder { color: var(--text-subtle); }
+  .psp-form-input:focus { border-color: var(--accent); box-shadow: 0 0 0 3px rgba(0,200,150,.12); }
+  .psp-form-input::placeholder { color: var(--ink-3); opacity: 1; }
   .psp-form-select {
-    width: 100%; border: 1px solid var(--border); border-radius: 3px;
-    padding: 0 10px; height: 36px; font-size: 13px; color: var(--text-primary);
-    outline: none; background: var(--bg-primary); cursor: pointer;
+    width: 100%; border: 1px solid rgba(255,255,255,.12); border-radius: 8px;
+    padding: 0 34px 0 12px; height: 38px; font-size: 13.5px; color: var(--ink);
+    outline: none; background: var(--bg-2); cursor: pointer;
+    font-family: var(--font-sans); appearance: none;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%237a8f7a' stroke-width='2'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
+    background-repeat: no-repeat; background-position: right 12px center;
+    transition: border-color 140ms ease, box-shadow 140ms ease;
   }
+  .psp-form-select:focus { border-color: var(--accent); box-shadow: 0 0 0 3px rgba(0,200,150,.12); }
   .psp-form-textarea {
-    width: 100%; border: 1px solid var(--border); border-radius: 3px;
-    padding: 8px 10px; font-size: 13px; color: var(--text-primary);
-    outline: none; background: var(--bg-primary); resize: vertical; min-height: 100px;
-    font-family: inherit; transition: border-color 0.12s;
+    width: 100%; border: 1px solid rgba(255,255,255,.12); border-radius: 8px;
+    padding: 10px 12px; font-size: 13.5px; color: var(--ink);
+    outline: none; background: var(--bg-2); resize: vertical; min-height: 100px;
+    font-family: var(--font-sans); line-height: 1.6;
+    transition: border-color 140ms ease, box-shadow 140ms ease;
   }
-  .psp-form-textarea:focus { border-color: var(--brand-2); box-shadow: 0 0 0 2px var(--brand-2)33; }
+  .psp-form-textarea:focus { border-color: var(--accent); box-shadow: 0 0 0 3px rgba(0,200,150,.12); }
+  .psp-form-textarea::placeholder { color: var(--ink-3); opacity: 1; }
 
   /* ── MODAL ── */
   .psp-modal-overlay {
     position: fixed; inset: 0;
-    background: rgba(9,30,66,0.54);
+    background: rgba(0,0,0,.75);
+    backdrop-filter: blur(4px);
+    -webkit-backdrop-filter: blur(4px);
     z-index: 300;
     display: flex; align-items: center; justify-content: center;
   }
   .psp-modal {
-    background: var(--bg-primary); border-radius: 3px;
+    background: var(--bg-primary); border-radius: 14px;
     width: 500px; max-width: 95vw;
-    box-shadow: 0 8px 32px rgba(9,30,66,0.25);
+    box-shadow: 0 24px 60px rgba(0,0,0,.6), 0 0 0 1px rgba(255,255,255,.05);
   }
   .psp-modal-header {
     padding: 16px 20px; border-bottom: 1px solid var(--border);
@@ -614,7 +630,7 @@
     display: grid;
     grid-template-columns: 260px 1fr 300px;
     gap: 0;
-    height: calc(100vh - (var(--nav-h, 62px) + 40px)); /* navbar + breadcrumb 40px */
+    height: calc(100vh - var(--nav-h, 62px)); /* navbar only — breadcrumb removed */
     overflow: hidden;
   }
   @media (max-width: 1023px) {
@@ -1222,7 +1238,9 @@ button, a, input, select, textarea, [role="button"] {
 
 .section-title {
   font-size: 11px; font-weight: 700; color: var(--text-subtle);
-  text-transform: uppercase; letter-spacing: 0.8px; margin-bottom: 12px;
+  text-transform: uppercase; letter-spacing: 0.8px;
+  margin-bottom: 16px; padding-bottom: 12px;
+  border-bottom: 1px solid rgba(255,255,255,.06);
 }
 
 .empty-state { text-align: center; padding: 52px 24px; }
@@ -1451,9 +1469,46 @@ body,
 }
 
 /* ── Page body ───────────────────────────────────────────────────── */
+/* Two-scale green grid (40px fine + 200px coarse) at near-invisible opacity,
+   fixed to the viewport so every page gains subtle depth automatically. */
 [data-theme="dark"] body {
-  background: var(--bg-primary);
+  background-color: #0a0a0a;
+  background-image:
+    linear-gradient(rgba(0,200,150,.025) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(0,200,150,.025) 1px, transparent 1px),
+    linear-gradient(rgba(0,200,150,.012) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(0,200,150,.012) 1px, transparent 1px);
+  background-size:
+    40px 40px,
+    40px 40px,
+    200px 200px,
+    200px 200px;
+  background-attachment: fixed;
   color: var(--text-primary);
+}
+
+/* Faint floating code fragments behind all content (decorative, inert). */
+[data-theme="dark"] body::before {
+  content: "if (solved) rank++;  for (int i=0; i<n; i++) dp[i]=max(dp[i-1],val[i]);  SELECT * FROM submissions WHERE verdict='ACCEPTED';  while (!queue.empty()) { auto [d,u]=queue.top(); queue.pop(); }  map<int,int> freq; for (auto x:arr) freq[x]++;  docker run --rm --network none judge:latest  { \"verdict\": \"ACCEPTED\", \"time\": 86 }";
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  font-family: var(--font-mono), 'JetBrains Mono', monospace;
+  font-size: 11px;
+  color: rgba(0,200,150,.035);
+  line-height: 2.2;
+  padding: 80px 40px;
+  pointer-events: none;
+  white-space: pre-wrap;
+  word-break: break-all;
+  overflow: hidden;
+}
+
+/* Keep real page content above the decorative body::before layer. */
+.page-content {
+  position: relative;
+  z-index: 1;
+  min-height: 100%;
 }
 
 /* ── Navbar ──────────────────────────────────────────────────────── */
@@ -2040,9 +2095,11 @@ body,
 
 /* ── psp-modal ── */
 [data-theme="dark"] .psp-modal {
-  background: var(--bg-secondary);
-  border: 1px solid var(--border);
+  background: #1a1a1a;
+  border: 1px solid rgba(255,255,255,.1);
+  border-radius: 14px;
   color: var(--text-primary);
+  box-shadow: 0 24px 60px rgba(0,0,0,.6), 0 0 0 1px rgba(255,255,255,.05);
 }
 [data-theme="dark"] .psp-modal-header { border-bottom-color: var(--border); }
 [data-theme="dark"] .psp-modal-footer { border-top-color: var(--border); }
@@ -2241,4 +2298,69 @@ body,
 }
 @media (max-width: 640px) {
   .card-grid { grid-template-columns: 1fr; }
+}
+
+/* ════════════════════════════════════════════════════════════════════
+   GLOBAL INPUT VISIBILITY (Fix 3)
+   A white-tinted border (rgba white .15) stays perceptible on any dark
+   surface, fixing "invisible" fields (e.g. description textareas) before
+   the user even clicks. Scoped to text-like fields + textarea + select so
+   checkboxes, radios and range sliders keep their native rendering.
+   Unlayered → wins over @layer components; !important beats error/focus
+   border colors set elsewhere (focus re-asserts the accent below).
+   ════════════════════════════════════════════════════════════════════ */
+input[type="text"],
+input[type="number"],
+input[type="email"],
+input[type="password"],
+input[type="datetime-local"],
+input[type="search"],
+input[type="url"],
+textarea,
+select {
+  background: #0e0e0e;
+  border: 1px solid rgba(255,255,255,.15) !important;
+  border-radius: 10px;
+  padding: 11px 14px;
+  color: #eef2ee;
+  font-size: 13.5px;
+  outline: none;
+  width: 100%;
+  transition: border-color 140ms ease, box-shadow 140ms ease;
+}
+
+input[type="text"]:focus,
+input[type="number"]:focus,
+input[type="email"]:focus,
+input[type="password"]:focus,
+input[type="datetime-local"]:focus,
+input[type="search"]:focus,
+input[type="url"]:focus,
+textarea:focus,
+select:focus {
+  border-color: #00c896 !important;
+  box-shadow: 0 0 0 3px rgba(0,200,150,.12) !important;
+}
+
+input[type="text"]::placeholder,
+input[type="number"]::placeholder,
+input[type="email"]::placeholder,
+input[type="password"]::placeholder,
+input[type="search"]::placeholder,
+input[type="url"]::placeholder,
+textarea::placeholder {
+  color: rgba(61,77,61,.9);
+  opacity: 1;
+}
+
+/* Range sliders — green track + glowing thumb (CTF form, etc.). */
+input[type="range"] { accent-color: #00c896; }
+input[type="range"]::-webkit-slider-runnable-track {
+  background: rgba(255,255,255,.1);
+  border-radius: 4px;
+  height: 4px;
+}
+input[type="range"]::-webkit-slider-thumb {
+  background: #00c896;
+  box-shadow: 0 0 8px rgba(0,200,150,.4);
 }

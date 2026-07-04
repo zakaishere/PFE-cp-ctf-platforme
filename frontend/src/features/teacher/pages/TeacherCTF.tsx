@@ -1,7 +1,6 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { APP_NAME } from "@/lib/brand";
 import Link from "next/link";
 import Navbar from "@/components/Navbar";
 import { Plus, Search, Edit2, Trash2, Eye, EyeOff, Flag, ChevronLeft, ChevronRight, Shield, Trophy, X } from "lucide-react";
@@ -118,11 +117,6 @@ const TeacherCTF = () => {
   return (
     <>
       <Navbar />
-      <div className="psp-breadcrumb">
-        <Link href="/teacher">{APP_NAME}</Link> ›{" "}
-        <span style={{ color: "var(--text-primary)" }}>CTF Challenges</span>
-      </div>
-
       <div className="psp-main">
 
         {/* ── Page header ── */}

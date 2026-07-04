@@ -1,7 +1,6 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { APP_NAME } from "@/lib/brand";
 import Link from "next/link";
 import Navbar from "@/components/Navbar";
 import { Users, BookOpen, Clock, ClipboardList, Monitor, AlertTriangle, CheckCircle2, X, Loader2, Server, Medal } from "lucide-react";
@@ -77,10 +76,6 @@ export default function AdminDashboard() {
   return (
     <>
       <Navbar />
-      <div className="psp-breadcrumb">
-        <Link href="/admin">{APP_NAME}</Link> › <span style={{ color: "var(--text-primary)" }}>Admin Dashboard</span>
-      </div>
-
       <div className="psp-main">
         {/* Header */}
         <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", marginBottom: 20 }}>

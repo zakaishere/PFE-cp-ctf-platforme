@@ -1,8 +1,6 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
-import { APP_NAME } from "@/lib/brand";
-import Link from "next/link";
 import { useRouter } from "next/navigation";
 import Navbar from "@/components/Navbar";
 import { BookOpen, Plus, Calendar, Timer, FileText, FlaskConical, Lock, Unlock, Search } from "lucide-react";
@@ -147,10 +145,6 @@ export default function AssessmentManagerV2() {
   return (
     <>
       <Navbar />
-      <div className="psp-breadcrumb">
-        <Link href="/teacher">{APP_NAME}</Link> › <span style={{ color: "var(--text-primary)" }}>Exams & TPs</span>
-      </div>
-
       <div className="psp-main">
         {/* Page header */}
         <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", marginBottom: 20, gap: 16 }}>

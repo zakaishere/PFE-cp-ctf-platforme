@@ -1,8 +1,6 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
-import { APP_NAME } from "@/lib/brand";
-import Link from "next/link";
 import Navbar from "@/components/Navbar";
 import {
   Users, BookOpen, Search, CheckCircle2, Clock,
@@ -186,10 +184,6 @@ export default function TeacherStudents() {
   return (
     <>
       <Navbar />
-      <div className="psp-breadcrumb">
-        <Link href="/teacher">{APP_NAME}</Link> › <span style={{ color: "var(--text-primary)" }}>Students</span>
-      </div>
-
       <div className="mgr-shell">
         {/* ── LEFT: assessment list ── */}
         <div className="mgr-left">

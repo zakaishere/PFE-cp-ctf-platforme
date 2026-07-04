@@ -1,7 +1,6 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { APP_NAME } from "@/lib/brand";
 import Link from "next/link";
 import Navbar from "@/components/Navbar";
 import {
@@ -304,11 +303,6 @@ const TeacherProblems = () => {
   return (
     <>
       <Navbar />
-      <div className="psp-breadcrumb">
-        <Link href="/teacher">{APP_NAME}</Link> ›{" "}
-        <span style={{ color: "var(--text-primary)" }}>Problems</span>
-      </div>
-
       <div className="psp-main">
 
         {/* ── Page Header ───────────────────────────────────────────────── */}
@@ -420,7 +414,7 @@ const TeacherProblems = () => {
           className="psp-modal-overlay"
           onClick={e => e.target === e.currentTarget && setEditorOpen(false)}
         >
-          <div className="psp-modal" style={{ width: 680, maxHeight: "90vh", display: "flex", flexDirection: "column" }}>
+          <div className="psp-modal" style={{ width: "90vw", maxWidth: 720, maxHeight: "85vh", display: "flex", flexDirection: "column" }}>
             {/* Header */}
             <div className="psp-modal-header">
               <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
@@ -636,7 +630,7 @@ const TeacherProblems = () => {
                                 placeholder="e.g. [2,7,11,15], target=9"
                                 value={tc.input}
                                 onChange={e => updateTestCase(tc.id, "input", e.target.value)}
-                                style={{ minHeight: 56, fontFamily: "monospace", fontSize: 12 }}
+                                style={{ minHeight: 56, fontFamily: "var(--font-mono), monospace", fontSize: 12.5, background: "#0c0c0c", color: "#b8d0b8" }}
                               />
                             </div>
                             <div>
@@ -646,7 +640,7 @@ const TeacherProblems = () => {
                                 placeholder="e.g. [0,1]"
                                 value={tc.expectedOutput}
                                 onChange={e => updateTestCase(tc.id, "expectedOutput", e.target.value)}
-                                style={{ minHeight: 56, fontFamily: "monospace", fontSize: 12 }}
+                                style={{ minHeight: 56, fontFamily: "var(--font-mono), monospace", fontSize: 12.5, background: "#0c0c0c", color: "#b8d0b8" }}
                               />
                             </div>
                             <label style={{ display: "flex", alignItems: "center", gap: 8, cursor: "pointer", fontSize: 12, color: "var(--text-secondary)" }}>

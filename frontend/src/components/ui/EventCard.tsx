@@ -169,7 +169,7 @@ export function EventCard({
         </span>
         <div
           style={{
-            font: "650 10px var(--font-ui)",
+            font: "650 10px var(--font-sans)",
             letterSpacing: ".1em",
             textTransform: "uppercase",
             color: accent,
@@ -181,7 +181,7 @@ export function EventCard({
         </div>
         <div
           style={{
-            font: "800 22px var(--font-ui)",
+            font: "800 22px var(--font-sans)",
             letterSpacing: "-.02em",
             color: dimmed ? "var(--ink-2)" : "var(--ink)",
             lineHeight: 1.2,
@@ -256,7 +256,7 @@ export function EventCard({
               : hover
                 ? "var(--accent-2)"
                 : "var(--accent)",
-            font: "600 13px var(--font-ui)",
+            font: "600 13px var(--font-sans)",
             whiteSpace: "nowrap",
             flex: "none",
           }}

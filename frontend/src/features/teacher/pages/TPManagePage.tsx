@@ -104,10 +104,6 @@ export default function TPManagePage() {
   return (
     <>
       <Navbar />
-      <div className="psp-breadcrumb">
-        <Link href="/teacher/exams">Exams &amp; TPs</Link> ›{" "}
-        <span style={{ color: "var(--ink)" }}>{detail?.title ?? "TP"}</span>
-      </div>
       <div className="psp-main">
         {/* Header card */}
         <div style={{ background: "var(--surface)", border: "1px solid var(--line)", borderRadius: "var(--r)", padding: "22px 24px", marginBottom: 16 }}>

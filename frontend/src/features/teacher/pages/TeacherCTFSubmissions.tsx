@@ -1,7 +1,6 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { APP_NAME } from "@/lib/brand";
 import Link from "next/link";
 import Navbar from "@/components/Navbar";
 import { Shield, CheckCircle2, XCircle, Users } from "lucide-react";
@@ -37,15 +36,6 @@ const TeacherCTFSubmissions = ({ challengeId }: Props) => {
   return (
     <>
       <Navbar />
-      <div className="psp-breadcrumb">
-        <Link href="/teacher">{APP_NAME}</Link> ›{" "}
-        <Link href="/teacher/ctf">CTF Challenges</Link> ›{" "}
-        {detail
-          ? <><Link href={`/teacher/ctf/${challengeId}/edit`}>{detail.title}</Link> › <span style={{ color: "var(--text-primary)" }}>Submissions</span></>
-          : <span style={{ color: "var(--text-primary)" }}>Submissions</span>
-        }
-      </div>
-
       <div className="psp-main">
 
         {loading ? (

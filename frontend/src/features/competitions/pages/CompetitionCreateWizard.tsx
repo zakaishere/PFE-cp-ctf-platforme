@@ -1,8 +1,6 @@
 "use client";
 
 import { useState } from "react";
-import { APP_NAME } from "@/lib/brand";
-import Link from "next/link";
 import { useRouter } from "next/navigation";
 import Navbar from "@/components/Navbar";
 import {
@@ -103,19 +101,23 @@ export default function CompetitionCreateWizard() {
   return (
     <>
       <Navbar />
-      <div className="psp-breadcrumb">
-        <Link href="/teacher">{APP_NAME}</Link> ›{" "}
-        <Link href="/teacher/competitions">Competitions</Link> ›{" "}
-        <span style={{ color: "var(--text-primary)" }}>New</span>
-      </div>
 
       <div className="psp-main" style={{ maxWidth: 980, paddingBottom: 96 }}>
+        {/* Back link — focused creation flow, no full breadcrumb */}
+        <button onClick={() => router.back()} style={{
+          display: "flex", alignItems: "center", gap: 6,
+          color: "var(--ink-3)", fontSize: 13, fontWeight: 600,
+          background: "none", border: "none", cursor: "pointer",
+          marginBottom: 20, padding: 0,
+        }}>
+          ← Back
+        </button>
+
         {/* Page header */}
-        <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 6 }}>
-          <Plus size={20} color="var(--brand)" />
-          <span style={{ fontSize: 20, fontWeight: 700, color: "var(--text-primary)" }}>New competition</span>
+        <div style={{ marginBottom: 6 }}>
+          <span style={{ fontSize: 24, fontWeight: 700, color: "var(--text-primary)" }}>New competition</span>
         </div>
-        <div style={{ fontSize: 13, color: "var(--text-muted)", marginBottom: 24 }}>
+        <div style={{ fontSize: 13.5, color: "var(--text-secondary)", marginBottom: 24 }}>
           Set the basics, schedule, format and scoring. You&apos;ll attach problems after creating.
         </div>
 
@@ -150,7 +152,7 @@ export default function CompetitionCreateWizard() {
         <div style={{ maxWidth: 780, display: "flex", flexDirection: "column", gap: 14, minHeight: 240 }}>
           {/* Step 0 — Basics */}
           {createStep === 0 && (<>
-            <div><label className="psp-form-label">Title *</label><input className="psp-form-input" autoFocus value={createForm.title} onChange={e => setCreateForm(f => ({ ...f, title: e.target.value }))} placeholder="e.g. Spring Algorithms Cup" /></div>
+            <div><label className="psp-form-label">Title <span className="req">*</span></label><input className="psp-form-input" autoFocus value={createForm.title} onChange={e => setCreateForm(f => ({ ...f, title: e.target.value }))} placeholder="e.g. Spring Algorithms Cup" /></div>
             <div><label className="psp-form-label">Description</label><textarea className="psp-form-textarea" value={createForm.description} onChange={e => setCreateForm(f => ({ ...f, description: e.target.value }))} style={{ minHeight: 110 }} placeholder="What is this competition about?" /></div>
           </>)}
 
@@ -242,7 +244,8 @@ export default function CompetitionCreateWizard() {
       {/* Sticky footer */}
       <div style={{
         position: "sticky", bottom: 0, zIndex: 5,
-        background: "var(--bg-secondary)", borderTop: "1px solid var(--line)",
+        background: "rgba(10,10,10,.95)", backdropFilter: "blur(12px)",
+        borderTop: "1px solid rgba(255,255,255,.08)",
         padding: "12px 0",
       }}>
         <div className="psp-main" style={{ maxWidth: 980, paddingTop: 0, paddingBottom: 0, display: "flex", alignItems: "center", justifyContent: "space-between" }}>

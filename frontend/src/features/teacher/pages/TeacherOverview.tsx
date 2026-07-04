@@ -1,7 +1,6 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { APP_NAME } from "@/lib/brand";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import Navbar from "@/components/Navbar";
@@ -159,11 +158,6 @@ export default function TeacherOverview() {
   return (
     <>
       <Navbar />
-      <div className="psp-breadcrumb">
-        <Link href="/teacher">{APP_NAME}</Link> ›{" "}
-        <span style={{ color: "var(--text-primary)" }}>Dashboard</span>
-      </div>
-
       <div className="psp-main">
         {/* Header */}
         <div style={{ marginBottom: 24 }}>

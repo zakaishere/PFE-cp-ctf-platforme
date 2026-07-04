@@ -1,8 +1,6 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { APP_NAME } from "@/lib/brand";
-import Link from "next/link";
 import Navbar from "@/components/Navbar";
 import { toast } from "@/components/ui/PSPToast";
 import {
@@ -71,12 +69,6 @@ export default function CTFLibraryPage() {
   return (
     <>
       <Navbar />
-      <div className="psp-breadcrumb">
-        <Link href="/teacher">{APP_NAME}</Link> ›{" "}
-        <Link href="/teacher/ctf/competitions">CTF</Link> ›{" "}
-        <span style={{ color: "var(--text-primary)" }}>Library</span>
-      </div>
-
       <div className="psp-main" style={{ maxWidth: 1100 }}>
         {/* Header */}
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 20 }}>

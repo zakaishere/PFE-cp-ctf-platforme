@@ -1,7 +1,6 @@
 "use client";
 
 import { useState, useEffect, useCallback, useRef } from "react";
-import { APP_NAME } from "@/lib/brand";
 import Link from "next/link";
 import Navbar from "@/components/Navbar";
 import {
@@ -175,10 +174,6 @@ export default function LiveExamMonitor() {
   return (
     <>
       <Navbar />
-      <div className="psp-breadcrumb">
-        <Link href="/teacher">{APP_NAME}</Link> › <span style={{ color: "var(--text-primary)" }}>Live Exam Monitor</span>
-      </div>
-
       <div className="mgr-shell">
         {/* ── LEFT: exam list ── */}
         <div className="mgr-left">

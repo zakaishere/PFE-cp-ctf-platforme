@@ -239,10 +239,6 @@ export default function CompetitionManagePage() {
   return (
     <>
       <Navbar />
-      <div className="psp-breadcrumb">
-        <Link href="/teacher/competitions">Competitions</Link> ›{" "}
-        <span style={{ color: "var(--ink)" }}>{comp?.title ?? "Competition"}</span>
-      </div>
       <div className="psp-main">
         {/* Header card */}
         <div style={{ background: "var(--surface)", border: "1px solid var(--line)", borderRadius: "var(--r)", padding: "22px 24px", marginBottom: 16 }}>

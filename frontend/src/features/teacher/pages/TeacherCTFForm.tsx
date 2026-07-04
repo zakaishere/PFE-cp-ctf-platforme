@@ -1,7 +1,6 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { APP_NAME } from "@/lib/brand";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import Navbar from "@/components/Navbar";
@@ -484,11 +483,6 @@ const TeacherCTFForm = ({ editId }: Props) => {
     return (
       <>
         <Navbar />
-        <div className="psp-breadcrumb">
-          <Link href="/teacher">{APP_NAME}</Link> ›{" "}
-          <Link href="/teacher/ctf">CTF Challenges</Link> ›{" "}
-          <span style={{ color: "var(--text-primary)" }}>Loading…</span>
-        </div>
         <div className="psp-main">
           {[...Array(4)].map((_, i) => (
             <div key={i} className="skel" style={{ height: 140, borderRadius: 6, marginBottom: 12 }} />
@@ -501,12 +495,6 @@ const TeacherCTFForm = ({ editId }: Props) => {
   return (
     <>
       <Navbar />
-      <div className="psp-breadcrumb">
-        <Link href="/teacher">{APP_NAME}</Link> ›{" "}
-        <Link href="/teacher/ctf">CTF Challenges</Link> ›{" "}
-        <span style={{ color: "var(--text-primary)" }}>{isEdit ? "Edit Challenge" : "New Challenge"}</span>
-      </div>
-
       <div className="psp-main" style={{ maxWidth: 780 }}>
 
         {/* ── Page header ── */}
@@ -522,7 +510,7 @@ const TeacherCTFForm = ({ editId }: Props) => {
         </div>
 
         {/* ═══ Card 1: Basic Info ═══════════════════════════════════════════ */}
-        <div className="psp-card" style={{ marginBottom: 16, padding: 20 }}>
+        <div className="psp-card" style={{ marginBottom: 16, padding: 20, border: "1px solid rgba(255,255,255,.08)" }}>
           <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 16 }}>
             <FileText size={15} color="var(--blue)" />
             <h2 style={{ fontSize: 14, fontWeight: 600, color: "var(--text-primary)", margin: 0 }}>Basic Information</h2>
@@ -628,7 +616,7 @@ const TeacherCTFForm = ({ editId }: Props) => {
         </div>
 
         {/* ═══ Card 2: Flag ════════════════════════════════════════════════ */}
-        <div className="psp-card" style={{ marginBottom: 16, padding: 20 }}>
+        <div className="psp-card" style={{ marginBottom: 16, padding: 20, border: "1px solid rgba(255,255,255,.08)" }}>
           <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 16 }}>
             <Flag size={15} color="var(--green)" />
             <h2 style={{ fontSize: 14, fontWeight: 600, color: "var(--text-primary)", margin: 0 }}>Flag</h2>
@@ -715,7 +703,7 @@ const TeacherCTFForm = ({ editId }: Props) => {
         </div>
 
         {/* ═══ Card 3: Downloads & Resources ═══════════════════════════════ */}
-        <div className="psp-card" style={{ marginBottom: 16, padding: 20 }}>
+        <div className="psp-card" style={{ marginBottom: 16, padding: 20, border: "1px solid rgba(255,255,255,.08)" }}>
           <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 16 }}>
             <FileText size={15} color="var(--orange)" />
             <h2 style={{ fontSize: 14, fontWeight: 600, color: "var(--text-primary)", margin: 0 }}>Downloadable File</h2>
@@ -743,7 +731,7 @@ const TeacherCTFForm = ({ editId }: Props) => {
         </div>
 
         {/* ═══ Card 4: Docker Instance ════════════════════════════════════ */}
-        <div className="psp-card" style={{ marginBottom: 16, padding: 20 }}>
+        <div className="psp-card" style={{ marginBottom: 16, padding: 20, border: "1px solid rgba(255,255,255,.08)" }}>
           <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 16 }}>
             <Server size={15} color="var(--purple)" />
             <h2 style={{ fontSize: 14, fontWeight: 600, color: "var(--text-primary)", margin: 0 }}>Docker Instance</h2>
@@ -946,7 +934,7 @@ const TeacherCTFForm = ({ editId }: Props) => {
         </div>
 
         {/* ═══ Card 5: Hints ══════════════════════════════════════════════ */}
-        <div className="psp-card" style={{ marginBottom: 24, padding: 20 }}>
+        <div className="psp-card" style={{ marginBottom: 24, padding: 20, border: "1px solid rgba(255,255,255,.08)" }}>
           <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 16 }}>
             <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
               <Lightbulb size={15} color="#d97706" />

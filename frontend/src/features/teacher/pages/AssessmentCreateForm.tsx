@@ -1,11 +1,9 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { APP_NAME } from "@/lib/brand";
-import Link from "next/link";
 import { useRouter } from "next/navigation";
 import Navbar from "@/components/Navbar";
-import { FileText, FlaskConical, X, Plus, Loader2, ChevronDown } from "lucide-react";
+import { X, Plus, Loader2, ChevronDown } from "lucide-react";
 import {
   createLiveExam, createOpenTP, getMyModules,
   CreateAssessmentRequest, ModuleOption,
@@ -67,21 +65,25 @@ export default function AssessmentCreateForm({ type }: { type: "exam" | "tp" }) 
   return (
     <>
       <Navbar />
-      <div className="psp-breadcrumb">
-        <Link href="/teacher">{APP_NAME}</Link> ›{" "}
-        <Link href="/teacher/exams">Assessments</Link> ›{" "}
-        <span style={{ color: "var(--text-primary)" }}>{isExam ? "New exam" : "New TP"}</span>
-      </div>
 
       <div className="psp-main" style={{ maxWidth: 780, paddingBottom: 96 }}>
+        {/* Back link — focused creation flow, no full breadcrumb */}
+        <button onClick={() => router.back()} style={{
+          display: "flex", alignItems: "center", gap: 6,
+          color: "var(--ink-3)", fontSize: 13, fontWeight: 600,
+          background: "none", border: "none", cursor: "pointer",
+          marginBottom: 20, padding: 0,
+        }}>
+          ← Back
+        </button>
+
         {/* Page header */}
-        <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 6 }}>
-          {isExam ? <FileText size={20} color="var(--brand)" /> : <FlaskConical size={20} color="var(--success)" />}
-          <span style={{ fontSize: 20, fontWeight: 700, color: "var(--text-primary)" }}>
+        <div style={{ marginBottom: 6 }}>
+          <span style={{ fontSize: 24, fontWeight: 700, color: "var(--text-primary)" }}>
             {isExam ? "New Live Exam" : "New Open TP"}
           </span>
         </div>
-        <div style={{ fontSize: 13, color: "var(--text-muted)", marginBottom: 24 }}>
+        <div style={{ fontSize: 13.5, color: "var(--text-secondary)", marginBottom: 24 }}>
           {isExam
             ? "Schedule a timed exam, set access, then attach problems afterward."
             : "Open a practice TP with a deadline and attempt limit, then attach tasks afterward."}
@@ -89,10 +91,10 @@ export default function AssessmentCreateForm({ type }: { type: "exam" | "tp" }) 
 
         <div style={{ display: "flex", flexDirection: "column", gap: 18 }}>
           {/* ── Section: Basics ── */}
-          <div className="psp-card" style={{ padding: 18, display: "flex", flexDirection: "column", gap: 12 }}>
+          <div className="psp-card" style={{ padding: 18, border: "1px solid rgba(255,255,255,.08)", display: "flex", flexDirection: "column", gap: 12 }}>
             <div className="section-title" style={{ marginBottom: 0 }}>Basics</div>
             <div>
-              <label className="psp-form-label">Title *</label>
+              <label className="psp-form-label">Title <span className="req">*</span></label>
               <input className="psp-form-input" autoFocus value={createForm.title}
                 onChange={e => setCreateForm(f => ({ ...f, title: e.target.value }))} placeholder={isExam ? "e.g. Midterm — Data Structures" : "e.g. Lab 3 — Recursion"} />
             </div>
@@ -113,7 +115,7 @@ export default function AssessmentCreateForm({ type }: { type: "exam" | "tp" }) 
           </div>
 
           {/* ── Section: Schedule & access ── */}
-          <div className="psp-card" style={{ padding: 18, display: "flex", flexDirection: "column", gap: 12 }}>
+          <div className="psp-card" style={{ padding: 18, border: "1px solid rgba(255,255,255,.08)", display: "flex", flexDirection: "column", gap: 12 }}>
             <div className="section-title" style={{ marginBottom: 0 }}>Schedule &amp; access</div>
             {isExam ? (
               <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
@@ -154,7 +156,7 @@ export default function AssessmentCreateForm({ type }: { type: "exam" | "tp" }) 
           </div>
 
           {/* ── Section: Advanced (collapsed by default) ── */}
-          <div className="psp-card" style={{ padding: "4px 18px 18px" }}>
+          <div className="psp-card" style={{ padding: "4px 18px 18px", border: "1px solid rgba(255,255,255,.08)" }}>
             <AdvancedSection open={advOpen} onToggle={() => setAdvOpen(o => !o)}>
               {isExam ? (
                 <div>
@@ -186,7 +188,8 @@ export default function AssessmentCreateForm({ type }: { type: "exam" | "tp" }) 
       {/* Sticky footer */}
       <div style={{
         position: "sticky", bottom: 0, zIndex: 5,
-        background: "var(--bg-secondary)", borderTop: "1px solid var(--line)",
+        background: "rgba(10,10,10,.95)", backdropFilter: "blur(12px)",
+        borderTop: "1px solid rgba(255,255,255,.08)",
         padding: "12px 0",
       }}>
         <div className="psp-main" style={{ maxWidth: 780, paddingTop: 0, paddingBottom: 0, display: "flex", alignItems: "center", justifyContent: "flex-end", gap: 10 }}>
