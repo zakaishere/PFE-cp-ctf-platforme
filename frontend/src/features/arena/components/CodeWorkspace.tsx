@@ -241,8 +241,8 @@ export default function CodeWorkspace({
             alignItems: "center",
             gap: 12,
             padding: "12px 16px",
-            background: "rgba(0,200,150,.07)",
-            borderTop: "1px solid rgba(0,200,150,.18)",
+            background: "rgba(0,255,0,.07)",
+            borderTop: "1px solid rgba(0,255,0,.18)",
           }}
         >
           <div
@@ -250,8 +250,8 @@ export default function CodeWorkspace({
               width: 30,
               height: 30,
               borderRadius: 8,
-              background: "rgba(0,200,150,.15)",
-              border: "1px solid rgba(0,200,150,.25)",
+              background: "rgba(0,255,0,.15)",
+              border: "1px solid rgba(0,255,0,.25)",
               display: "grid",
               placeItems: "center",
               flex: "none",
@@ -279,8 +279,8 @@ export default function CodeWorkspace({
             alignItems: "flex-start",
             gap: 10,
             padding: "12px 16px",
-            background: "rgba(0,200,150,.04)",
-            borderTop: "1px solid rgba(0,200,150,.1)",
+            background: "rgba(0,255,0,.04)",
+            borderTop: "1px solid rgba(0,255,0,.1)",
           }}
         >
           <Lock size={14} color="var(--accent)" style={{ flex: "none", marginTop: 2 }} />

@@ -60,18 +60,18 @@
 
   /* Green accent — the single platform accent. --brand aliases it so the
      entire existing app (which references --brand) recolors to green. */
-  --accent:     #00c896;
-  --accent-2:   #00e6aa;
-  --accent-dim: rgba(0,200,150,.10);
-  --accent-ring:rgba(0,200,150,.25);
-  --accent-glow:rgba(0,200,150,.15);
+  --accent:     #00FF00;
+  --accent-2:   #66FF66;
+  --accent-dim: rgba(0,255,0,.10);
+  --accent-ring:rgba(0,255,0,.25);
+  --accent-glow:rgba(0,255,0,.15);
 
   --brand:       var(--accent);    /* platform-wide accent → green */
   --brand-2:     var(--accent-2);  /* accent hover / active text */
   --accent-soft: var(--accent-dim);
 
   /* success shares the green accent hue */
-  --success:#00c896;  --success-soft:rgba(0,200,150,.12);   --success-ink:#00e6aa;
+  --success:#00FF00;  --success-soft:rgba(0,255,0,.12);   --success-ink:#66FF66;
   --warn:   #e8a030;  --warn-soft:rgba(232,160,48,.12);     --warn-ink:#ffc069;
   --danger: #f0637a;  --danger-soft:rgba(240,99,122,.12);   --danger-ink:#ff8fa3;
   --violet: #9b8cf6;  --violet-soft:rgba(155,140,246,.12);
@@ -83,7 +83,7 @@
   --radius: 12px;   /* shadcn primitives consume this */
   --nav-h: 62px;    /* top navbar height (layout offsets reference this) */
 
-  --card-hover: 0 0 0 1px var(--accent), 0 0 20px rgba(0,200,150,.12);
+  --card-hover: 0 0 0 1px var(--accent), 0 0 20px rgba(0,255,0,.12);
 
   /* ── Legacy PSP aliases → Algora (do not hardcode hex in components) ── */
   --bg-primary:     var(--bg);         /* page background */
@@ -556,7 +556,7 @@
     outline: none; background: var(--bg-2); font-family: var(--font-sans);
     transition: border-color 140ms ease, box-shadow 140ms ease;
   }
-  .psp-form-input:focus { border-color: var(--accent); box-shadow: 0 0 0 3px rgba(0,200,150,.12); }
+  .psp-form-input:focus { border-color: var(--accent); box-shadow: 0 0 0 3px rgba(0,255,0,.12); }
   .psp-form-input::placeholder { color: var(--ink-3); opacity: 1; }
   .psp-form-select {
     width: 100%; border: 1px solid rgba(255,255,255,.12); border-radius: 8px;
@@ -567,7 +567,7 @@
     background-repeat: no-repeat; background-position: right 12px center;
     transition: border-color 140ms ease, box-shadow 140ms ease;
   }
-  .psp-form-select:focus { border-color: var(--accent); box-shadow: 0 0 0 3px rgba(0,200,150,.12); }
+  .psp-form-select:focus { border-color: var(--accent); box-shadow: 0 0 0 3px rgba(0,255,0,.12); }
   .psp-form-textarea {
     width: 100%; border: 1px solid rgba(255,255,255,.12); border-radius: 8px;
     padding: 10px 12px; font-size: 13.5px; color: var(--ink);
@@ -575,7 +575,7 @@
     font-family: var(--font-sans); line-height: 1.6;
     transition: border-color 140ms ease, box-shadow 140ms ease;
   }
-  .psp-form-textarea:focus { border-color: var(--accent); box-shadow: 0 0 0 3px rgba(0,200,150,.12); }
+  .psp-form-textarea:focus { border-color: var(--accent); box-shadow: 0 0 0 3px rgba(0,255,0,.12); }
   .psp-form-textarea::placeholder { color: var(--ink-3); opacity: 1; }
 
   /* ── MODAL ── */
@@ -1475,10 +1475,10 @@ body,
 [data-theme="dark"] body {
   background-color: #0a0a0a;
   background-image:
-    linear-gradient(rgba(0,200,150,.025) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(0,200,150,.025) 1px, transparent 1px),
-    linear-gradient(rgba(0,200,150,.012) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(0,200,150,.012) 1px, transparent 1px);
+    linear-gradient(rgba(0,255,0,.025) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(0,255,0,.025) 1px, transparent 1px),
+    linear-gradient(rgba(0,255,0,.012) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(0,255,0,.012) 1px, transparent 1px);
   background-size:
     40px 40px,
     40px 40px,
@@ -1496,7 +1496,7 @@ body,
   z-index: 0;
   font-family: var(--font-mono), 'JetBrains Mono', monospace;
   font-size: 11px;
-  color: rgba(0,200,150,.035);
+  color: rgba(0,255,0,.035);
   line-height: 2.2;
   padding: 80px 40px;
   pointer-events: none;
@@ -1648,7 +1648,7 @@ body,
 [data-theme="dark"] .btn-primary:hover:not(:disabled),
 [data-theme="dark"] .psp-btn-primary:hover:not(:disabled) {
   background: var(--accent-2); color: #0a0a0a;
-  box-shadow: 0 0 14px rgba(0,200,150,.3);
+  box-shadow: 0 0 14px rgba(0,255,0,.3);
   transform: none;
 }
 [data-theme="dark"] .psp-btn-secondary {
@@ -2183,7 +2183,7 @@ body,
   --card-foreground: 223 47% 94%;
   --popover: 223 38% 11%;
   --popover-foreground: 223 47% 94%;
-  --primary: 165 100% 39%;        /* --accent #00c896 */
+  --primary: 165 100% 39%;        /* --accent #00FF00 */
   --primary-foreground: 0 0% 4%;
   --secondary: 0 0% 12%;          /* --surface-2 #1e1e1e */
   --secondary-foreground: 120 8% 94%;
@@ -2224,7 +2224,7 @@ body,
   display: grid; place-items: center;
   color: #0a0a0a; font-family: var(--font-mono), monospace;
   font-weight: 700; font-size: 13px; flex-shrink: 0;
-  box-shadow: 0 0 12px rgba(0,200,150,.4);
+  box-shadow: 0 0 12px rgba(0,255,0,.4);
 }
 .anav-links { display: flex; align-items: center; gap: 2px; }
 .anav-link {
@@ -2339,8 +2339,8 @@ input[type="search"]:focus,
 input[type="url"]:focus,
 textarea:focus,
 select:focus {
-  border-color: #00c896 !important;
-  box-shadow: 0 0 0 3px rgba(0,200,150,.12) !important;
+  border-color: #00FF00 !important;
+  box-shadow: 0 0 0 3px rgba(0,255,0,.12) !important;
 }
 
 input[type="text"]::placeholder,
@@ -2355,13 +2355,13 @@ textarea::placeholder {
 }
 
 /* Range sliders — green track + glowing thumb (CTF form, etc.). */
-input[type="range"] { accent-color: #00c896; }
+input[type="range"] { accent-color: #00FF00; }
 input[type="range"]::-webkit-slider-runnable-track {
   background: rgba(255,255,255,.1);
   border-radius: 4px;
   height: 4px;
 }
 input[type="range"]::-webkit-slider-thumb {
-  background: #00c896;
-  box-shadow: 0 0 8px rgba(0,200,150,.4);
+  background: #00FF00;
+  box-shadow: 0 0 8px rgba(0,255,0,.4);
 }

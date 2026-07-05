@@ -48,7 +48,7 @@ function HeroCountdown({ targetIso }: { targetIso: string | null }) {
     <span style={{
       fontFamily: "var(--font-mono), ui-monospace, monospace",
       fontSize: 24, fontWeight: 600, color: "var(--accent)",
-      textShadow: "0 0 16px rgba(0,200,150,.5)", letterSpacing: "1px",
+      textShadow: "0 0 16px rgba(0,255,0,.5)", letterSpacing: "1px",
     }}>
       {label}
     </span>
@@ -151,15 +151,15 @@ export default function StudentDashboard() {
               display: "flex", alignItems: "center", gap: 20,
               padding: "20px 22px",
               background:
-                "linear-gradient(90deg, rgba(0,200,150,.05) 0%, transparent 60%), var(--surface)",
-              border: "1px solid rgba(0,200,150,.2)",
+                "linear-gradient(90deg, rgba(0,255,0,.05) 0%, transparent 60%), var(--surface)",
+              border: "1px solid rgba(0,255,0,.2)",
               borderRadius: "var(--r)",
               overflow: "hidden",
             }}>
               {/* dot grid */}
               <span aria-hidden style={{
                 position: "absolute", inset: 0,
-                backgroundImage: "radial-gradient(circle, rgba(0,200,150,.06) 1px, transparent 1px)",
+                backgroundImage: "radial-gradient(circle, rgba(0,255,0,.06) 1px, transparent 1px)",
                 backgroundSize: "24px 24px", pointerEvents: "none",
               }} />
               {/* icon tile */}
@@ -251,7 +251,7 @@ export default function StudentDashboard() {
                         <div style={{ marginTop: 6, height: 5, background: "var(--bg-2)", borderRadius: 999, overflow: "hidden", maxWidth: 300 }}>
                           <div style={{
                             width: `${pct}%`, height: "100%", background: "var(--accent)",
-                            boxShadow: "0 0 8px rgba(0,200,150,.5)", borderRadius: 999,
+                            boxShadow: "0 0 8px rgba(0,255,0,.5)", borderRadius: 999,
                           }} />
                         </div>
                       )}

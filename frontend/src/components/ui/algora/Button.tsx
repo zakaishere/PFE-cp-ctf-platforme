@@ -55,7 +55,7 @@ export function Button({
           color: "#0a0a0a",
           border: "1px solid var(--accent)",
           fontWeight: 700,
-          boxShadow: hover && !disabled ? "0 0 14px rgba(0,200,150,.3)" : "none",
+          boxShadow: hover && !disabled ? "0 0 14px rgba(0,255,0,.3)" : "none",
         };
       case "ghost":
         return {

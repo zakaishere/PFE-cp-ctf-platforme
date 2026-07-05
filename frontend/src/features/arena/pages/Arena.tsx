@@ -360,7 +360,7 @@ export default function Arena({ examId, mode = "exam" }: ArenaProps) {
         {solvedCount} / {problems.length} {answeredWord}
       </span>
       <div style={{ width: 80, height: 4, borderRadius: 4, background: "rgba(255,255,255,.07)", overflow: "hidden", flex: "none" }}>
-        <div style={{ height: "100%", width: `${progressPct}%`, background: "var(--accent)", borderRadius: 4, boxShadow: "0 0 8px rgba(0,200,150,.5)" }} />
+        <div style={{ height: "100%", width: `${progressPct}%`, background: "var(--accent)", borderRadius: 4, boxShadow: "0 0 8px rgba(0,255,0,.5)" }} />
       </div>
     </div>
   ) : undefined;

@@ -227,7 +227,7 @@ export default function LandingPage() {
         <Link href="/" className="flex items-center gap-2.5 no-underline">
           <div
             className="w-7 h-7 rounded-md flex items-center justify-center font-black text-sm text-white"
-            style={{ background: "linear-gradient(135deg,#00c896,#00e6aa)" }}
+            style={{ background: "linear-gradient(135deg,#00FF00,#66FF66)" }}
           >{APP_MARK}</div>
           <span className="font-bold text-[15px] text-slate-100">{APP_NAME}</span>
         </Link>
@@ -830,7 +830,7 @@ export default function LandingPage() {
         <div className="flex items-center gap-2.5">
           <div
             className="w-6 h-6 rounded-md flex items-center justify-center font-black text-xs text-white"
-            style={{ background: "linear-gradient(135deg,#00c896,#00e6aa)" }}
+            style={{ background: "linear-gradient(135deg,#00FF00,#66FF66)" }}
           >{APP_MARK}</div>
           <span className="font-bold text-[14px] text-slate-300">{APP_NAME}</span>
         </div>

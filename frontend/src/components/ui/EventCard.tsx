@@ -125,7 +125,7 @@ export function EventCard({
             position: "absolute",
             inset: 0,
             backgroundImage:
-              "radial-gradient(circle, rgba(0,200,150,.06) 1px, transparent 1px)",
+              "radial-gradient(circle, rgba(0,255,0,.06) 1px, transparent 1px)",
             backgroundSize: "24px 24px",
             opacity: dimmed ? 0.4 : 1,
             pointerEvents: "none",

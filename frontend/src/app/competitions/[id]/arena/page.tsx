@@ -687,7 +687,7 @@ function BriefingScreen({
             width: 36, height: 36, background: "var(--accent)", borderRadius: 9,
             display: "grid", placeItems: "center",
             color: "#0a0a0a", font: "700 15px var(--font-mono)",
-            boxShadow: "0 0 12px rgba(0,200,150,.4)",
+            boxShadow: "0 0 12px rgba(0,255,0,.4)",
           }}>{APP_MARK}</div>
           <div>
             <div style={{ fontSize: 11, color: "var(--ink-3)", textTransform: "uppercase", letterSpacing: 0.6 }}>
@@ -724,7 +724,7 @@ function BriefingScreen({
             color: "#0a0a0a", border: "none", borderRadius: 10,
             fontSize: 14, fontWeight: 700, cursor: "pointer",
             display: "flex", alignItems: "center", justifyContent: "center", gap: 8,
-            boxShadow: "0 0 14px rgba(0,200,150,.3)",
+            boxShadow: "0 0 14px rgba(0,255,0,.3)",
           }}
         >
           <Play size={14} />
@@ -883,7 +883,7 @@ function LeftPanel({
           const wrong   = p.solveStatus === "ATTEMPTED";
           const active  = activeProblemIdx === i;
           const badgeStyle: React.CSSProperties = solved
-            ? { background: "rgba(0,200,150,.12)", color: "var(--accent)", border: "1px solid var(--accent-ring)" }
+            ? { background: "rgba(0,255,0,.12)", color: "var(--accent)", border: "1px solid var(--accent-ring)" }
             : wrong
             ? { background: "var(--danger-soft)", color: "var(--danger)" }
             : active
@@ -918,7 +918,7 @@ function LeftPanel({
       <div style={{ padding: 14, borderTop: "1px solid var(--line-2)" }}>
         <div style={{ fontSize: 10, fontWeight: 700, color: "var(--ink-3)", textTransform: "uppercase", letterSpacing: "0.1em", marginBottom: 10 }}>Progress</div>
         <div style={{ background: "var(--surface-3)", height: 4, borderRadius: 4, overflow: "hidden", marginBottom: 8 }}>
-          <div style={{ background: "var(--accent)", height: 4, borderRadius: 4, width: `${progressPct}%`, boxShadow: "0 0 8px rgba(0,200,150,.5)", transition: "width 0.3s" }} />
+          <div style={{ background: "var(--accent)", height: 4, borderRadius: 4, width: `${progressPct}%`, boxShadow: "0 0 8px rgba(0,255,0,.5)", transition: "width 0.3s" }} />
         </div>
         <div style={{ font: "600 12px var(--font-mono)", color: "var(--ink-2)", marginBottom: 12 }}>{solvedCount} / {problems.length} solved</div>
         <div style={{ display: "flex", flexDirection: "column", gap: 5 }}>

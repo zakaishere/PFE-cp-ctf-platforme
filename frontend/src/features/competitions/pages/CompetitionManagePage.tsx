@@ -63,7 +63,7 @@ function reqInitials(first?: string, last?: string) {
 }
 
 const REQ_AVATAR_GRADIENTS = [
-  "linear-gradient(135deg,#00c896,#00e6aa)",
+  "linear-gradient(135deg,#00FF00,#66FF66)",
   "linear-gradient(135deg,#2ec27e,#4cd49b)",
   "linear-gradient(135deg,#e8a030,#eeb866)",
   "linear-gradient(135deg,#9b8cf6,#b8acff)",

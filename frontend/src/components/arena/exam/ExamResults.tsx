@@ -5,7 +5,7 @@ import { Trophy, ChevronDown } from "lucide-react";
 import { type ExamResultsDTO, type ExamProblemResultDTO } from "@/lib/api";
 
 const VERDICT: Record<string, { label: string; color: string; bg: string; border: string }> = {
-  AC:      { label: "Accepted",      color: "var(--accent)",     bg: "rgba(0,200,150,.1)",  border: "rgba(0,200,150,.18)" },
+  AC:      { label: "Accepted",      color: "var(--accent)",     bg: "rgba(0,255,0,.1)",  border: "rgba(0,255,0,.18)" },
   WA:      { label: "Wrong Answer",  color: "var(--danger-ink)", bg: "var(--danger-soft)",  border: "rgba(240,99,122,.18)" },
   PARTIAL: { label: "Partial",       color: "var(--warn)",       bg: "var(--warn-soft)",    border: "rgba(232,160,48,.18)" },
   NS:      { label: "Not submitted", color: "var(--ink-3)",      bg: "var(--surface-2)",    border: "rgba(255,255,255,.08)" },
@@ -31,7 +31,7 @@ export default function ExamResults({ data }: { data: ExamResultsDTO }) {
           style={{
             position: "absolute",
             inset: 0,
-            background: "radial-gradient(ellipse at 50% -10%, rgba(0,200,150,.07) 0%, transparent 65%)",
+            background: "radial-gradient(ellipse at 50% -10%, rgba(0,255,0,.07) 0%, transparent 65%)",
             pointerEvents: "none",
           }}
         />
@@ -44,8 +44,8 @@ export default function ExamResults({ data }: { data: ExamResultsDTO }) {
               display: "grid",
               placeItems: "center",
               margin: "0 auto 20px",
-              background: "rgba(0,200,150,.1)",
-              border: "1px solid rgba(0,200,150,.22)",
+              background: "rgba(0,255,0,.1)",
+              border: "1px solid rgba(0,255,0,.22)",
             }}
           >
             <Trophy size={32} color="var(--accent)" />
@@ -61,7 +61,7 @@ export default function ExamResults({ data }: { data: ExamResultsDTO }) {
               font: "800 56px var(--font-mono)",
               color: "var(--accent)",
               letterSpacing: -2,
-              textShadow: "0 0 32px rgba(0,200,150,.45)",
+              textShadow: "0 0 32px rgba(0,255,0,.45)",
               lineHeight: 1,
               marginBottom: 12,
             }}
@@ -75,8 +75,8 @@ export default function ExamResults({ data }: { data: ExamResultsDTO }) {
               borderRadius: 999,
               display: "inline-block",
               color: data.passed ? "var(--accent)" : "var(--danger-ink)",
-              background: data.passed ? "rgba(0,200,150,.12)" : "var(--danger-soft)",
-              border: `1px solid ${data.passed ? "rgba(0,200,150,.25)" : "rgba(240,99,122,.25)"}`,
+              background: data.passed ? "rgba(0,255,0,.12)" : "var(--danger-soft)",
+              border: `1px solid ${data.passed ? "rgba(0,255,0,.25)" : "rgba(240,99,122,.25)"}`,
             }}
           >
             {data.passed ? "Passed" : "Failed"} · Required ≥ {data.passingScore}%

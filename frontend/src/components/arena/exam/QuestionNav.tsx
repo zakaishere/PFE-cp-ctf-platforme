@@ -102,17 +102,17 @@ export default function QuestionNav({
                     transition: "all 100ms",
                     background: done
                       ? now
-                        ? "rgba(0,200,150,.15)"
-                        : "rgba(0,200,150,.10)"
+                        ? "rgba(0,255,0,.15)"
+                        : "rgba(0,255,0,.10)"
                       : now
                         ? "var(--surface-2)"
                         : "var(--surface)",
                     border: now
                       ? "2px solid var(--accent)"
                       : done
-                        ? "1.5px solid rgba(0,200,150,.28)"
+                        ? "1.5px solid rgba(0,255,0,.28)"
                         : "1.5px solid rgba(255,255,255,.07)",
-                    boxShadow: now ? "0 0 0 3px rgba(0,200,150,.15)" : "none",
+                    boxShadow: now ? "0 0 0 3px rgba(0,255,0,.15)" : "none",
                     color: done ? "var(--accent)" : now ? "var(--ink)" : "var(--ink-3)",
                   }}
                 >
@@ -184,7 +184,7 @@ export default function QuestionNav({
             flex: "none",
           }}
         >
-          <Legend color="rgba(0,200,150,.6)" text="Answered" />
+          <Legend color="rgba(0,255,0,.6)" text="Answered" />
           <Legend color="var(--surface-3)" text="Not answered" />
         </div>
       )}

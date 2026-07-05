@@ -446,7 +446,7 @@ export default function CompetitionLobbyPage() {
           font-family: var(--font-mono), ui-monospace, monospace;
           line-height: 1;
           color: var(--accent);
-          text-shadow: 0 0 14px rgba(0,200,150,.5);
+          text-shadow: 0 0 14px rgba(0,255,0,.5);
         }
         .countdown-label {
           font-size: 10px;
@@ -1193,7 +1193,7 @@ export default function CompetitionLobbyPage() {
                       fontSize: 32,
                       fontWeight: 800,
                       color: countdown.isCritical ? "var(--danger)" : countdown.isUrgent ? "var(--warn)" : "var(--accent)",
-                      textShadow: countdown.isCritical || countdown.isUrgent ? "none" : "0 0 14px rgba(0,200,150,.5)",
+                      textShadow: countdown.isCritical || countdown.isUrgent ? "none" : "0 0 14px rgba(0,255,0,.5)",
                       textAlign: "center",
                       padding: "8px 0 4px",
                       letterSpacing: 2,

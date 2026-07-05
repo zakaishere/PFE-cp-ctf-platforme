@@ -247,7 +247,7 @@ function TopBar({ title, subtitle, leftExtras, backHref, backLabel, remainingSec
     <div style={{
       background: "var(--bg)", height: 54, display: "flex", alignItems: "stretch",
       flexShrink: 0, borderBottom: "1px solid var(--line-2)",
-      boxShadow: "0 1px 0 0 rgba(0,200,150,.07)",
+      boxShadow: "0 1px 0 0 rgba(0,255,0,.07)",
     }}>
       <div style={{
         display: "flex", alignItems: "center", gap: 9,
@@ -258,7 +258,7 @@ function TopBar({ title, subtitle, leftExtras, backHref, backLabel, remainingSec
           width: 28, height: 28, background: "var(--accent)", borderRadius: 8,
           display: "grid", placeItems: "center",
           color: "#0a0a0a", font: "700 12px var(--font-mono)",
-          boxShadow: "0 0 12px rgba(0,200,150,.4)",
+          boxShadow: "0 0 12px rgba(0,255,0,.4)",
         }}>{APP_MARK}</div>
         {APP_NAME}
       </div>
@@ -292,7 +292,7 @@ function TopBar({ title, subtitle, leftExtras, backHref, backLabel, remainingSec
             borderLeft: "1px solid var(--line-2)",
             font: "600 22px var(--font-mono)", letterSpacing: 2,
             color: isEnded ? "var(--ink-3)" : isUrgent ? "var(--danger)" : "var(--accent)",
-            textShadow: isEnded ? "none" : isUrgent ? "0 0 18px rgba(240,99,122,.55)" : "0 0 18px rgba(0,200,150,.55)",
+            textShadow: isEnded ? "none" : isUrgent ? "0 0 18px rgba(240,99,122,.55)" : "0 0 18px rgba(0,255,0,.55)",
             animation: isUrgent ? "arenaBlink 1s ease infinite" : "none",
           }}>
             {isEnded ? "00:00:00" : timerStr}

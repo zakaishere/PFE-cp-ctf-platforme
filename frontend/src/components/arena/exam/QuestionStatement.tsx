@@ -14,7 +14,7 @@ interface QuestionStatementProps {
 }
 
 const DIFF_CLASS: Record<string, { color: string; bg: string; border: string }> = {
-  EASY:   { color: "var(--accent)", bg: "rgba(0,200,150,.08)", border: "rgba(0,200,150,.2)" },
+  EASY:   { color: "var(--accent)", bg: "rgba(0,255,0,.08)", border: "rgba(0,255,0,.2)" },
   MEDIUM: { color: "var(--warn)",   bg: "var(--warn-soft)",    border: "rgba(232,160,48,.2)" },
   HARD:   { color: "var(--danger)", bg: "var(--danger-soft)",  border: "rgba(240,99,122,.2)" },
 };
@@ -81,7 +81,7 @@ export default function QuestionStatement({
           color: "var(--accent)",
           lineHeight: 1,
           marginBottom: 6,
-          textShadow: "0 0 20px rgba(0,200,150,.25)",
+          textShadow: "0 0 20px rgba(0,255,0,.25)",
         }}
       >
         {problem.label}.
