@@ -792,6 +792,8 @@ export interface ExamProblemDTO {
   visibleTestCases: ExamRoomVisibleTestCase[];
   hiddenTestCaseCount: number;
   solvedByCurrentUser: boolean;
+  /** Attempts spent on this problem (TPs only; null for exams). */
+  attemptsUsed?: number | null;
 }
 
 export interface ExamRoomDTO {
@@ -800,10 +802,48 @@ export interface ExamRoomDTO {
   remainingSeconds: number;
   isEnded: boolean;
   problems: ExamProblemDTO[];
+  /** ISO deadline (TPs only; null for exams). */
+  deadline?: string | null;
+  /** Max attempts per problem (TPs only; null = unlimited / not a TP). */
+  maxAttempts?: number | null;
+  /** Whether final grades have been released (live exams). */
+  gradesRevealed: boolean;
 }
 
 export const getExamRoom = (assessmentId: string) =>
   apiClient<ExamRoomDTO>(`/api/assessments/${assessmentId}/exam-room`, { method: "GET" });
+
+// --- Post-exam results ---
+
+export interface ExamProblemResultDTO {
+  problemId: string;
+  label: string;
+  title: string;
+  earnedPoints: number;
+  maxPoints: number;
+  passedCases: number;
+  totalCases: number;
+  verdict: "AC" | "PARTIAL" | "WA" | "NS";
+  submittedCode?: string | null;
+  language?: string | null;
+}
+
+export interface ExamResultsDTO {
+  assessmentId: string;
+  title: string;
+  finalScore: number;
+  totalPoints: number;
+  gradePercent: number;
+  passingScore: number;
+  passed: boolean;
+  submittedCount: number;
+  acceptedCount: number;
+  problemCount: number;
+  problems: ExamProblemResultDTO[];
+}
+
+export const getExamResults = (assessmentId: string) =>
+  apiClient<ExamResultsDTO>(`/api/assessments/${assessmentId}/exam-results`, { method: "GET" });
 
 // --- Teacher module picker ---
 

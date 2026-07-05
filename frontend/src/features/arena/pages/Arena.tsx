@@ -2,12 +2,12 @@
 
 import { useState, useEffect, useRef } from "react";
 import Link from "next/link";
-import { AlertTriangle, FileText, Play, ShieldAlert, List, Code2 } from "lucide-react";
+import { AlertTriangle, Clock, FileText, Play, ShieldAlert, List, Code2 } from "lucide-react";
 import { Client as StompClient } from "@stomp/stompjs";
 import SockJS from "sockjs-client";
 import {
-  submitCode, logCheatEvent, getExamRoom, getApiBaseUrl,
-  type ExamRoomDTO, type ExamProblemDTO,
+  submitCode, logCheatEvent, getExamRoom, getExamResults, getApiBaseUrl,
+  type ExamRoomDTO, type ExamProblemDTO, type ExamResultsDTO,
 } from "@/lib/api";
 import { useAuth } from "@/features/auth/contexts/AuthContext";
 import CodeWorkspace, {
@@ -19,6 +19,7 @@ import ArenaShell, { type ArenaTab } from "@/features/arena/components/ArenaShel
 import { type ViolationEvent } from "@/hooks/useAntiCheat";
 import QuestionNav from "@/components/arena/exam/QuestionNav";
 import QuestionStatement from "@/components/arena/exam/QuestionStatement";
+import ExamResults from "@/components/arena/exam/ExamResults";
 
 type Verdict = WorkspaceVerdict;
 type TestResult = WorkspaceTestResult;
@@ -52,6 +53,7 @@ export default function Arena({ examId, mode = "exam" }: ArenaProps) {
   const [results, setResults]   = useState<TestResult[]>([]);
   const [verdict, setVerdict]   = useState<Verdict>(null);
   const [tabSwitches, setTabSwitches] = useState(0);
+  const [examResults, setExamResults] = useState<ExamResultsDTO | null>(null);
   const stompRef = useRef<StompClient | null>(null);
 
   // Entry-flow phase: briefing → active. Practice mode skips briefing.
@@ -83,6 +85,16 @@ export default function Arena({ examId, mode = "exam" }: ArenaProps) {
     return () => clearInterval(id);
   }, [examRoom]);
 
+  // Fetch post-exam results once the exam has ended and grades are revealed.
+  useEffect(() => {
+    if (mode !== "exam" || !examId || !examRoom) return;
+    const ended = examRoom.isEnded || examRoom.remainingSeconds <= 0;
+    if (!ended || !examRoom.gradesRevealed || examResults) return;
+    getExamResults(examId)
+      .then(setExamResults)
+      .catch(() => {});
+  }, [mode, examId, examRoom, examResults]);
+
   // Anti-cheat reporter (wired into ArenaShell.lockdown.onViolation below).
   // Reports every violation to the assessment audit endpoint; bumps the
   // tab-switch counter shown in the sidebar for visibility violations.
@@ -110,6 +122,13 @@ export default function Arena({ examId, mode = "exam" }: ArenaProps) {
   const visibleCount = activeProblem?.visibleTestCases.length ?? 0;
   const hiddenCount  = activeProblem?.hiddenTestCaseCount ?? 0;
   const totalCases   = visibleCount + hiddenCount;
+
+  // TP submission gating: closed after deadline or once per-problem attempts run out.
+  const maxAttempts   = examRoom?.maxAttempts ?? null;
+  const attemptsUsed  = activeProblem?.attemptsUsed ?? 0;
+  const deadlinePassed = mode === "tp" && isEnded;
+  const attemptsExhausted =
+    mode === "tp" && maxAttempts != null && attemptsUsed >= maxAttempts;
 
   const handleLangChange = (newLang: string) => {
     setLang(newLang);
@@ -265,7 +284,18 @@ export default function Arena({ examId, mode = "exam" }: ArenaProps) {
           hideResults={hideResults}
           submitted={!!activeProblem?.solvedByCurrentUser}
           runLabel="Run sample"
-          submitLabel="Submit answer"
+          submitLabel={mode === "tp" ? "Submit" : "Submit answer"}
+          blockedBanner={
+            deadlinePassed ? (
+              <div style={blockBannerStyle("danger")}>
+                Deadline has passed — submissions are closed.
+              </div>
+            ) : attemptsExhausted ? (
+              <div style={blockBannerStyle("warn")}>
+                Maximum attempts reached ({maxAttempts} / {maxAttempts}).
+              </div>
+            ) : undefined
+          }
         />
       </div>
 
@@ -305,12 +335,15 @@ export default function Arena({ examId, mode = "exam" }: ArenaProps) {
     </div>
   );
 
+  // Post-exam results replace the workspace once grades are revealed.
+  const showResults = mode === "exam" && isEnded && !!examResults;
+
   const tabs: ArenaTab[] = [
     {
       key: "workspace",
       label: "Workspace",
       icon: <FileText size={14} />,
-      content: workspaceContent,
+      content: showResults ? <ExamResults data={examResults!} /> : workspaceContent,
     },
   ];
 
@@ -342,6 +375,28 @@ export default function Arena({ examId, mode = "exam" }: ArenaProps) {
     </div>
   ) : undefined;
 
+  // TP top bar: amber deadline + per-problem attempts counter (no anti-cheat, no countdown).
+  const tpExtras = mode === "tp" && !isEnded ? (
+    <>
+      {examRoom?.deadline && (
+        <div style={{
+          display: "flex", alignItems: "center", gap: 6, padding: "0 16px",
+          borderLeft: "1px solid var(--line-2)", font: "600 13px var(--font-mono)", color: "var(--warn)",
+        }}>
+          <Clock size={14} /> Due {formatDeadline(examRoom.deadline)}
+        </div>
+      )}
+      {maxAttempts != null && (
+        <div style={{
+          display: "flex", alignItems: "center", padding: "0 16px",
+          borderLeft: "1px solid var(--line-2)", font: "500 12px var(--font)", color: "var(--ink-3)",
+        }}>
+          {attemptsUsed} / {maxAttempts} attempts
+        </div>
+      )}
+    </>
+  ) : undefined;
+
   const subtitle = isEnded
     ? (mode === "tp" ? "TP closed" : "Exam closed")
     : mode === "tp" ? "Take-home TP" : mode === "practice" ? "Practice" : "Live Exam";
@@ -351,13 +406,15 @@ export default function Arena({ examId, mode = "exam" }: ArenaProps) {
       title={examRoom?.title ?? "Exam"}
       subtitle={subtitle}
       leftExtras={progressExtras}
-      topBarExtras={antiCheatExtras}
+      topBarExtras={mode === "tp" ? tpExtras : antiCheatExtras}
       backHref="/assessments"
       backLabel={mode === "tp" ? "Leave TP" : mode === "practice" ? "Leave" : "Leave Exam"}
-      remainingSeconds={remainingSecs}
-      isEnded={isEnded}
+      // Hide the big countdown for TPs (deadline shown instead) and on the results view.
+      remainingSeconds={mode === "tp" || showResults ? 0 : remainingSecs}
+      isEnded={isEnded && !showResults}
+      endedMessage={mode === "tp" ? "This TP is closed. Submissions are no longer accepted." : undefined}
       loading={loading}
-      loadingMessage="Loading exam…"
+      loadingMessage="Loading…"
       accessError={accessError}
       lockdown={enforceLockdown ? {
         fullscreen:  true,
@@ -368,6 +425,36 @@ export default function Arena({ examId, mode = "exam" }: ArenaProps) {
       tabs={tabs}
     />
   );
+}
+
+// Block-banner style for TP deadline/attempts messages.
+function blockBannerStyle(tone: "danger" | "warn"): React.CSSProperties {
+  const color = tone === "danger" ? "var(--danger-ink)" : "var(--warn)";
+  const bg = tone === "danger" ? "var(--danger-soft)" : "var(--warn-soft)";
+  const border = tone === "danger" ? "rgba(240,99,122,.25)" : "rgba(232,160,48,.25)";
+  return {
+    textAlign: "center",
+    font: "600 12.5px var(--font)",
+    color,
+    background: bg,
+    border: `1px solid ${border}`,
+    borderRadius: 9,
+    padding: "11px 14px",
+  };
+}
+
+// "in 2d 4h" / "in 3h 20m" / "Jul 8" style relative deadline.
+function formatDeadline(iso: string): string {
+  const d = new Date(iso);
+  if (isNaN(d.getTime())) return "—";
+  const diffMs = d.getTime() - Date.now();
+  if (diffMs <= 0) return "now";
+  const mins = Math.floor(diffMs / 60000);
+  const hrs = Math.floor(mins / 60);
+  const days = Math.floor(hrs / 24);
+  if (days >= 1) return `in ${days}d ${hrs % 24}h`;
+  if (hrs >= 1) return `in ${hrs}h ${mins % 60}m`;
+  return `in ${mins}m`;
 }
 
 // ── Briefing screen ──────────────────────────────────────────────────────────

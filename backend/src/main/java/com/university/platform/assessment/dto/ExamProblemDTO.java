@@ -14,7 +14,9 @@ public record ExamProblemDTO(
     int points,
     List<VisibleTestCaseDTO> visibleTestCases,
     int hiddenTestCaseCount,
-    boolean solvedByCurrentUser
+    boolean solvedByCurrentUser,
+    /** Attempts this student has spent on this problem. Populated for TPs; null otherwise. */
+    Integer attemptsUsed
 ) {
     public record VisibleTestCaseDTO(UUID id, String input, String expectedOutput) {}
 }

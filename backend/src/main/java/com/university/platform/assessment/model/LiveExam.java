@@ -40,4 +40,18 @@ public class LiveExam extends Assessment {
     @Column(name = "is_closed", nullable = false)
     @Builder.Default
     private Boolean isClosed = false;
+
+    /**
+     * Whether final grades/verdicts are visible to students. Kept separate from
+     * {@link #isClosed} so a teacher can close an exam (stop submissions) before
+     * releasing results. Column added by migration_v23.
+     */
+    @Column(name = "grades_revealed", nullable = false)
+    @Builder.Default
+    private Boolean gradesRevealed = false;
+
+    /** Pass threshold as a percentage of total points (0–100). Defaults to 50. Column added by migration_v23. */
+    @Column(name = "passing_score", nullable = false)
+    @Builder.Default
+    private Integer passingScore = 50;
 }

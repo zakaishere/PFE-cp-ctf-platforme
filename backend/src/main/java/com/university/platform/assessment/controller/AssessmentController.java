@@ -415,26 +415,51 @@ public class AssessmentController {
         UUID studentId = UUID.fromString(claims.getSubject());
 
         Assessment assessment = assessmentRepository.findById(assessmentId).orElse(null);
-        if (!(assessment instanceof LiveExam)) {
+        // The arena serves both live exams and open TPs. Anything else has no room.
+        if (!(assessment instanceof LiveExam) && !(assessment instanceof OpenTP)) {
             return ResponseEntity.notFound().build();
         }
-        LiveExam exam = (LiveExam) assessment;
 
-        VisibilityMode visibility = exam.getVisibilityMode() != null
-                ? exam.getVisibilityMode() : VisibilityMode.MODULE_ONLY;
-        if (visibility == VisibilityMode.REQUEST_BASED || visibility == VisibilityMode.ACCESS_CODE) {
+        VisibilityMode visibility = assessment.getVisibilityMode() != null
+                ? assessment.getVisibilityMode() : VisibilityMode.MODULE_ONLY;
+        // REQUEST_BASED assessments gate on an approved join request. ACCESS_CODE
+        // assessments are gated by the code itself (validated in the waiting room
+        // before entry) and never generate join requests, so they must NOT require
+        // an approval here.
+        if (visibility == VisibilityMode.REQUEST_BASED) {
             boolean approved = joinRequestRepository.existsByAssessmentIdAndStudentIdAndStatus(
                     assessmentId, studentId, JoinRequestStatus.APPROVED);
             if (!approved) {
                 return ResponseEntity.status(403)
-                        .body("{\"error\": \"Access denied. You do not have an approved request for this exam.\"}");
+                        .body("{\"error\": \"Access denied. You do not have an approved request for this assessment.\"}");
             }
         }
 
         LocalDateTime now = LocalDateTime.now();
-        LocalDateTime endTime = exam.getScheduledStartTime().plusMinutes(exam.getDurationMinutes());
-        long remainingSeconds = Math.max(0, ChronoUnit.SECONDS.between(now, endTime));
-        boolean isEnded = Boolean.TRUE.equals(exam.getIsClosed()) || remainingSeconds == 0;
+
+        // Subtype-specific timing + metadata. Exams run a fixed-duration countdown
+        // and gate results behind a reveal flag; TPs run to a deadline with a
+        // per-problem attempt cap and no anti-cheat.
+        long remainingSeconds;
+        boolean isEnded;
+        String deadlineIso = null;
+        Integer maxAttempts = null;
+        boolean gradesRevealed = false;
+        final boolean isTp = assessment instanceof OpenTP;
+
+        if (assessment instanceof LiveExam exam) {
+            LocalDateTime endTime = exam.getScheduledStartTime().plusMinutes(exam.getDurationMinutes());
+            remainingSeconds = Math.max(0, ChronoUnit.SECONDS.between(now, endTime));
+            isEnded = Boolean.TRUE.equals(exam.getIsClosed()) || remainingSeconds == 0;
+            gradesRevealed = Boolean.TRUE.equals(exam.getGradesRevealed());
+        } else {
+            OpenTP tp = (OpenTP) assessment;
+            LocalDateTime deadline = tp.getDeadline();
+            remainingSeconds = Math.max(0, ChronoUnit.SECONDS.between(now, deadline));
+            isEnded = now.isAfter(deadline);
+            deadlineIso = deadline.toString();
+            maxAttempts = tp.getMaxAttemptsAllowed();
+        }
 
         Set<UUID> solvedIds = submissionRepository.findSolvedProblemIdsByAssessment(studentId, assessmentId);
 
@@ -459,6 +484,11 @@ public class AssessmentController {
                             .filter(tc -> Boolean.TRUE.equals(tc.getIsHidden()))
                             .count();
 
+                    // TP top bar shows a per-problem attempt counter; exams don't.
+                    Integer attemptsUsed = isTp
+                            ? (int) submissionRepository.countAttempts(studentId, p.getProblemId(), assessmentId)
+                            : null;
+
                     return new ExamProblemDTO(
                             p.getProblemId(), label, p.getTitle(),
                             p.getDifficultyLevel().name(),
@@ -466,13 +496,15 @@ public class AssessmentController {
                             p.getDescription(),
                             ap.getPointsOverride() != null ? ap.getPointsOverride() : 0,
                             visible, hiddenCount,
-                            solvedIds.contains(p.getProblemId())
+                            solvedIds.contains(p.getProblemId()),
+                            attemptsUsed
                     );
                 })
                 .collect(Collectors.toList());
 
         return ResponseEntity.ok(new ExamRoomDTO(
-                assessmentId, exam.getTitle(), remainingSeconds, isEnded, problems));
+                assessmentId, assessment.getTitle(), remainingSeconds, isEnded, problems,
+                deadlineIso, maxAttempts, gradesRevealed));
     }
 
     @GetMapping("/my-modules")
