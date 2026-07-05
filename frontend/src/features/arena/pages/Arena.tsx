@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useRef } from "react";
 import Link from "next/link";
-import { AlertTriangle, CheckCircle2, Clock, FileText, Lock, Play, ShieldAlert, List, Code2 } from "lucide-react";
+import { AlertTriangle, FileText, Play, ShieldAlert, List, Code2 } from "lucide-react";
 import { Client as StompClient } from "@stomp/stompjs";
 import SockJS from "sockjs-client";
 import {
@@ -17,12 +17,8 @@ import CodeWorkspace, {
 } from "@/features/arena/components/CodeWorkspace";
 import ArenaShell, { type ArenaTab } from "@/features/arena/components/ArenaShell";
 import { type ViolationEvent } from "@/hooks/useAntiCheat";
-
-const DIFF_STYLE: Record<string, { bg: string; color: string }> = {
-  EASY:   { bg: "var(--success-soft)", color: "var(--success-ink)" },
-  MEDIUM: { bg: "var(--warn-soft)", color: "var(--warn-ink)" },
-  HARD:   { bg: "var(--danger-soft)", color: "var(--danger-ink)" },
-};
+import QuestionNav from "@/components/arena/exam/QuestionNav";
+import QuestionStatement from "@/components/arena/exam/QuestionStatement";
 
 type Verdict = WorkspaceVerdict;
 type TestResult = WorkspaceTestResult;
@@ -111,9 +107,6 @@ export default function Arena({ examId, mode = "exam" }: ArenaProps) {
   const isEnded  = (examRoom?.isEnded ?? false) || remainingSecs <= 0;
   const solvedCount = examRoom?.problems.filter((p) => p.solvedByCurrentUser).length ?? 0;
 
-  const diff      = activeProblem?.difficulty ?? "";
-  const diffStyle = DIFF_STYLE[diff] ?? { bg: "var(--surface-2)", color: "var(--text-muted)" };
-  const diffLabel = diff ? diff.charAt(0) + diff.slice(1).toLowerCase() : "";
   const visibleCount = activeProblem?.visibleTestCases.length ?? 0;
   const hiddenCount  = activeProblem?.hiddenTestCaseCount ?? 0;
   const totalCases   = visibleCount + hiddenCount;
@@ -199,184 +192,82 @@ export default function Arena({ examId, mode = "exam" }: ArenaProps) {
 
   const problems = examRoom?.problems ?? [];
 
-  // ── Responsive pane styles (desktop unchanged; mobile = single column) ─────
+  // Live exams hide verdicts/scores until the exam closes; TP & practice show
+  // results live. The submitted banner reflects a prior accepted submission.
+  const hideResults = mode === "exam" && !isEnded;
+  const nounSingular = mode === "tp" ? "Task" : "Question";
+
+  // ── Responsive pane styles (desktop 3-column; mobile = single column) ─────
   const leftPaneStyle: React.CSSProperties = {
-    background: "var(--line)", display: "flex", flexDirection: "column",
+    display: "flex", flexDirection: "column",
     ...(isMobile
       ? { width: "100%", flex: 1, minHeight: 0, ...(mobilePanel !== "problems" ? { display: "none" } : {}) }
-      : { width: 240, flexShrink: 0, borderRight: "1px solid var(--ink-2)" }),
+      : { width: 220, flexShrink: 0 }),
   };
   const centerPaneStyle: React.CSSProperties = {
-    background: "var(--bg-primary)", display: "flex", flexDirection: "column", overflowY: "auto",
+    display: "flex", flexDirection: "column", minHeight: 0,
     ...(isMobile
-      ? { width: "100%", flex: 1, minHeight: 0, ...(mobilePanel !== "statement" ? { display: "none" } : {}) }
-      : { flex: 1, borderRight: "1px solid var(--border)" }),
+      ? { width: "100%", flex: 1, ...(mobilePanel !== "statement" ? { display: "none" } : {}) }
+      : { flex: 1 }),
   };
   const rightPaneStyle: React.CSSProperties = {
-    display: "flex",
+    display: "flex", minHeight: 0,
     ...(isMobile
-      ? { width: "100%", flex: 1, minHeight: 0, ...(mobilePanel !== "submit" ? { display: "none" } : {}) }
-      : { width: 480, flexShrink: 0 }),
+      ? { width: "100%", flex: 1, ...(mobilePanel !== "submit" ? { display: "none" } : {}) }
+      : { width: 420, flexShrink: 0 }),
   };
 
   // ── Workspace tab content (3-pane on desktop, tabbed single-column on mobile) ─
   const workspaceContent = (
     <div style={{
-      display: "flex", flex: 1, overflow: "hidden",
+      display: "flex", flex: 1, overflow: "hidden", background: "var(--bg)",
       ...(isMobile ? { flexDirection: "column", paddingBottom: 52 } : {}),
     }}>
 
-      {/* Left: problem list + progress */}
+      {/* Left: problem/task navigator */}
       <div style={leftPaneStyle}>
-          <div style={{ padding: 12, flex: 1, overflowY: "auto" }}>
-            <div style={{ fontSize: 10, fontWeight: 700, color: "rgba(255,255,255,0.4)", textTransform: "uppercase", letterSpacing: 0.5, marginBottom: 8 }}>
-              Problems
-            </div>
-            {problems.length === 0 ? (
-              <div style={{ fontSize: 12, color: "rgba(255,255,255,0.3)", padding: "6px 0" }}>
-                No problems assigned.
-              </div>
-            ) : (
-              problems.map((p, i) => (
-                <div
-                  key={p.problemId}
-                  onClick={() => { setActiveProblemIdx(i); if (isMobile) setMobilePanel("statement"); }}
-                  style={{
-                    display: "flex", alignItems: "center", gap: 8,
-                    padding: "8px 10px", borderRadius: 3, cursor: "pointer", marginBottom: 3,
-                    background: activeProblemIdx === i ? "var(--brand)" : "transparent",
-                  }}
-                >
-                  <div style={{
-                    width: 8, height: 8, borderRadius: "50%", flexShrink: 0,
-                    background: p.solvedByCurrentUser ? "var(--success)" : "var(--ink-3)",
-                  }} />
-                  <div style={{ fontSize: 12, color: "rgba(255,255,255,0.85)", fontWeight: 500, flex: 1 }}>
-                    {p.label}. {p.title}
-                  </div>
-                  <div style={{ fontSize: 10, color: "rgba(255,255,255,0.45)" }}>{p.points} pts</div>
-                </div>
-              ))
-            )}
-          </div>
+        <QuestionNav
+          problems={problems}
+          currentIndex={activeProblemIdx}
+          onSelect={(i) => { setActiveProblemIdx(i); if (isMobile) setMobilePanel("statement"); }}
+          label={mode === "tp" ? "Tasks" : "Questions"}
+        />
+      </div>
 
-          <div style={{ padding: 12, borderTop: "1px solid var(--ink-2)" }}>
-            <div style={{ fontSize: 10, fontWeight: 700, color: "rgba(255,255,255,0.4)", textTransform: "uppercase", letterSpacing: 0.5, marginBottom: 6 }}>Progress</div>
-            <div style={{ fontSize: 12, color: "rgba(255,255,255,0.65)" }}>{solvedCount} / {problems.length} solved</div>
-            <div style={{ background: "var(--ink-2)", height: 4, borderRadius: 2, marginTop: 6 }}>
-              <div style={{ background: "var(--brand)", height: 4, borderRadius: 2, width: problems.length > 0 ? `${(solvedCount / problems.length) * 100}%` : "0%" }} />
-            </div>
-          </div>
+      {/* Center: problem statement */}
+      <div style={centerPaneStyle}>
+        <QuestionStatement
+          problem={activeProblem}
+          currentIndex={activeProblemIdx}
+          totalCount={problems.length}
+          onPrev={() => setActiveProblemIdx((i) => Math.max(0, i - 1))}
+          onNext={() => setActiveProblemIdx((i) => Math.min(problems.length - 1, i + 1))}
+          noun={nounSingular}
+        />
+      </div>
 
-          <div style={{ padding: "8px 12px", borderTop: "1px solid var(--ink-2)" }}>
-            <div style={{ fontSize: 11, color: "rgba(255,255,255,0.4)", marginBottom: 2, display: "flex", alignItems: "center", gap: 4 }}>
-              <AlertTriangle size={11} /> Anti-cheat active
-            </div>
-            <div style={{ fontSize: 11, color: tabSwitches > 0 ? "var(--danger)" : "rgba(255,255,255,0.4)" }}>
-              Tab switches: {tabSwitches}
-            </div>
-          </div>
-        </div>
-
-        {/* Center: problem statement */}
-        <div style={centerPaneStyle}>
-          {!activeProblem ? (
-            <div style={{ padding: 48, textAlign: "center", color: "var(--text-muted)", fontSize: 13 }}>
-              Select a problem from the left panel.
-            </div>
-          ) : (
-            <>
-              <div style={{ padding: "16px 20px", borderBottom: "1px solid var(--border)", flexShrink: 0 }}>
-                <div style={{ fontSize: 16, fontWeight: 700, color: "var(--text-primary)" }}>
-                  {activeProblem.label}. {activeProblem.title}
-                </div>
-                <div style={{ display: "flex", gap: 8, marginTop: 8, flexWrap: "wrap" }}>
-                  <span style={{ background: "var(--bg-secondary)", border: "1px solid var(--border)", borderRadius: 3, padding: "2px 8px", fontSize: 11, color: "var(--text-muted)", display: "flex", alignItems: "center", gap: 4 }}>
-                    <Clock size={11} /> {activeProblem.timeLimitMs} ms
-                  </span>
-                  <span style={{ background: "var(--bg-secondary)", border: "1px solid var(--border)", borderRadius: 3, padding: "2px 8px", fontSize: 11, color: "var(--text-muted)" }}>
-                    {activeProblem.memoryLimitMb} MB
-                  </span>
-                  {diff && (
-                    <span style={{ background: diffStyle.bg, border: "1px solid var(--border)", borderRadius: 3, padding: "2px 8px", fontSize: 11, color: diffStyle.color, fontWeight: 600 }}>
-                      {diffLabel}
-                    </span>
-                  )}
-                  <span style={{ background: "var(--bg-secondary)", border: "1px solid var(--border)", borderRadius: 3, padding: "2px 8px", fontSize: 11, color: "var(--text-muted)" }}>
-                    {activeProblem.points} pts
-                  </span>
-                  {activeProblem.solvedByCurrentUser && (
-                    <span style={{ display: "flex", alignItems: "center", gap: 4, background: "var(--green-light)", border: "1px solid var(--border)", borderRadius: 3, padding: "2px 8px", fontSize: 11, color: "var(--success-ink)", fontWeight: 600 }}>
-                      <CheckCircle2 size={10} /> Solved
-                    </span>
-                  )}
-                </div>
-              </div>
-
-              <div style={{ padding: "16px 20px", fontSize: 13, lineHeight: 1.75 }}>
-                {activeProblem.description ? (
-                  activeProblem.description.split("\n").map((line, i) => (
-                    <p key={i} style={{ marginBottom: 4 }}>{line || <>&nbsp;</>}</p>
-                  ))
-                ) : (
-                  <p style={{ color: "var(--text-subtle)" }}>No description provided.</p>
-                )}
-
-                {activeProblem.visibleTestCases.length > 0 && (
-                  <>
-                    <h4 style={{ fontSize: 11, fontWeight: 700, textTransform: "uppercase", letterSpacing: 0.5, color: "var(--text-muted)", margin: "20px 0 8px" }}>
-                      Sample Test Cases
-                    </h4>
-                    {activeProblem.visibleTestCases.map((tc, i) => (
-                      <div key={tc.id} style={{ marginBottom: 8 }}>
-                        <div style={{ background: "var(--bg-secondary)", border: "1px solid var(--border)", borderRadius: "3px 3px 0 0", padding: "8px 12px", fontFamily: "monospace", fontSize: 12 }}>
-                          <div style={{ fontSize: 10, color: "var(--text-muted)", fontWeight: 600, textTransform: "uppercase", marginBottom: 4 }}>Input</div>
-                          <pre style={{ margin: 0, whiteSpace: "pre-wrap", wordBreak: "break-word" }}>{tc.input}</pre>
-                        </div>
-                        <div style={{ background: "var(--bg-secondary)", border: "1px solid var(--border)", borderTop: "none", borderRadius: "0 0 3px 3px", padding: "8px 12px", fontFamily: "monospace", fontSize: 12 }}>
-                          <div style={{ fontSize: 10, color: "var(--text-muted)", fontWeight: 600, textTransform: "uppercase", marginBottom: 4 }}>Expected Output</div>
-                          <pre style={{ margin: 0, whiteSpace: "pre-wrap", wordBreak: "break-word" }}>{tc.expectedOutput}</pre>
-                        </div>
-                      </div>
-                    ))}
-                  </>
-                )}
-
-                {activeProblem.hiddenTestCaseCount > 0 && (
-                  <>
-                    <h4 style={{ fontSize: 11, fontWeight: 700, textTransform: "uppercase", letterSpacing: 0.5, color: "var(--text-muted)", margin: "20px 0 8px" }}>
-                      Hidden Test Cases
-                    </h4>
-                    {Array.from({ length: activeProblem.hiddenTestCaseCount }).map((_, i) => (
-                      <div key={i} style={{ background: "var(--bg-secondary)", border: "1px solid var(--border)", borderRadius: 3, padding: "7px 12px", fontSize: 12, color: "var(--text-subtle)", display: "flex", alignItems: "center", gap: 6, marginBottom: 5 }}>
-                        <Lock size={11} /> Hidden test case {i + 1}
-                      </div>
-                    ))}
-                  </>
-                )}
-              </div>
-            </>
-          )}
-        </div>
-
-        {/* Right: editor + results */}
-        <div style={rightPaneStyle}>
-          <CodeWorkspace
-            language={lang}
-            onLanguageChange={handleLangChange}
-            code={code}
-            onCodeChange={setCode}
-            onRun={() => handleSubmit(true)}
-            onSubmit={() => handleSubmit(false)}
-            judging={judging}
-            disabled={isEnded}
-            results={results}
-            verdict={verdict}
-            totalCases={totalCases}
-            visibleCount={visibleCount}
-            isEndedMessage={isEnded ? "This exam has ended." : undefined}
-          />
-        </div>
+      {/* Right: editor + results / submit */}
+      <div style={rightPaneStyle}>
+        <CodeWorkspace
+          language={lang}
+          onLanguageChange={handleLangChange}
+          code={code}
+          onCodeChange={setCode}
+          onRun={() => handleSubmit(true)}
+          onSubmit={() => handleSubmit(false)}
+          judging={judging}
+          disabled={isEnded}
+          results={results}
+          verdict={verdict}
+          totalCases={totalCases}
+          visibleCount={visibleCount}
+          isEndedMessage={isEnded ? "This session has ended." : undefined}
+          hideResults={hideResults}
+          submitted={!!activeProblem?.solvedByCurrentUser}
+          runLabel="Run sample"
+          submitLabel="Submit answer"
+        />
+      </div>
 
         {/* Mobile bottom tab bar — Problems / Statement / Submit */}
         {isMobile && (
@@ -423,11 +314,46 @@ export default function Arena({ examId, mode = "exam" }: ArenaProps) {
     },
   ];
 
+  const answeredWord = mode === "exam" ? "answered" : "solved";
+  const progressPct = problems.length > 0 ? (solvedCount / problems.length) * 100 : 0;
+
+  // Progress block for the top bar (matches reference .tb-prog).
+  const progressExtras = problems.length > 0 && !isEnded ? (
+    <div style={{
+      display: "flex", alignItems: "center", gap: 11,
+      padding: "0 18px", borderRight: "1px solid var(--line-2)", flex: "none",
+    }}>
+      <span style={{ font: "600 12px var(--font)", color: "var(--ink-2)", whiteSpace: "nowrap" }}>
+        {solvedCount} / {problems.length} {answeredWord}
+      </span>
+      <div style={{ width: 80, height: 4, borderRadius: 4, background: "rgba(255,255,255,.07)", overflow: "hidden", flex: "none" }}>
+        <div style={{ height: "100%", width: `${progressPct}%`, background: "var(--accent)", borderRadius: 4, boxShadow: "0 0 8px rgba(0,200,150,.5)" }} />
+      </div>
+    </div>
+  ) : undefined;
+
+  // Anti-cheat status (exam only — TP has no lockdown).
+  const antiCheatExtras = enforceLockdown && !isEnded ? (
+    <div style={{
+      display: "flex", alignItems: "center", gap: 6, padding: "0 14px",
+      font: "500 12px var(--font)", color: tabSwitches > 0 ? "var(--danger)" : "var(--ink-3)",
+    }}>
+      <AlertTriangle size={13} /> Anti-cheat · {tabSwitches} switch{tabSwitches === 1 ? "" : "es"}
+    </div>
+  ) : undefined;
+
+  const subtitle = isEnded
+    ? (mode === "tp" ? "TP closed" : "Exam closed")
+    : mode === "tp" ? "Take-home TP" : mode === "practice" ? "Practice" : "Live Exam";
+
   return (
     <ArenaShell
       title={examRoom?.title ?? "Exam"}
+      subtitle={subtitle}
+      leftExtras={progressExtras}
+      topBarExtras={antiCheatExtras}
       backHref="/assessments"
-      backLabel="Leave Exam"
+      backLabel={mode === "tp" ? "Leave TP" : mode === "practice" ? "Leave" : "Leave Exam"}
       remainingSeconds={remainingSecs}
       isEnded={isEnded}
       loading={loading}

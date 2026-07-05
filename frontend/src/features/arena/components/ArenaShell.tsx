@@ -42,6 +42,11 @@ export interface ArenaShellProps {
   /** Called when the user clicks a tab; only fires if `activeTabKey` is provided. */
   onTabChange?:      (key: string) => void;
 
+  /** Optional subtitle under the title (e.g. "Live Exam", "Take-home TP"). */
+  subtitle?:         string;
+  /** Extra content rendered on the left, right after the title block (e.g. progress). */
+  leftExtras?:       React.ReactNode;
+
   /** Where the "Leave" link points to (default: /). */
   backHref?:         string;
   backLabel?:        string;
@@ -83,6 +88,8 @@ export default function ArenaShell({
   initialTabKey,
   activeTabKey,
   onTabChange,
+  subtitle,
+  leftExtras,
   backHref         = "/",
   backLabel        = "Leave",
   remainingSeconds = 0,
@@ -180,6 +187,8 @@ export default function ArenaShell({
     }}>
       <TopBar
         title={title}
+        subtitle={subtitle}
+        leftExtras={leftExtras}
         backHref={backHref}
         backLabel={backLabel}
         remainingSeconds={remainingSeconds}
@@ -220,8 +229,10 @@ export default function ArenaShell({
 
 // ── Subcomponents ─────────────────────────────────────────────────────────────
 
-function TopBar({ title, backHref, backLabel, remainingSeconds, isEnded, extras }: {
+function TopBar({ title, subtitle, leftExtras, backHref, backLabel, remainingSeconds, isEnded, extras }: {
   title:            string;
+  subtitle?:        string;
+  leftExtras?:      React.ReactNode;
   backHref:         string;
   backLabel:        string;
   remainingSeconds: number;
@@ -229,53 +240,71 @@ function TopBar({ title, backHref, backLabel, remainingSeconds, isEnded, extras 
   extras?:          React.ReactNode;
 }) {
   const showTimer = remainingSeconds > 0 || isEnded;
-  const isUrgent  = !isEnded && remainingSeconds > 0 && remainingSeconds < 600;
+  const isUrgent  = !isEnded && remainingSeconds > 0 && remainingSeconds < 300;
   const timerStr  = formatTime(remainingSeconds);
 
   return (
     <div style={{
-      background: "rgba(10,10,10,.95)", height: 52, display: "flex", alignItems: "center",
-      padding: "0 16px", gap: 12, flexShrink: 0, borderBottom: "1px solid var(--line-2)",
-      boxShadow: "0 1px 0 0 rgba(0,200,150,.08)",
+      background: "var(--bg)", height: 54, display: "flex", alignItems: "stretch",
+      flexShrink: 0, borderBottom: "1px solid var(--line-2)",
+      boxShadow: "0 1px 0 0 rgba(0,200,150,.07)",
     }}>
       <div style={{
-        display: "flex", alignItems: "center", gap: 8,
+        display: "flex", alignItems: "center", gap: 9,
         color: "var(--ink)", fontWeight: 700, fontSize: 15,
-        paddingRight: 14, borderRight: "1px solid var(--line-2)",
+        padding: "0 18px", borderRight: "1px solid var(--line-2)", flex: "none",
       }}>
         <div style={{
-          width: 26, height: 26, background: "var(--accent)", borderRadius: 7,
+          width: 28, height: 28, background: "var(--accent)", borderRadius: 8,
           display: "grid", placeItems: "center",
-          color: "#0a0a0a", font: "700 11px var(--font-mono)",
-          boxShadow: "0 0 10px rgba(0,200,150,.4)",
+          color: "#0a0a0a", font: "700 12px var(--font-mono)",
+          boxShadow: "0 0 12px rgba(0,200,150,.4)",
         }}>{APP_MARK}</div>
         {APP_NAME}
       </div>
-      <span style={{
-        color: "var(--ink-2)", fontSize: 14, fontWeight: 600,
-        maxWidth: 360, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
-      }}>
-        {title}
-      </span>
 
-      <div style={{ marginLeft: "auto", display: "flex", alignItems: "center", gap: 12 }}>
+      <div style={{
+        display: "flex", flexDirection: "column", justifyContent: "center",
+        padding: "0 16px", borderRight: "1px solid var(--line-2)", flex: "none", maxWidth: 300,
+      }}>
+        <span style={{
+          font: "600 13.5px var(--font)", color: "var(--ink)",
+          overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
+        }}>
+          {title}
+        </span>
+        {subtitle && (
+          <span style={{ font: "500 11px var(--font)", color: "var(--ink-3)", marginTop: 2 }}>
+            {subtitle}
+          </span>
+        )}
+      </div>
+
+      {leftExtras}
+
+      <div style={{ flex: 1 }} />
+
+      <div style={{ display: "flex", alignItems: "center", gap: 0 }}>
         {extras}
         {showTimer && (
           <span style={{
-            font: "600 18px var(--font-mono)", letterSpacing: 1, padding: "0 4px",
+            display: "flex", alignItems: "center", padding: "0 18px",
+            borderLeft: "1px solid var(--line-2)",
+            font: "600 22px var(--font-mono)", letterSpacing: 2,
             color: isEnded ? "var(--ink-3)" : isUrgent ? "var(--danger)" : "var(--accent)",
-            textShadow: isEnded ? "none" : isUrgent ? "0 0 14px rgba(240,99,122,.5)" : "0 0 14px rgba(0,200,150,.5)",
+            textShadow: isEnded ? "none" : isUrgent ? "0 0 18px rgba(240,99,122,.55)" : "0 0 18px rgba(0,200,150,.55)",
+            animation: isUrgent ? "arenaBlink 1s ease infinite" : "none",
           }}>
             {isEnded ? "00:00:00" : timerStr}
           </span>
         )}
         <Link href={backHref} style={{
-          background: "var(--danger-soft)", color: "var(--danger)",
-          border: "1px solid rgba(240,99,122,.2)", borderRadius: 8,
-          padding: "0 12px", height: 30, fontSize: 13, fontWeight: 600,
-          cursor: "pointer", display: "flex", alignItems: "center", gap: 6, textDecoration: "none",
+          borderLeft: "1px solid var(--line-2)",
+          padding: "0 20px", height: "100%", fontSize: 13, fontWeight: 600,
+          cursor: "pointer", display: "flex", alignItems: "center", gap: 7,
+          textDecoration: "none", color: "var(--danger-ink)",
         }}>
-          <LogOut size={14} /> {backLabel}
+          <LogOut size={15} /> {backLabel}
         </Link>
       </div>
     </div>
