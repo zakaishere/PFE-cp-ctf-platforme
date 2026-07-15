@@ -13,7 +13,12 @@ spring:
 
   jpa:
     hibernate:
-      ddl-auto: validate
+      # Was hardcoded to 'validate' with no override, so DDL_AUTO=update in
+      # .env had no effect under SPRING_PROFILES_ACTIVE=prod (this file wins
+      # over application.yml's ${DDL_AUTO:validate}) — every fresh DB failed
+      # schema validation. Same override pattern as application.yml; default
+      # unchanged (validate).
+      ddl-auto: ${DDL_AUTO:validate}
     show-sql: false
 
 app:
