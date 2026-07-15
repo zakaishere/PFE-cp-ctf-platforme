@@ -5,7 +5,7 @@ import Link from "next/link";
 import Navbar from "@/components/Navbar";
 import { toast } from "@/components/ui/PSPToast";
 import {
-  Plus, Trophy, Edit2, Download, Settings, Calendar, Snowflake, Pause, Flame, BookOpen,
+  Plus, Trophy, Edit2, Download, Settings, Calendar, Snowflake, Pause, Flame, BookOpen, Flag,
 } from "lucide-react";
 import {
   listTeacherCtfCompetitions, downloadTeacherCtfExport,
@@ -68,6 +68,11 @@ export default function TeacherCtfCompetitionsList() {
             </div>
           </div>
           <div style={{ display: "flex", gap: 8 }}>
+            <Link href="/teacher/ctf/practice">
+              <button className="psp-btn psp-btn-secondary" style={{ gap: 6 }}>
+                <Flag size={14} /> Practice Challenges
+              </button>
+            </Link>
             <Link href="/teacher/ctf/library">
               <button className="psp-btn psp-btn-secondary" style={{ gap: 6 }}>
                 <BookOpen size={14} /> Challenge Library

@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import Navbar from "@/components/Navbar";
 import { BookOpen, Plus, Calendar, Timer, FileText, FlaskConical, Lock, Unlock, Search } from "lucide-react";
 import { getAssessments } from "@/lib/api";
-import { useToast } from "@/hooks/use-toast";
+import { toast } from "@/components/ui/PSPToast";
 
 // ─── helpers ────────────────────────────────────────────────────────────────
 
@@ -27,7 +27,6 @@ type FilterKey = "all" | "exam" | "tp" | "closed";
 // ─── Main ────────────────────────────────────────────────────────────────────
 
 export default function AssessmentManagerV2() {
-  const { toast } = useToast();
   const router = useRouter();
 
   const [list, setList]               = useState<any[]>([]);
@@ -39,7 +38,7 @@ export default function AssessmentManagerV2() {
     setListLoading(true);
     getAssessments()
       .then(data => setList(data))
-      .catch(e => toast({ title: "Failed to load assessments", description: e.message, variant: "destructive" }))
+      .catch(e => toast.error("Failed to load assessments", e instanceof Error ? e.message : undefined))
       .finally(() => setListLoading(false));
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);

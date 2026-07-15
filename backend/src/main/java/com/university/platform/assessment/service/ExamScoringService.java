@@ -3,6 +3,7 @@ package com.university.platform.assessment.service;
 import com.university.platform.assessment.model.Assessment;
 import com.university.platform.assessment.model.AssessmentProblem;
 import com.university.platform.assessment.model.ExamAttemptResult;
+import com.university.platform.assessment.model.LiveExam;
 import com.university.platform.assessment.model.OpenTP;
 import com.university.platform.assessment.repository.AssessmentProblemRepository;
 import com.university.platform.assessment.repository.AssessmentRepository;
@@ -67,18 +68,33 @@ public class ExamScoringService {
                 .orElseThrow(() -> new IllegalStateException(
                         "exam-attempt row missing after upsert for student " + studentId));
 
+        boolean fullyPassed = totalCount > 0 && passedCount == totalCount;
+        if (!res.isSolved() && !fullyPassed) {
+            res.setFailedAttempts(res.getFailedAttempts() + 1);
+        }
+        if (fullyPassed) {
+            res.setSolved(true);
+        }
+
         boolean improved = newScore > res.getBestScore();
         if (improved) {
             res.setBestScore(newScore);
             res.setBestPassed(passedCount);
             res.setBestTotal(totalCount);
         }
+        res.setLastScore(newScore);
+        res.setLastPassed(passedCount);
+        res.setLastTotal(totalCount);
         res.setAttempts(res.getAttempts() + 1);
         res.setUpdatedAt(LocalDateTime.now());
+
+        int earnedScore = computeEarnedScore(assessment, res, maxPoints);
+        res.setEarnedScore(earnedScore);
+
         examAttemptResultRepository.save(res);
 
-        log.info("[EXAM-SCORING] assessment={} problem={} student={} score={}/{} (best={})",
-                assessmentId, problemId, studentId, newScore, maxPoints, res.getBestScore());
+        log.info("[EXAM-SCORING] assessment={} problem={} student={} score={}/{} (best={}, earned={})",
+                assessmentId, problemId, studentId, newScore, maxPoints, res.getBestScore(), earnedScore);
 
         // TP: live score push. Exam: stay silent until close.
         if (assessment instanceof OpenTP) {
@@ -89,7 +105,7 @@ public class ExamScoringService {
                         Map.of(
                                 "assessmentId", assessmentId.toString(),
                                 "problemId", problemId.toString(),
-                                "score", res.getBestScore(),
+                                "score", earnedScore,
                                 "maxScore", maxPoints,
                                 "passed", passedCount,
                                 "total", totalCount
@@ -99,6 +115,34 @@ public class ExamScoringService {
                 log.warn("[EXAM-SCORING] TP live push failed: {}", ex.getMessage());
             }
         }
+    }
+
+    /**
+     * Applies the assessment's configured scoring mode (and TP attempt-penalty,
+     * if enabled) to derive the final awarded score for one (assessment,
+     * problem, student). {@code res}'s best/last/solved/failedAttempts fields
+     * must already reflect the current attempt before calling this.
+     */
+    private int computeEarnedScore(Assessment assessment, ExamAttemptResult res, int maxPoints) {
+        if (assessment instanceof OpenTP tp) {
+            if ("ATTEMPT_PENALTY".equals(tp.getScoringMode())) {
+                int penaltyPercent = tp.getPenaltyPercent() != null ? tp.getPenaltyPercent() : 0;
+                int deductionPct = res.getFailedAttempts() * penaltyPercent;
+                if (res.isSolved()) {
+                    int effectivePct = Math.max(0, 100 - deductionPct);
+                    return (int) Math.round(effectivePct / 100.0 * maxPoints);
+                }
+                // Not solved yet — best raw score so far, reduced by the same penalty.
+                int deductionPoints = (int) Math.round(deductionPct / 100.0 * maxPoints);
+                return Math.max(0, res.getBestScore() - deductionPoints);
+            }
+            // BEST_SUBMISSION / NO_PENALTY (alias) — unchanged current behavior.
+            return res.getBestScore();
+        }
+        // LiveExam
+        boolean lastSubmission = assessment instanceof LiveExam exam
+                && "LAST_SUBMISSION".equals(exam.getScoringMode());
+        return lastSubmission ? res.getLastScore() : res.getBestScore();
     }
 
     /**
@@ -118,7 +162,7 @@ public class ExamScoringService {
         int earned = problems.stream()
                 .map(ap -> byProblem.get(ap.getProblem().getProblemId()))
                 .filter(java.util.Objects::nonNull)
-                .mapToInt(ExamAttemptResult::getBestScore)
+                .mapToInt(ExamAttemptResult::getEarnedScore)
                 .sum();
 
         double percentage = totalMax > 0 ? (earned * 100.0) / totalMax : 0.0;

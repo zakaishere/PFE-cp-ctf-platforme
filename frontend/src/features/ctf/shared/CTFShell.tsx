@@ -43,7 +43,7 @@ export default function CTFShell({ competitionId, children }: {
   if (ctx.loading || !ctx.competition) {
     return (
       <div className="ctf-shell" style={{ alignItems: "center", justifyContent: "center" }}>
-        <Loader2 size={28} style={{ animation: "spin 1s linear infinite", color: "#6366f1" }} />
+        <Loader2 size={28} style={{ animation: "spin 1s linear infinite", color: "var(--brand)" }} />
       </div>
     );
   }
@@ -173,15 +173,15 @@ function TopBar() {
         <Link href="/ctf"
           style={{
             display: "inline-flex", alignItems: "center", gap: 4,
-            fontSize: 12, color: "#64748b", textDecoration: "none",
+            fontSize: 12, color: "var(--ink-2)", textDecoration: "none",
             padding: "4px 6px", borderRadius: 4,
           }}>
           <ChevronLeft size={14} />
           <span className="ctf-shell-topbar-title-secondary">Back to PSP</span>
         </Link>
-        <span style={{ color: "#334155", fontSize: 14 }}>/</span>
+        <span style={{ color: "var(--line-2)", fontSize: 14 }}>/</span>
         <span style={{
-          fontSize: 14, fontWeight: 700, color: "#f8fafc",
+          fontSize: 14, fontWeight: 700, color: "var(--ink)",
           maxWidth: 260, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
         }}>
           {comp.title.length > 30 ? comp.title.slice(0, 30) + "…" : comp.title}
@@ -197,7 +197,7 @@ function TopBar() {
           <TeamPill />
         ) : (
           <span className="ctf-shell-topbar-title-secondary"
-            style={{ fontSize: 11, color: "#64748b" }}>
+            style={{ fontSize: 11, color: "var(--ink-2)" }}>
             No team
           </span>
         )}
@@ -212,9 +212,9 @@ function TopBar() {
           aria-label={ctx.isMuted ? "Unmute notification sounds" : "Mute notification sounds"}
           title={ctx.isMuted ? "Unmute notification sounds" : "Mute notification sounds"}
           style={{
-            background: "transparent", border: "1px solid #334155",
+            background: "transparent", border: "1px solid var(--line-2)",
             borderRadius: 6, padding: "6px 8px", cursor: "pointer",
-            color: ctx.isMuted ? "#f87171" : "#94a3b8",
+            color: ctx.isMuted ? "#f87171" : "var(--ink-2)",
             display: "inline-flex", alignItems: "center",
           }}
         >
@@ -242,7 +242,7 @@ function CenterStatus() {
     return <Badge color="#22d3ee" icon={<Snowflake size={11} />}>Scoreboard Frozen</Badge>;
   }
   if (ctx.status === "ENDED") {
-    return <Badge color="#94a3b8">Ended</Badge>;
+    return <Badge color="var(--ink-2)">Ended</Badge>;
   }
   if (ctx.status === "UPCOMING") {
     if (comp.timingMode === "REGISTRATION") {
@@ -264,7 +264,7 @@ function CenterStatus() {
           fontSize: 14, color: "#34d399",
         }}>
           <span style={{
-            width: 7, height: 7, borderRadius: "50%", background: "#22c55e",
+            width: 7, height: 7, borderRadius: "50%", background: "var(--success)",
             animation: "ctf-pulse-dot 1.8s infinite", display: "inline-block",
           }} />
           Live
@@ -283,7 +283,7 @@ function CenterStatus() {
       }}>
         <span style={{
           width: 7, height: 7, borderRadius: "50%",
-          background: lessThanHour ? "#f87171" : "#22c55e",
+          background: lessThanHour ? "#f87171" : "var(--success)",
           animation: "ctf-pulse-dot 1.8s infinite",
           display: "inline-block",
         }} />
@@ -316,7 +316,7 @@ function TeamPill() {
   return (
     <div style={{
       display: "inline-flex", alignItems: "center", gap: 8,
-      padding: "4px 10px", border: "1px solid #1e293b", borderRadius: 6,
+      padding: "4px 10px", border: "1px solid var(--line)", borderRadius: 6,
       maxWidth: 240,
     }}>
       <span style={{
@@ -324,14 +324,14 @@ function TeamPill() {
         flexShrink: 0,
       }} />
       <span style={{
-        fontSize: 12, fontWeight: 600, color: "#f8fafc",
+        fontSize: 12, fontWeight: 600, color: "var(--ink)",
         maxWidth: 120, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
       }}>
         {team.name}
       </span>
-      <span style={{ color: "#334155", fontSize: 12 }}>|</span>
-      <span style={{ fontSize: 11, color: "#94a3b8" }}>
-        Score: <strong style={{ color: "#f8fafc", fontFamily: "ui-monospace, monospace" }}>
+      <span style={{ color: "var(--line-2)", fontSize: 12 }}>|</span>
+      <span style={{ fontSize: 11, color: "var(--ink-2)" }}>
+        Score: <strong style={{ color: "var(--ink)", fontFamily: "ui-monospace, monospace" }}>
           {team.totalPoints ?? 0}
         </strong>
       </span>

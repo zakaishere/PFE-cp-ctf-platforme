@@ -103,43 +103,43 @@ function normalizeRunResult(raw: any): RunResult {
   };
 }
 
+// Practice submissions are judged the same way as TP/Exam (the `results`
+// table), so they use that vocabulary directly — PASS/FAIL/ERROR/TIME_OUT/
+// MEMORY_OUT — not the CP-only AC/WA/TLE short codes.
 function legacyStatusToVerdict(status: string | undefined): string {
-  return ({
-    PASS:       "ACCEPTED",
-    FAIL:       "WRONG_ANSWER",
-    TIME_OUT:   "TIME_LIMIT_EXCEEDED",
-    ERROR:      "RUNTIME_ERROR",
-    MEMORY_OUT: "MEMORY_LIMIT_EXCEEDED",
-  } as Record<string, string>)[status ?? ""] ?? "WRONG_ANSWER";
+  return (status ?? "FAIL").toUpperCase();
 }
 
 // ── Helper ────────────────────────────────────────────────────────────────────
 
 function verdictLabel(v: string): string {
   return ({
-    ACCEPTED:             "Accepted",
-    WRONG_ANSWER:         "Wrong Answer",
-    TIME_LIMIT_EXCEEDED:  "Time Limit Exceeded",
-    RUNTIME_ERROR:        "Runtime Error",
-    MEMORY_LIMIT_EXCEEDED:"Memory Limit Exceeded",
-    COMPILATION_ERROR:    "Compilation Error",
+    PASS:              "Pass",
+    FAIL:              "Fail",
+    TIME_OUT:          "Time Out",
+    ERROR:             "Error",
+    MEMORY_OUT:        "Memory Out",
+    // Aggregate finalStatus (SUBMISSION_COMPLETE) has two ERROR sub-cases
+    // that per-test-case results.status doesn't distinguish:
+    RUNTIME_ERROR:     "Runtime Error",
+    COMPILATION_ERROR: "Compilation Error",
   } as Record<string, string>)[v] ?? v;
 }
 
 const VERDICT_COLOR: Record<string, string> = {
-  ACCEPTED:              "var(--success-ink)",
-  WRONG_ANSWER:          "var(--danger-ink)",
-  TIME_LIMIT_EXCEEDED:   "var(--warn-ink)",
-  RUNTIME_ERROR:         "#c678dd",
-  MEMORY_LIMIT_EXCEEDED: "#56b6c2",
+  PASS:       "var(--success-ink)",
+  FAIL:       "var(--danger-ink)",
+  TIME_OUT:   "var(--warn-ink)",
+  ERROR:      "#c678dd",
+  MEMORY_OUT: "#56b6c2",
 };
 
 const VERDICT_ICON: Record<string, React.ReactNode> = {
-  ACCEPTED:              <Check size={14} />,
-  WRONG_ANSWER:          <X size={14} />,
-  TIME_LIMIT_EXCEEDED:   <Clock size={14} />,
-  RUNTIME_ERROR:         <Zap size={14} />,
-  MEMORY_LIMIT_EXCEEDED: <Package size={14} />,
+  PASS:       <Check size={14} />,
+  FAIL:       <X size={14} />,
+  TIME_OUT:   <Clock size={14} />,
+  ERROR:      <Zap size={14} />,
+  MEMORY_OUT: <Package size={14} />,
 };
 
 function MiniSpinner({ color = "#888", size = 12 }: { color?: string; size?: number }) {
@@ -333,7 +333,7 @@ function SkippedCasesRow({ skipped, reason }: { skipped: number; reason: string 
 function TestCaseRow({ result, rowIndex, isExpanded, onToggle }: {
   result: RunTestCaseResult; rowIndex: number; isExpanded: boolean; onToggle: () => void;
 }) {
-  const verdict = result.verdict || "WRONG_ANSWER";
+  const verdict = result.verdict || "FAIL";
   const vc = VERDICT_COLOR[verdict] ?? "#888";
   const vi = VERDICT_ICON[verdict] ?? <X size={14} />;
   const displayIndex = result.index ?? rowIndex + 1;
@@ -366,13 +366,13 @@ function TestCaseRow({ result, rowIndex, isExpanded, onToggle }: {
       {/* Expanded detail */}
       {isExpanded && (
         <div style={{ padding: 12, background: "#212121", borderTop: "1px solid #333" }}>
-          {verdict === "RUNTIME_ERROR" && result.actualOutput && (
+          {verdict === "ERROR" && result.actualOutput && (
             <RuntimeErrorView error={result.actualOutput} />
           )}
-          {verdict === "TIME_LIMIT_EXCEEDED" && (
+          {verdict === "TIME_OUT" && (
             <TimeLimitView timeMs={result.timeMs} />
           )}
-          {(verdict === "WRONG_ANSWER" || verdict === "ACCEPTED") && result.input !== undefined && (
+          {(verdict === "FAIL" || verdict === "PASS") && result.input !== undefined && (
             <IOComparisonView
               input={result.input ?? ""}
               expected={result.expectedOutput ?? ""}
@@ -507,12 +507,12 @@ function SubmitResultsView({ status, rows, complete }: {
   }
 
   const verdictColor: Record<string, string> = {
-    ACCEPTED:              "var(--success-ink)",
-    WRONG_ANSWER:          "var(--danger-ink)",
-    RUNTIME_ERROR:         "#c678dd",
-    TIME_OUT:              "#ffc107",
-    MEMORY_LIMIT_EXCEEDED: "#56b6c2",
-    COMPILATION_ERROR:     "var(--danger-ink)",
+    PASS:              "var(--success-ink)",
+    FAIL:              "var(--danger-ink)",
+    RUNTIME_ERROR:     "#c678dd",
+    TIME_OUT:          "#ffc107",
+    MEMORY_OUT:        "#56b6c2",
+    COMPILATION_ERROR: "var(--danger-ink)",
   };
 
   const finalColor = complete ? (verdictColor[complete.finalStatus] ?? "#888") : "#888";
@@ -524,10 +524,10 @@ function SubmitResultsView({ status, rows, complete }: {
         <div style={{
           display: "flex", alignItems: "center", gap: 12, padding: "10px 14px", marginBottom: 12,
           borderRadius: 6,
-          background: complete.finalStatus === "ACCEPTED" ? "rgba(0,135,90,0.1)" : "rgba(222,53,11,0.1)",
-          border: `1px solid ${complete.finalStatus === "ACCEPTED" ? "rgba(87,217,163,0.2)" : "rgba(255,107,74,0.2)"}`,
+          background: complete.finalStatus === "PASS" ? "rgba(0,135,90,0.1)" : "rgba(222,53,11,0.1)",
+          border: `1px solid ${complete.finalStatus === "PASS" ? "rgba(87,217,163,0.2)" : "rgba(255,107,74,0.2)"}`,
         }}>
-          <span style={{ display: "inline-flex", color: finalColor }}>{complete.finalStatus === "ACCEPTED" ? <CheckCircle2 size={22} /> : <XCircle size={22} />}</span>
+          <span style={{ display: "inline-flex", color: finalColor }}>{complete.finalStatus === "PASS" ? <CheckCircle2 size={22} /> : <XCircle size={22} />}</span>
           <div style={{ flex: 1 }}>
             <div style={{ fontSize: 14, fontWeight: 700, color: finalColor }}>
               {verdictLabel(complete.finalStatus)}

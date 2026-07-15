@@ -6,11 +6,11 @@ import { ArrowLeft, Trophy, Shield, Users, Target, Clock, Crown, Loader2 } from 
 import { getCtfTeamProfile, type CTFTeamProfileDTO, type CTFTeamSolveEntryDTO, type CTFTeamMemberDTO } from "@/lib/api";
 
 const CATEGORY_COLORS: Record<string, string> = {
-  CRYPTO:    "#6366f1",
+  CRYPTO:    "var(--brand)",
   FORENSICS: "#14b8a6",
   REVERSE:   "#f59e0b",
   WEB:       "#3b82f6",
-  MISC:      "#94a3b8",
+  MISC:      "var(--ink-2)",
   OSINT:     "#ec4899",
   PWN:       "#ef4444",
 };
@@ -51,22 +51,22 @@ export default function TeamProfilePage() {
   if (loading) {
     return (
       <div style={{ display: "flex", justifyContent: "center", padding: 80 }}>
-        <Loader2 size={28} style={{ animation: "spin 1s linear infinite", color: "#6366f1" }} />
+        <Loader2 size={28} style={{ animation: "spin 1s linear infinite", color: "var(--brand)" }} />
       </div>
     );
   }
 
   if (error || !profile) {
     return (
-      <div style={{ textAlign: "center", padding: 80, color: "#64748b" }}>
+      <div style={{ textAlign: "center", padding: 80, color: "var(--ink-2)" }}>
         <Shield size={48} style={{ marginBottom: 12, opacity: 0.4 }} />
-        <div style={{ fontSize: 16, fontWeight: 700, color: "#f8fafc", marginBottom: 6 }}>Team not found</div>
+        <div style={{ fontSize: 16, fontWeight: 700, color: "var(--ink)", marginBottom: 6 }}>Team not found</div>
         <div style={{ fontSize: 13 }}>This team may not exist in this competition.</div>
       </div>
     );
   }
 
-  const rankColor = profile.rank === 1 ? "#fbbf24" : profile.rank === 2 ? "#94a3b8" : profile.rank === 3 ? "#fb923c" : "#475569";
+  const rankColor = profile.rank === 1 ? "#fbbf24" : profile.rank === 2 ? "var(--ink-2)" : profile.rank === 3 ? "#fb923c" : "var(--ink-3)";
 
   return (
     <div style={{ maxWidth: 820, margin: "0 auto", display: "flex", flexDirection: "column", gap: 20 }}>
@@ -76,7 +76,7 @@ export default function TeamProfilePage() {
         onClick={() => router.back()}
         style={{
           display: "inline-flex", alignItems: "center", gap: 6,
-          background: "transparent", border: "none", color: "#64748b",
+          background: "transparent", border: "none", color: "var(--ink-2)",
           cursor: "pointer", fontSize: 13, padding: "4px 0", width: "fit-content",
         }}
       >
@@ -85,7 +85,7 @@ export default function TeamProfilePage() {
 
       {/* ── Header card ── */}
       <div style={{
-        background: "#0f172a", border: "1px solid #1e293b", borderRadius: 12,
+        background: "var(--bg-2)", border: "1px solid var(--line)", borderRadius: 12,
         padding: "28px 28px 24px",
       }}>
         <div style={{ display: "flex", alignItems: "center", gap: 18, marginBottom: 20 }}>
@@ -101,7 +101,7 @@ export default function TeamProfilePage() {
           </div>
 
           <div style={{ flex: 1, minWidth: 0 }}>
-            <div style={{ fontSize: 22, fontWeight: 800, color: "#f8fafc", marginBottom: 4 }}>
+            <div style={{ fontSize: 22, fontWeight: 800, color: "var(--ink)", marginBottom: 4 }}>
               {profile.name}
             </div>
             <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
@@ -115,7 +115,7 @@ export default function TeamProfilePage() {
                 #{profile.rank}
               </span>
               <span style={{
-                fontSize: 11, color: "#64748b",
+                fontSize: 11, color: "var(--ink-2)",
                 fontFamily: "ui-monospace, monospace",
               }}>
                 {profile.members.length} member{profile.members.length !== 1 ? "s" : ""}
@@ -127,7 +127,7 @@ export default function TeamProfilePage() {
         {/* Stats row */}
         <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 12 }}>
           <StatCard icon={<Trophy size={16} />} label="Total Score" value={profile.totalPoints.toString()} accent="#fbbf24" />
-          <StatCard icon={<Target size={16} />} label="Challenges Solved" value={profile.solveCount.toString()} accent="#6366f1" />
+          <StatCard icon={<Target size={16} />} label="Challenges Solved" value={profile.solveCount.toString()} accent="var(--brand)" />
           <StatCard icon={<Users size={16} />} label="Members" value={profile.members.length.toString()} accent="#14b8a6" />
         </div>
       </div>
@@ -153,11 +153,11 @@ export default function TeamProfilePage() {
 
       {profile.solves.length === 0 && (
         <div style={{
-          background: "#0f172a", border: "1px solid #1e293b", borderRadius: 12,
-          padding: "40px 24px", textAlign: "center", color: "#475569",
+          background: "var(--bg-2)", border: "1px solid var(--line)", borderRadius: 12,
+          padding: "40px 24px", textAlign: "center", color: "var(--ink-3)",
         }}>
           <Target size={36} style={{ marginBottom: 10, opacity: 0.3 }} />
-          <div style={{ fontSize: 14, color: "#64748b" }}>No challenges solved yet.</div>
+          <div style={{ fontSize: 14, color: "var(--ink-2)" }}>No challenges solved yet.</div>
         </div>
       )}
     </div>
@@ -169,16 +169,16 @@ function StatCard({ icon, label, value, accent }: {
 }) {
   return (
     <div style={{
-      background: "#060c1a", border: "1px solid #1e293b", borderRadius: 8,
+      background: "var(--bg)", border: "1px solid var(--line)", borderRadius: 8,
       padding: "14px 16px",
     }}>
       <div style={{ display: "flex", alignItems: "center", gap: 6, color: accent, marginBottom: 6 }}>
         {icon}
-        <span style={{ fontSize: 11, color: "#64748b", fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.05em" }}>
+        <span style={{ fontSize: 11, color: "var(--ink-2)", fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.05em" }}>
           {label}
         </span>
       </div>
-      <div style={{ fontSize: 22, fontWeight: 800, color: "#f8fafc", fontFamily: "ui-monospace, monospace" }}>
+      <div style={{ fontSize: 22, fontWeight: 800, color: "var(--ink)", fontFamily: "ui-monospace, monospace" }}>
         {value}
       </div>
     </div>
@@ -190,12 +190,12 @@ function Section({ title, icon, children }: {
 }) {
   return (
     <div style={{
-      background: "#0f172a", border: "1px solid #1e293b", borderRadius: 12, overflow: "hidden",
+      background: "var(--bg-2)", border: "1px solid var(--line)", borderRadius: 12, overflow: "hidden",
     }}>
       <div style={{
-        padding: "14px 18px", borderBottom: "1px solid #1e293b",
+        padding: "14px 18px", borderBottom: "1px solid var(--line)",
         display: "flex", alignItems: "center", gap: 8,
-        color: "#94a3b8", fontWeight: 700, fontSize: 13,
+        color: "var(--ink-2)", fontWeight: 700, fontSize: 13,
       }}>
         {icon} {title}
       </div>
@@ -209,14 +209,14 @@ function MemberRow({ m, isCaptain }: { m: CTFTeamMemberDTO; isCaptain: boolean }
   return (
     <div style={{
       display: "flex", alignItems: "center", gap: 12,
-      padding: "12px 18px", borderBottom: "1px solid #0d1525",
+      padding: "12px 18px", borderBottom: "1px solid var(--surface)",
     }}>
       <div style={{
         width: 34, height: 34, borderRadius: "50%",
-        background: isCaptain ? "#fbbf2422" : "#1e293b",
-        border: `1px solid ${isCaptain ? "#fbbf24" : "#334155"}`,
+        background: isCaptain ? "#fbbf2422" : "var(--line)",
+        border: `1px solid ${isCaptain ? "#fbbf24" : "var(--line-2)"}`,
         display: "flex", alignItems: "center", justifyContent: "center",
-        fontSize: 12, fontWeight: 700, color: isCaptain ? "#fbbf24" : "#94a3b8",
+        fontSize: 12, fontWeight: 700, color: isCaptain ? "#fbbf24" : "var(--ink-2)",
         flexShrink: 0,
       }}>
         {initials || "?"}
@@ -224,7 +224,7 @@ function MemberRow({ m, isCaptain }: { m: CTFTeamMemberDTO; isCaptain: boolean }
 
       <div style={{ flex: 1, minWidth: 0 }}>
         <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-          <span style={{ fontWeight: 600, color: "#f8fafc", fontSize: 14 }}>{m.displayName}</span>
+          <span style={{ fontWeight: 600, color: "var(--ink)", fontSize: 14 }}>{m.displayName}</span>
           {isCaptain && (
             <span style={{
               display: "inline-flex", alignItems: "center", gap: 3,
@@ -236,23 +236,23 @@ function MemberRow({ m, isCaptain }: { m: CTFTeamMemberDTO; isCaptain: boolean }
             </span>
           )}
         </div>
-        <div style={{ fontSize: 11, color: "#475569", marginTop: 1 }}>
+        <div style={{ fontSize: 11, color: "var(--ink-3)", marginTop: 1 }}>
           Joined {new Date(m.joinedAt).toLocaleDateString("en-GB", { day: "2-digit", month: "short" })}
         </div>
       </div>
 
       <div style={{ display: "flex", gap: 20, flexShrink: 0 }}>
         <div style={{ textAlign: "right" }}>
-          <div style={{ fontSize: 13, fontWeight: 700, color: "#f8fafc", fontFamily: "ui-monospace, monospace" }}>
+          <div style={{ fontSize: 13, fontWeight: 700, color: "var(--ink)", fontFamily: "ui-monospace, monospace" }}>
             {m.pointsContributed}
           </div>
-          <div style={{ fontSize: 10, color: "#475569" }}>pts</div>
+          <div style={{ fontSize: 10, color: "var(--ink-3)" }}>pts</div>
         </div>
         <div style={{ textAlign: "right" }}>
-          <div style={{ fontSize: 13, fontWeight: 700, color: "#6366f1", fontFamily: "ui-monospace, monospace" }}>
+          <div style={{ fontSize: 13, fontWeight: 700, color: "var(--brand)", fontFamily: "ui-monospace, monospace" }}>
             {m.solveCount}
           </div>
-          <div style={{ fontSize: 10, color: "#475569" }}>solves</div>
+          <div style={{ fontSize: 10, color: "var(--ink-3)" }}>solves</div>
         </div>
       </div>
     </div>
@@ -260,11 +260,11 @@ function MemberRow({ m, isCaptain }: { m: CTFTeamMemberDTO; isCaptain: boolean }
 }
 
 function SolveRow({ s }: { s: CTFTeamSolveEntryDTO }) {
-  const catColor = CATEGORY_COLORS[s.category] ?? "#6366f1";
+  const catColor = CATEGORY_COLORS[s.category] ?? "var(--brand)";
   return (
     <div style={{
       display: "flex", alignItems: "center", gap: 12,
-      padding: "10px 18px", borderBottom: "1px solid #0d1525",
+      padding: "10px 18px", borderBottom: "1px solid var(--surface)",
     }}>
       <span style={{
         width: 72, flexShrink: 0, textAlign: "center",
@@ -276,20 +276,20 @@ function SolveRow({ s }: { s: CTFTeamSolveEntryDTO }) {
         {s.category}
       </span>
 
-      <span style={{ flex: 1, fontWeight: 600, color: "#f8fafc", fontSize: 13, minWidth: 0 }}>
+      <span style={{ flex: 1, fontWeight: 600, color: "var(--ink)", fontSize: 13, minWidth: 0 }}>
         {s.challengeTitle}
       </span>
 
       <span style={{
         fontFamily: "ui-monospace, monospace", fontWeight: 700,
-        color: "#6366f1", fontSize: 13, flexShrink: 0,
+        color: "var(--brand)", fontSize: 13, flexShrink: 0,
       }}>
         +{s.currentPoints}
       </span>
 
       <span style={{
         display: "flex", alignItems: "center", gap: 4,
-        color: "#475569", fontSize: 11, flexShrink: 0, minWidth: 80, justifyContent: "flex-end",
+        color: "var(--ink-3)", fontSize: 11, flexShrink: 0, minWidth: 80, justifyContent: "flex-end",
       }} title={fmtDateTime(s.solvedAt)}>
         <Clock size={11} /> {timeAgo(s.solvedAt)}
       </span>

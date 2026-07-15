@@ -4,9 +4,10 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { ArrowLeft, LogOut, User } from "lucide-react";
 import {
-  DropdownMenu, DropdownMenuContent, DropdownMenuItem,
-  DropdownMenuSeparator, DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
+  Dropdown, DropdownTrigger, DropdownContent,
+  DropdownHeader, DropdownItem, DropdownSeparator,
+} from "@/components/ui/PSPDropdown";
+import { UserAvatar } from "@/components/ui/UserAvatar";
 import { useAuth } from "@/features/auth/contexts/AuthContext";
 import { useTheme } from "@/contexts/ThemeContext";
 import type { CTFCompetitionDTO } from "@/lib/api";
@@ -68,19 +69,8 @@ interface Props {
 }
 
 export default function CtfWorkspaceHeader({ comp }: Props) {
-  const { firstName, email, role, logout } = useAuth();
+  const { firstName, email, avatarId, logout } = useAuth();
   const router = useRouter();
-
-  const initials = firstName
-    ? firstName.charAt(0).toUpperCase()
-    : email
-    ? email.charAt(0).toUpperCase()
-    : "U";
-
-  const avatarColor =
-    role === "ADMIN"   ? "#6554c0" :
-    role === "TEACHER" ? "#00875a" :
-    "#ff5630";
 
   const ss = comp ? statusStyle(comp) : null;
 
@@ -161,43 +151,31 @@ export default function CtfWorkspaceHeader({ comp }: Props) {
       <div style={{ display: "flex", alignItems: "center", gap: 8, marginLeft: "auto", flexShrink: 0 }}>
         <ThemeToggle />
 
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <div
-              title={firstName || email || "Account"}
-              style={{
-                width: 30, height: 30, borderRadius: "50%",
-                background: avatarColor,
-                color: "#fff",
-                display: "flex", alignItems: "center", justifyContent: "center",
-                fontSize: 12, fontWeight: 700,
-                cursor: "pointer", flexShrink: 0,
-                border: "2px solid var(--border)",
-              }}
-            >
-              {initials}
+        <Dropdown>
+          <DropdownTrigger asChild>
+            <div title={firstName || email || "Account"} style={{ cursor: "pointer" }}>
+              <UserAvatar avatarId={avatarId} name={firstName || email || undefined} size={30} />
             </div>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="end" className="w-48">
-            <div className="px-3 py-2">
-              <p className="text-sm font-semibold" style={{ color: "var(--text-primary)" }}>
-                {firstName || "User"}
-              </p>
-              <p className="text-xs truncate" style={{ color: "var(--text-muted)" }}>{email}</p>
-            </div>
-            <DropdownMenuSeparator />
-            <DropdownMenuItem className="cursor-pointer text-sm">
-              <User className="mr-2 h-3.5 w-3.5" /> Profile
-            </DropdownMenuItem>
-            <DropdownMenuSeparator />
-            <DropdownMenuItem
-              className="cursor-pointer text-sm text-red-600 focus:text-red-600"
-              onClick={() => { logout(); router.push("/"); }}
-            >
-              <LogOut className="mr-2 h-3.5 w-3.5" /> Log out
-            </DropdownMenuItem>
-          </DropdownMenuContent>
-        </DropdownMenu>
+          </DropdownTrigger>
+          <DropdownContent align="end" width={220}>
+            <DropdownHeader>
+              <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                <UserAvatar avatarId={avatarId} name={firstName || email || undefined} size={36} />
+                <div style={{ minWidth: 0 }}>
+                  <p style={{ fontSize: 13, fontWeight: 700, color: "var(--ink)", margin: 0 }}>{firstName || "User"}</p>
+                  <p style={{ fontSize: 11, color: "var(--ink-3)", margin: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{email}</p>
+                </div>
+              </div>
+            </DropdownHeader>
+            <DropdownItem icon={<User size={14} />} onClick={() => router.push("/profile")}>
+              Profile
+            </DropdownItem>
+            <DropdownSeparator />
+            <DropdownItem icon={<LogOut size={14} />} danger onClick={() => { logout(); router.push("/"); }}>
+              Log out
+            </DropdownItem>
+          </DropdownContent>
+        </Dropdown>
       </div>
     </header>
   );

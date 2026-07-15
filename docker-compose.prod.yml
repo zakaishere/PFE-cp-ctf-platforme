@@ -1,0 +1,55 @@
+# Production overlay.
+# Usage: docker compose -f docker-compose.yml -f docker-compose.prod.yml up -d --build
+#
+# Differences from the base file:
+#  - infrastructure ports are NOT published to the host (only the compose
+#    network can reach postgres / redis / rabbitmq AMQP)
+#  - restart: always everywhere
+#  - no default passwords: the required env vars have no fallback, so compose
+#    fails loudly if .env is missing a secret
+
+services:
+
+  postgres:
+    restart: always
+    ports: !reset []
+    environment:
+      POSTGRES_PASSWORD: ${DB_PASSWORD:?set DB_PASSWORD in .env}
+
+  redis:
+    restart: always
+    ports: !reset []
+
+  rabbitmq:
+    restart: always
+    ports: !reset
+      - "15672:15672"   # management UI only — drop this line to fully lock down
+    environment:
+      RABBITMQ_DEFAULT_PASS: ${RABBITMQ_PASSWORD:?set RABBITMQ_PASSWORD in .env}
+
+  backend:
+    restart: always
+    environment:
+      DB_PASSWORD: ${DB_PASSWORD:?set DB_PASSWORD in .env}
+      JWT_SECRET: ${JWT_SECRET:?set JWT_SECRET in .env}
+      CTF_FLAG_SECRET: ${CTF_FLAG_SECRET:?set CTF_FLAG_SECRET in .env}
+      RABBITMQ_PASSWORD: ${RABBITMQ_PASSWORD:?set RABBITMQ_PASSWORD in .env}
+      DDL_AUTO: validate
+
+  frontend:
+    restart: always
+    build:
+      args:
+        # Real public API origin, e.g. https://api.yourdomain.com
+        NEXT_PUBLIC_API_BASE_URL: ${NEXT_PUBLIC_API_BASE_URL:?set NEXT_PUBLIC_API_BASE_URL in .env}
+
+  # Monitoring is internal-only in prod: no host-published ports, so Prometheus
+  # (9090) and Grafana (3001) are reachable ONLY from inside the compose network.
+  # Expose Grafana in prod via a reverse proxy / SSH tunnel — never a public port.
+  prometheus:
+    restart: always
+    ports: !reset []
+
+  grafana:
+    restart: always
+    ports: !reset []

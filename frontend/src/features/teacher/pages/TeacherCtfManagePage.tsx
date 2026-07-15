@@ -24,6 +24,7 @@ import TeacherCtfCheatsTab     from "@/features/teacher/components/TeacherCtfChe
 import TeacherCtfTeamsTab      from "@/features/teacher/components/TeacherCtfTeamsTab";
 import TeacherCtfExportTab     from "@/features/teacher/components/TeacherCtfExportTab";
 import TeacherCtfCompetitionFormPage from "@/features/teacher/pages/TeacherCtfCompetitionForm";
+import AuditLogButton from "@/features/audit/AuditLogButton";
 
 // ── Tab definition ──────────────────────────────────────────────────────────
 
@@ -280,6 +281,9 @@ export default function TeacherCtfManagePage() {
               )}
               {ss.label}
             </span>
+            <div style={{ marginTop: 10 }}>
+              <AuditLogButton domain="CTF" contextId={id} />
+            </div>
           </div>
 
           {/* Quick actions */}

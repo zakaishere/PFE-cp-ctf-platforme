@@ -7,8 +7,11 @@ import java.util.List;
 public class CreateProblemDTO {
     private String title;
     private String description;
-    private String difficultyLevel; 
+    private String difficultyLevel;
     private Boolean isPublic;
+    /** Optional explicit scope (GLOBAL/TP_ONLY/EXAM_ONLY/PRIVATE). When omitted,
+     *  visibility is derived from isPublic (true→GLOBAL, false→PRIVATE) as before. */
+    private String visibility;
     private Integer timeLimitMs;
     private Integer memoryLimitMb;
     private List<TestCaseDTO> testCases;

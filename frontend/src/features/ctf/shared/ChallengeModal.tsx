@@ -32,14 +32,14 @@ interface Props {
 const BORDER_FINE   = "rgba(255,255,255,0.07)";
 const BORDER_MED    = "rgba(255,255,255,0.11)";
 const BORDER_INPUT  = "rgba(255,255,255,0.12)";
-const BG_CARD       = "#0f111a";
-const BG_PANEL      = "#0c0e17";
-const BG_RECESSED   = "#0a0c14";
-const BG_SUBMIT     = "#080a12";
-const TEXT_PRIMARY  = "#f1f5f9";
-const TEXT_MUTED    = "#8b9ab5";
-const TEXT_DIM      = "#4a5568";
-const TEXT_FAINT    = "#2d3a4f";
+const BG_CARD       = "var(--surface)";
+const BG_PANEL      = "var(--bg-2)";
+const BG_RECESSED   = "var(--bg-2)";
+const BG_SUBMIT     = "var(--bg)";
+const TEXT_PRIMARY  = "var(--ink)";
+const TEXT_MUTED    = "var(--ink-2)";
+const TEXT_DIM      = "var(--ink-3)";
+const TEXT_FAINT    = "var(--line-2)";
 
 export default function ChallengeModal({
   competitionId, challengeId, teamId, canSolve, isPaused, isEnded, onClose, onSolved,
@@ -165,7 +165,7 @@ export default function ChallengeModal({
   };
 
   const conf   = challenge ? (CAT_CONFIG[challenge.category] ?? null) : null;
-  const accent = conf?.accent ?? "#6366f1";
+  const accent = conf?.accent ?? "var(--brand)";
 
   const cardBorder = glowing
     ? "1px solid rgba(34,197,94,0.55)"
@@ -376,7 +376,7 @@ function ChallengeBody({
   const inputDisabled = busy || isPaused || lockedOut || alreadySolved;
   const submitDisabled = inputDisabled || !flag.trim();
   const isUnlimited = c.maxAttempts == null;
-  const diffColor = DIFF_COLORS[c.difficulty] ?? "#94a3b8";
+  const diffColor = DIFF_COLORS[c.difficulty] ?? "var(--ink-2)";
   const pts = c.currentPoints ?? c.basePoints;
   const hintCount = c.hints?.length ?? 0;
 
@@ -422,7 +422,7 @@ function ChallengeBody({
                 <span style={{
                   display: "inline-flex", alignItems: "center", gap: 3,
                   background: "rgba(34,197,94,0.1)", border: "1px solid rgba(34,197,94,0.3)",
-                  color: "#22c55e", borderRadius: 4, padding: "1px 8px",
+                  color: "var(--success)", borderRadius: 4, padding: "1px 8px",
                   fontSize: 9.5, fontWeight: 700, letterSpacing: "0.04em",
                 }}>
                   <CheckCircle2 size={9} /> SOLVED
@@ -603,7 +603,7 @@ function ChallengeBody({
             background: "rgba(34,197,94,0.06)", border: "1px solid rgba(34,197,94,0.22)",
             borderRadius: 7, padding: "9px 14px",
           }}>
-            <CheckCircle2 size={15} color="#22c55e" />
+            <CheckCircle2 size={15} color="var(--success)" />
             <div>
               <div style={{ fontSize: 12, fontWeight: 700, color: "#34d399" }}>Challenge Solved</div>
               <div style={{ fontSize: 10.5, color: TEXT_DIM, marginTop: 1 }}>
@@ -641,7 +641,7 @@ function ChallengeBody({
 function DescriptionTab({ c }: { c: CTFCompetitionChallengeDTO }) {
   return (
     <div style={{
-      fontSize: 13, color: "#b4c2d4", lineHeight: 1.75,
+      fontSize: 13, color: "var(--ink-2)", lineHeight: 1.75,
       whiteSpace: "pre-wrap", wordBreak: "break-word",
     }}>
       {c.description}
@@ -726,7 +726,7 @@ function SolversTab({
         >
           <span style={{
             fontFamily: "ui-monospace, monospace", fontSize: 11, fontWeight: 800,
-            color: i === 0 ? "#ef4444" : i === 1 ? "#94a3b8" : i === 2 ? "#fb923c" : TEXT_FAINT,
+            color: i === 0 ? "#ef4444" : i === 1 ? "var(--ink-2)" : i === 2 ? "#fb923c" : TEXT_FAINT,
           }}>
             #{i + 1}
           </span>
@@ -741,13 +741,13 @@ function SolversTab({
             <Link
               href={`/ctf/competitions/${competitionId}/teams/${s.teamId}`}
               style={{
-                fontWeight: 600, color: "#c8d6e8", fontSize: 12,
+                fontWeight: 600, color: "var(--ink)", fontSize: 12,
                 textDecoration: "none",
                 overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
                 transition: "color 0.15s ease-in-out",
               }}
               onMouseEnter={e => { (e.target as HTMLElement).style.color = accent; }}
-              onMouseLeave={e => { (e.target as HTMLElement).style.color = "#c8d6e8"; }}
+              onMouseLeave={e => { (e.target as HTMLElement).style.color = "var(--ink)"; }}
             >
               {s.teamName}
             </Link>
@@ -763,7 +763,7 @@ function SolversTab({
             )}
             {s.bloodPosition === 2 && (
               <span style={{
-                fontSize: 8.5, fontWeight: 800, color: "#94a3b8",
+                fontSize: 8.5, fontWeight: 800, color: "var(--ink-2)",
                 background: "rgba(148,163,184,0.1)", border: "1px solid rgba(148,163,184,0.22)",
                 borderRadius: 3, padding: "1px 5px",
                 letterSpacing: "0.05em", textTransform: "uppercase", flexShrink: 0,
@@ -953,7 +953,7 @@ function HintsTab({
               ) : (
                 <div style={{
                   fontSize: 12.5, lineHeight: 1.6,
-                  color: revealedText ? "#dde6f0" : TEXT_DIM,
+                  color: revealedText ? "var(--ink)" : TEXT_DIM,
                   fontStyle: revealedText ? "normal" : "italic",
                 }}>
                   {isUnlocking ? "Unlocking…" : revealedText ?? "Click to spend points and reveal this hint"}
@@ -1015,13 +1015,13 @@ function AttemptLogTab({
             width: 20, height: 20, borderRadius: "50%", flexShrink: 0,
             background: a.correct ? "rgba(34,197,94,0.14)" : "rgba(239,68,68,0.1)",
             display: "flex", alignItems: "center", justifyContent: "center",
-            color: a.correct ? "#22c55e" : "#ef4444",
+            color: a.correct ? "var(--success)" : "#ef4444",
           }}>
             {a.correct ? <CheckCircle2 size={11} /> : <X size={11} />}
           </div>
           <span style={{
             fontFamily: "ui-monospace, monospace", fontSize: 11.5,
-            color: a.correct ? "#86efac" : "#cbd5e1",
+            color: a.correct ? "#86efac" : "var(--ink)",
             overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
           }}>
             {a.flagMasked}
@@ -1052,7 +1052,7 @@ function CompactFileRow({
       <Download size={12} color={TEXT_DIM} style={{ flexShrink: 0 }} />
       <span style={{
         flex: 1, minWidth: 0,
-        fontSize: 11.5, color: "#dde6f0",
+        fontSize: 11.5, color: "var(--ink)",
         fontFamily: "ui-monospace, monospace",
         overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
       }}>

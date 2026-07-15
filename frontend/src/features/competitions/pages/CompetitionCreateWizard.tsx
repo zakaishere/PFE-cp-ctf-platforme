@@ -8,7 +8,7 @@ import {
   FileText, ListChecks, Loader2,
 } from "lucide-react";
 import { createCompetition, CreateCompetitionRequest } from "@/lib/api";
-import { useToast } from "@/hooks/use-toast";
+import { toast } from "@/components/ui/PSPToast";
 
 // ─── helpers (mirror of the manager's formatters) ────────────────────────────
 
@@ -41,7 +41,6 @@ const EMPTY_FORM: CreateCompetitionRequest = {
 
 export default function CompetitionCreateWizard() {
   const router = useRouter();
-  const { toast } = useToast();
 
   const [createForm, setCreateForm] = useState<CreateCompetitionRequest>({ ...EMPTY_FORM });
   const [createStep, setCreateStep] = useState(0);
@@ -56,7 +55,13 @@ export default function CompetitionCreateWizard() {
   );
 
   const last = STEPS.length - 1;
-  const canNext = createStep !== 0 || createForm.title.trim().length > 0;
+  // Step 0 needs a title; step 1 needs a start time — the backend rejects
+  // creation without one, so gate it here instead of letting the user reach
+  // "Create" with an incomplete form and see nothing happen.
+  const canNext =
+    createStep === 0 ? createForm.title.trim().length > 0
+    : createStep === 1 ? createForm.scheduledStartTime.trim().length > 0
+    : true;
   const scoreDesc =
     createForm.scoringMode === "RATED"
       ? "Points decay over time. Faster solves earn more; each problem has a starting value, decay rate and floor."
@@ -67,16 +72,25 @@ export default function CompetitionCreateWizard() {
   const cancel = () => router.push("/teacher/competitions");
 
   const handleCreate = async () => {
-    if (!createForm.title.trim()) return;
+    if (!createForm.title.trim()) {
+      toast.warning("Title required", "Give the competition a title first.");
+      setCreateStep(0);
+      return;
+    }
+    if (!createForm.scheduledStartTime.trim()) {
+      toast.warning("Start time required", "Pick a start date & time before creating.");
+      setCreateStep(1);
+      return;
+    }
     setCreating(true);
     try {
       const payload = { ...createForm };
       if (payload.mode !== "TEAM") { delete payload.minTeamSize; delete payload.maxTeamSize; }
       await createCompetition(payload);
-      toast({ title: "Competition created" });
+      toast.success("Competition created", `"${createForm.title}" is ready — attach problems next.`);
       router.push("/teacher/competitions");
-    } catch (e: any) {
-      toast({ title: "Failed to create", description: e.message, variant: "destructive" });
+    } catch (e) {
+      toast.error("Failed to create", e instanceof Error ? e.message : "Please try again.");
       setCreating(false);
     }
   };

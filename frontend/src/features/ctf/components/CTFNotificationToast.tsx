@@ -18,7 +18,7 @@ const CATEGORY_COLOR: Record<string, string> = {
   WEB:       "#f87171",
   PWN:       "#facc15",
   OSINT:     "#34d399",
-  MISC:      "#94a3b8",
+  MISC:      "var(--ink-2)",
 };
 
 interface Props {
@@ -142,7 +142,7 @@ interface ToastStyle {
 }
 
 function stylesFor(n: CTFNotificationDTO): ToastStyle {
-  const slate = { bg: "#0f172a", border: "#1e293b", fg: "#f8fafc", body: "#cbd5e1" };
+  const slate = { bg: "var(--bg-2)", border: "var(--line)", fg: "var(--ink)", body: "var(--ink)" };
 
   switch (n.type) {
     case "NEW_CHALLENGE": {
@@ -159,13 +159,13 @@ function stylesFor(n: CTFNotificationDTO): ToastStyle {
     case "COMPETITION_PAUSED":
       return { ...slate, icon: <Pause size={16} />, accent: "#f59e0b" };
     case "COMPETITION_RESUMED":
-      return { ...slate, icon: <Play size={16} />, accent: "#22c55e" };
+      return { ...slate, icon: <Play size={16} />, accent: "var(--success)" };
     case "COMPETITION_ENDING_SOON":
       return { ...slate, icon: <AlertTriangle size={16} />, accent: "#f87171" };
     case "COMPETITION_ENDED":
-      return { ...slate, icon: <Trophy size={16} />, accent: "#94a3b8" };
+      return { ...slate, icon: <Trophy size={16} />, accent: "var(--ink-2)" };
     case "COMPETITION_STARTED":
-      return { ...slate, icon: <Trophy size={16} />, accent: "#22c55e" };
+      return { ...slate, icon: <Trophy size={16} />, accent: "var(--success)" };
     case "SCOREBOARD_FROZEN":
       return { ...slate, icon: <Snowflake size={16} />, accent: "#22d3ee" };
     case "SCOREBOARD_UNFROZEN":
@@ -177,9 +177,9 @@ function stylesFor(n: CTFNotificationDTO): ToastStyle {
         fg: "#fecaca", body: "#fca5a5",
       };
     case "CUSTOM":
-      return { ...slate, icon: <Megaphone size={16} />, accent: "#94a3b8" };
+      return { ...slate, icon: <Megaphone size={16} />, accent: "var(--ink-2)" };
     default:
-      return { ...slate, icon: <Bell size={16} />, accent: "#94a3b8" };
+      return { ...slate, icon: <Bell size={16} />, accent: "var(--ink-2)" };
   }
 }
 

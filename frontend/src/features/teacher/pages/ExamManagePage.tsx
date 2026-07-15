@@ -13,16 +13,23 @@ import { CSS } from "@dnd-kit/utilities";
 import { toast } from "@/components/ui/PSPToast";
 import Navbar from "@/components/Navbar";
 import Link from "next/link";
+import AuditLogButton from "@/features/audit/AuditLogButton";
+import ScoreboardTab from "@/features/teacher/components/ScoreboardTab";
+import CreateProblemModal from "@/features/teacher/components/CreateProblemModal";
 import {
   getAssessmentDetail, closeLiveExam, patchAssessmentSettings,
   addProblemToAssessment, removeAssessmentProblem, reorderAssessmentProblems,
   patchAssessmentProblem, getProblemsPicker, getExamSubmissions,
+  getAssessmentJoinRequests, approveJoinRequest, rejectJoinRequest,
+  bulkApproveAssessmentRequests, publishAssessment, unpublishAssessment,
+  downloadExamResultsExport, downloadExamSubmissionsExport, downloadAuditExport,
+  releaseExamGrades,
   type ProblemPickerItem,
 } from "@/lib/api";
 
 // ── Nav ───────────────────────────────────────────────────────────────────────
 
-type TabKey = "settings" | "problems" | "monitor" | "results" | "violations" | "export";
+type TabKey = "settings" | "problems" | "requests" | "monitor" | "scores" | "results" | "violations" | "export";
 
 const NAV_GROUPS = [
   { label: "SETUP", items: [
@@ -38,12 +45,13 @@ const NAV_GROUPS = [
     { key: "export"     as TabKey, label: "Export",     icon: <Download size={14} />      },
   ]},
 ];
-const VALID_TABS: TabKey[] = ["settings","problems","monitor","results","violations","export"];
+const VALID_TABS: TabKey[] = ["settings","problems","requests","monitor","scores","results","violations","export"];
 
 // ── helpers ───────────────────────────────────────────────────────────────────
 
 function examStatus(detail: any): string {
   if (!detail) return "UPCOMING";
+  if (detail.isPublished === false) return "DRAFT";
   if (detail.status) return detail.status.toUpperCase();
   if (detail.isEnded || detail.isClosed) return "ENDED";
   const start = detail.scheduledStartTime;
@@ -81,7 +89,7 @@ export default function ExamManagePage() {
     const t = params.get("tab") as TabKey | null;
     if (t && VALID_TABS.includes(t)) { setTab(t); return; }
     const s = examStatus(detail);
-    if (s === "UPCOMING") setTab("settings");
+    if (s === "DRAFT" || s === "UPCOMING") setTab("settings");
     else if (s === "ENDED") setTab("results");
     else setTab("monitor");
   // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -110,12 +118,14 @@ export default function ExamManagePage() {
   const isEnded  = status === "ENDED";
 
   const headings: Record<TabKey, string> = {
-    settings: "Settings", problems: "Problems", monitor: "Live Monitor",
-    results: "Results", violations: "Violations", export: "Export",
+    settings: "Settings", problems: "Problems", requests: "Requests", monitor: "Live Monitor",
+    scores: "Scores", results: "Results", violations: "Violations", export: "Export",
   };
+  const isRequestBased = (detail?.visibilityMode as string) === "REQUEST_BASED";
 
   const statusPill = (s: string) => {
     const map: Record<string, { bg: string; color: string; label: string }> = {
+      DRAFT: { bg: "var(--warn-soft)", color: "var(--warn)", label: "Draft" },
       ACTIVE: { bg: "var(--danger-soft)", color: "var(--danger)", label: "Live" },
       UPCOMING: { bg: "var(--warn-soft)", color: "var(--warn)", label: "Upcoming" },
       ENDED: { bg: "var(--bg-2)", color: "var(--ink-3)", label: "Ended" },
@@ -123,6 +133,17 @@ export default function ExamManagePage() {
     const st = map[s] ?? { bg: "var(--accent-soft)", color: "var(--brand)", label: s };
     return <span style={{ fontSize: 11, fontWeight: 700, padding: "3px 10px", borderRadius: 9, background: st.bg, color: st.color, letterSpacing: "0.04em", flexShrink: 0 }}>{st.label}</span>;
   };
+
+  const [publishing, setPublishing] = useState(false);
+  async function handlePublishToggle() {
+    setPublishing(true);
+    try {
+      if (status === "DRAFT") { await publishAssessment(id); toast.success("Exam published — students can now access it."); }
+      else { await unpublishAssessment(id); toast.success("Exam moved back to draft."); }
+      await loadDetail();
+    } catch { toast.error("Failed to update publish state"); }
+    finally { setPublishing(false); }
+  }
 
   if (loading) {
     return (
@@ -149,6 +170,16 @@ export default function ExamManagePage() {
               <div style={{ fontSize: 21, fontWeight: 700, color: "var(--ink)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{detail?.title ?? "Exam"}</div>
             </div>
             {statusPill(status)}
+            <button onClick={handlePublishToggle} disabled={publishing} style={{
+              display: "inline-flex", alignItems: "center", gap: 6,
+              padding: "7px 16px", borderRadius: 8, flexShrink: 0, border: "none", cursor: publishing ? "default" : "pointer",
+              background: status === "DRAFT" ? "var(--accent)" : "var(--bg-2)",
+              color: status === "DRAFT" ? "#0a0a0a" : "var(--ink-2)",
+              fontSize: 13, fontWeight: 700, opacity: publishing ? 0.6 : 1,
+            }}>
+              {publishing ? "…" : status === "DRAFT" ? "Publish" : "Unpublish"}
+            </button>
+            <AuditLogButton domain="EXAM" contextId={id} />
             <Link href="/teacher/exams" style={{ fontSize: 12, color: "var(--ink-3)", textDecoration: "none", display: "inline-flex", alignItems: "center", gap: 4, flexShrink: 0, marginLeft: 4 }}>
               <ChevronLeft size={13} /> Back
             </Link>
@@ -173,7 +204,9 @@ export default function ExamManagePage() {
           {/* Left: horizontal tab bar + content */}
           <div>
             <div style={{ display: "flex", gap: 2, marginBottom: 16, background: "var(--surface)", border: "1px solid var(--line)", borderRadius: "var(--r)", padding: 4, overflowX: "auto" }}>
-              {(Object.entries(headings) as [TabKey, string][]).map(([key, label]) => (
+              {(Object.entries(headings) as [TabKey, string][])
+                .filter(([key]) => key !== "requests" || isRequestBased)
+                .map(([key, label]) => (
                 <button key={key} onClick={() => navigate(key)} style={{ padding: "7px 14px", borderRadius: 7, border: "none", cursor: "pointer", fontSize: 13, fontWeight: tab === key ? 600 : 400, background: tab === key ? "var(--brand)" : "transparent", color: tab === key ? "#fff" : "var(--ink-3)", transition: "all 0.1s", whiteSpace: "nowrap" }}>
                   {label}
                 </button>
@@ -181,8 +214,10 @@ export default function ExamManagePage() {
             </div>
             {tab === "settings"   && <ExamSettingsTab detail={detail} onSaved={loadDetail} />}
             {tab === "problems"   && <ExamProblemsTab detail={detail} assessmentId={id} onChanged={loadDetail} />}
+            {tab === "requests"   && <ExamRequestsTab assessmentId={id} />}
             {tab === "monitor"    && <ExamMonitorTab assessmentId={id} detail={detail} />}
-            {tab === "results"    && <ExamResultsTab assessmentId={id} detail={detail} />}
+            {tab === "scores"     && <ScoreboardTab assessmentId={id} />}
+            {tab === "results"    && <ExamResultsTab assessmentId={id} detail={detail} onChanged={loadDetail} />}
             {tab === "violations" && <ExamViolationsTab assessmentId={id} />}
             {tab === "export"     && <ExamExportTab assessmentId={id} title={detail?.title ?? "exam"} />}
           </div>
@@ -214,6 +249,109 @@ export default function ExamManagePage() {
   );
 }
 
+// ── Requests tab ────────────────────────────────────────────────────────────
+
+function ExamRequestsTab({ assessmentId }: { assessmentId: string }) {
+  const [reqs, setReqs] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [acting, setActing] = useState<string | null>(null);
+  const [bulking, setBulking] = useState(false);
+
+  const load = useCallback(async () => {
+    setLoading(true);
+    try {
+      const res = await getAssessmentJoinRequests(assessmentId, "PENDING", 0, 100);
+      setReqs(res?.content ?? []);
+    } catch { toast.error("Failed to load requests"); }
+    finally { setLoading(false); }
+  }, [assessmentId]);
+
+  useEffect(() => { load(); }, [load]);
+
+  async function approve(reqId: string) {
+    setActing(reqId);
+    try { await approveJoinRequest(reqId); toast.success("Request approved"); await load(); }
+    catch { toast.error("Could not approve"); }
+    finally { setActing(null); }
+  }
+  async function reject(reqId: string) {
+    setActing(reqId);
+    try { await rejectJoinRequest(reqId); toast.success("Request rejected"); await load(); }
+    catch { toast.error("Could not reject"); }
+    finally { setActing(null); }
+  }
+  async function approveAll() {
+    if (reqs.length === 0) return;
+    setBulking(true);
+    try {
+      await bulkApproveAssessmentRequests(assessmentId, reqs.map((r) => r.requestId));
+      toast.success("All pending requests approved");
+      await load();
+    } catch { toast.error("Could not approve all"); }
+    finally { setBulking(false); }
+  }
+
+  const fullName = (r: any) =>
+    [r.firstName, r.lastName].filter(Boolean).join(" ") || r.email || r.studentId;
+
+  return (
+    <div style={{ background: "var(--surface)", border: "1px solid var(--line)", borderRadius: "var(--r)", overflow: "hidden" }}>
+      <div style={{ display: "flex", alignItems: "center", gap: 10, padding: "14px 18px", borderBottom: "1px solid var(--line)" }}>
+        <Users size={16} color="var(--ink-2)" />
+        <div style={{ fontSize: 14, fontWeight: 700, color: "var(--ink)" }}>
+          Join Requests {reqs.length > 0 && <span style={{ color: "var(--ink-3)", fontWeight: 500 }}>({reqs.length} pending)</span>}
+        </div>
+        <div style={{ marginLeft: "auto", display: "flex", gap: 8 }}>
+          <button className="psp-btn psp-btn-secondary psp-btn-sm" onClick={load} disabled={loading}>Refresh</button>
+          {reqs.length > 0 && (
+            <button className="psp-btn psp-btn-primary psp-btn-sm" onClick={approveAll} disabled={bulking} style={{ gap: 6 }}>
+              {bulking ? <Loader2 size={13} style={{ animation: "spin 1s linear infinite" }} /> : <CheckCircle2 size={13} />}
+              Approve all
+            </button>
+          )}
+        </div>
+      </div>
+
+      {loading ? (
+        <div style={{ display: "flex", justifyContent: "center", padding: 40 }}>
+          <Loader2 size={20} style={{ animation: "spin 1s linear infinite", color: "var(--brand)" }} />
+        </div>
+      ) : reqs.length === 0 ? (
+        <div style={{ textAlign: "center", padding: "40px 20px" }}>
+          <CheckCircle2 size={26} color="var(--accent)" style={{ margin: "0 auto 10px" }} />
+          <div style={{ fontSize: 14, fontWeight: 600, color: "var(--ink)", marginBottom: 4 }}>No pending requests</div>
+          <div style={{ fontSize: 12.5, color: "var(--ink-3)" }}>Students who ask to join this exam will appear here.</div>
+        </div>
+      ) : (
+        <div>
+          {reqs.map((r) => {
+            const isActing = acting === r.requestId;
+            return (
+              <div key={r.requestId} style={{ display: "flex", alignItems: "center", gap: 12, padding: "12px 18px", borderBottom: "1px solid var(--line)" }}>
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div style={{ fontSize: 13, fontWeight: 600, color: "var(--ink)" }}>{fullName(r)}</div>
+                  <div style={{ fontSize: 11.5, color: "var(--ink-3)", marginTop: 2 }}>
+                    {[r.apogeeNumber, r.divisionName, r.semesterName].filter(Boolean).join(" · ")}
+                  </div>
+                  {r.message && <div style={{ fontSize: 12, color: "var(--ink-2)", marginTop: 4, fontStyle: "italic" }}>&ldquo;{r.message}&rdquo;</div>}
+                </div>
+                <div style={{ display: "flex", gap: 6, flexShrink: 0 }}>
+                  <button className="psp-btn psp-btn-primary psp-btn-sm" onClick={() => approve(r.requestId)} disabled={isActing} style={{ gap: 5 }}>
+                    {isActing ? <Loader2 size={12} style={{ animation: "spin 1s linear infinite" }} /> : <CheckCircle2 size={12} />} Approve
+                  </button>
+                  <button className="psp-btn psp-btn-secondary psp-btn-sm" onClick={() => reject(r.requestId)} disabled={isActing} style={{ gap: 5, color: "var(--danger)" }}>
+                    <X size={12} /> Reject
+                  </button>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      )}
+    </div>
+  );
+}
+
 // ── Settings tab ──────────────────────────────────────────────────────────────
 
 function ExamSettingsTab({ detail, onSaved }: { detail: any; onSaved: () => void }) {
@@ -222,6 +360,8 @@ function ExamSettingsTab({ detail, onSaved }: { detail: any; onSaved: () => void
     description:        detail?.description ?? "",
     scheduledStartTime: detail?.scheduledStartTime ? String(detail.scheduledStartTime).slice(0, 16) : "",
     durationMinutes:    detail?.durationMinutes ?? 90,
+    scoringMode:  detail?.scoringMode ?? "BEST_SUBMISSION",
+    passingScore: detail?.passingScore ?? 50,
   });
   const [saving, setSaving] = useState(false);
 
@@ -233,6 +373,8 @@ function ExamSettingsTab({ detail, onSaved }: { detail: any; onSaved: () => void
         description:        form.description,
         scheduledStartTime: form.scheduledStartTime,
         durationMinutes:    form.durationMinutes,
+        scoringMode:  form.scoringMode,
+        passingScore: form.passingScore,
       });
       toast.success("Saved");
       onSaved();
@@ -274,6 +416,27 @@ function ExamSettingsTab({ detail, onSaved }: { detail: any; onSaved: () => void
         </div>
       </section>
 
+      <section style={{ background: "var(--bg-secondary)", border: "1px solid var(--border)", borderRadius: 8, padding: 20, marginBottom: 20 }}>
+        <div style={{ fontSize: 11, fontWeight: 700, color: "var(--text-muted)", textTransform: "uppercase", letterSpacing: "0.07em", marginBottom: 16 }}>
+          3. Scoring
+        </div>
+        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
+          <div>
+            <label className="psp-form-label">Scoring Mode</label>
+            <select className="psp-form-input" value={form.scoringMode}
+              onChange={e => setForm(f => ({ ...f, scoringMode: e.target.value }))}>
+              <option value="LAST_SUBMISSION">Last Submission — final answer counts</option>
+              <option value="BEST_SUBMISSION">Best Submission — highest score counts</option>
+            </select>
+          </div>
+          <div>
+            <label className="psp-form-label">Passing Score (%)</label>
+            <input className="psp-form-input" type="number" min={0} max={100} value={form.passingScore}
+              onChange={e => setForm(f => ({ ...f, passingScore: Number(e.target.value) || 0 }))} />
+          </div>
+        </div>
+      </section>
+
       <button className="psp-btn psp-btn-primary" onClick={save} disabled={saving} style={{ display: "flex", alignItems: "center", gap: 6 }}>
         {saving && <Loader2 size={13} style={{ animation: "spin 1s linear infinite" }} />}
         Save Settings
@@ -291,13 +454,14 @@ function ExamProblemsTab({ detail, assessmentId, onChanged }: { detail: any; ass
   const [pickerLoading, setPickerLoading] = useState(false);
   const [attaching, setAttaching]   = useState<string | null>(null);
   const [removing, setRemoving]     = useState<string | null>(null);
+  const [showCreate, setShowCreate] = useState(false);
   const problems: any[] = detail?.problems ?? [];
 
   const sensors = useSensors(useSensor(PointerSensor), useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates }));
 
   async function openPicker() {
     setShowPicker(true); setPickerLoading(true);
-    try { const d = await getProblemsPicker(); setPicker(d); }
+    try { const d = await getProblemsPicker("EXAM"); setPicker(d); }
     catch { /* silent */ }
     finally { setPickerLoading(false); }
   }
@@ -332,8 +496,18 @@ function ExamProblemsTab({ detail, assessmentId, onChanged }: { detail: any; ass
     <div>
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16 }}>
         <span style={{ fontSize: 13, color: "var(--text-muted)" }}>{problems.length} problem{problems.length !== 1 ? "s" : ""}</span>
-        <button className="psp-btn psp-btn-primary psp-btn-sm" onClick={openPicker}><Plus size={12} /> Add Problem</button>
+        <div style={{ display: "flex", gap: 8 }}>
+          <button className="psp-btn psp-btn-secondary psp-btn-sm" onClick={openPicker}><Plus size={12} /> Add from Bank</button>
+          <button className="psp-btn psp-btn-primary psp-btn-sm" onClick={() => setShowCreate(true)}><Plus size={12} /> Create New</button>
+        </div>
       </div>
+
+      <CreateProblemModal
+        open={showCreate}
+        onClose={() => setShowCreate(false)}
+        defaultVisibility="EXAM_ONLY"
+        onCreated={attach}
+      />
 
       {problems.length === 0 ? (
         <div className="psp-empty" style={{ padding: "32px 24px" }}>
@@ -484,9 +658,10 @@ function ExamMonitorTab({ assessmentId, detail }: { assessmentId: string; detail
 
 // ── Results tab ───────────────────────────────────────────────────────────────
 
-function ExamResultsTab({ assessmentId, detail }: { assessmentId: string; detail: any }) {
+function ExamResultsTab({ assessmentId, detail, onChanged }: { assessmentId: string; detail: any; onChanged?: () => void }) {
   const [submissions, setSubmissions] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const [releasing, setReleasing] = useState(false);
 
   useEffect(() => {
     getExamSubmissions(assessmentId)
@@ -495,14 +670,31 @@ function ExamResultsTab({ assessmentId, detail }: { assessmentId: string; detail
       .finally(() => setLoading(false));
   }, [assessmentId]);
 
+  async function handleRelease() {
+    if (!confirm("Release grades? Students will immediately see their scores and verdicts.")) return;
+    setReleasing(true);
+    try {
+      await releaseExamGrades(assessmentId);
+      toast.success("Grades released", "Students can now see their results.");
+      onChanged?.();
+    } catch { toast.error("Failed to release grades"); }
+    finally { setReleasing(false); }
+  }
+
   if (loading) return <div style={{ display: "flex", justifyContent: "center", padding: 40 }}><Loader2 size={20} style={{ animation: "spin 1s linear infinite" }} /></div>;
 
   return (
     <div>
-      <div style={{ display: "flex", justifyContent: "flex-end", marginBottom: 12 }}>
-        <a href={`/api/teacher/exams/${assessmentId}/results/export`} className="psp-btn psp-btn-secondary psp-btn-sm" download>
+      <div style={{ display: "flex", justifyContent: "flex-end", gap: 8, marginBottom: 12 }}>
+        {!detail?.gradesRevealed && (
+          <button onClick={handleRelease} disabled={releasing} className="psp-btn psp-btn-primary psp-btn-sm">
+            {releasing ? "Releasing…" : "Release Grades"}
+          </button>
+        )}
+        <button onClick={() => downloadExamResultsExport(assessmentId).catch(() => toast.error("Export failed"))}
+          className="psp-btn psp-btn-secondary psp-btn-sm">
           <Download size={12} /> Export Grades CSV
-        </a>
+        </button>
       </div>
       <table className="psp-table">
         <thead><tr><th>Student</th><th>Score</th><th>Status</th><th>Submitted</th></tr></thead>
@@ -530,9 +722,10 @@ function ExamViolationsTab({ assessmentId }: { assessmentId: string }) {
       <div className="psp-card-body" style={{ color: "var(--text-muted)", fontSize: 13 }}>
         Anti-cheat violations are logged from the exam arena. Export them below.
         <div style={{ marginTop: 12 }}>
-          <a href={`/api/teacher/${assessmentId}/audit/export.csv?domain=EXAM`} className="psp-btn psp-btn-secondary psp-btn-sm" download>
+          <button onClick={() => downloadAuditExport("EXAM", assessmentId).catch(() => toast.error("Export failed"))}
+            className="psp-btn psp-btn-secondary psp-btn-sm">
             <Download size={12} /> Export Violations CSV
-          </a>
+          </button>
         </div>
       </div>
     </div>
@@ -541,20 +734,20 @@ function ExamViolationsTab({ assessmentId }: { assessmentId: string }) {
 
 // ── Export tab ────────────────────────────────────────────────────────────────
 
-function ExamExportTab({ assessmentId, title }: { assessmentId: string; title: string }) {
+function ExamExportTab({ assessmentId }: { assessmentId: string; title: string }) {
+  const items = [
+    { label: "Grades CSV",        run: () => downloadExamResultsExport(assessmentId) },
+    { label: "All Submissions",   run: () => downloadExamSubmissionsExport(assessmentId) },
+    { label: "Violations Report", run: () => downloadAuditExport("EXAM", assessmentId) },
+  ];
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 10, maxWidth: 400 }}>
-      {[
-        { label: "Grades CSV",        href: `/api/teacher/exams/${assessmentId}/results/export` },
-        { label: "All Submissions",   href: `/api/teacher/exams/${assessmentId}/submissions?format=csv` },
-        { label: "Violations Report", href: `/api/teacher/${assessmentId}/audit/export.csv?domain=EXAM` },
-      ].map(item => (
-        <a key={item.label} href={item.href}
+      {items.map(item => (
+        <button key={item.label} onClick={() => item.run().catch(() => toast.error("Export failed"))}
           className="psp-btn psp-btn-secondary"
-          style={{ display: "flex", alignItems: "center", gap: 8, justifyContent: "center" }}
-          download>
+          style={{ display: "flex", alignItems: "center", gap: 8, justifyContent: "center" }}>
           <Download size={13} /> {item.label}
-        </a>
+        </button>
       ))}
     </div>
   );

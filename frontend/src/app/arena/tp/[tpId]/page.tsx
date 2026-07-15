@@ -1,6 +1,6 @@
-import Arena from "@/features/arena/pages/Arena";
+import TPOverviewPage from "@/features/arena/tp/TPOverviewPage";
 
 export default async function Page({ params }: { params: Promise<{ tpId: string }> }) {
   const { tpId } = await params;
-  return <Arena examId={tpId} mode="tp" />;
+  return <TPOverviewPage tpId={tpId} />;
 }

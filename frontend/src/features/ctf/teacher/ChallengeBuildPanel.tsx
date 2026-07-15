@@ -31,16 +31,16 @@ type ActiveTab = "zip" | "registry";
 // ── Colors ────────────────────────────────────────────────────────────────────
 
 const C = {
-  bg:       "#0a0f1e",
-  surface:  "#0f172a",
-  surface2: "#1e293b",
+  bg:       "var(--bg)",
+  surface:  "var(--bg-2)",
+  surface2: "var(--line)",
   border:   "rgba(148,163,184,0.15)",
-  text:     "#f8fafc",
-  muted:    "#64748b",
-  secondary:"#94a3b8",
-  green:    "#22c55e",
+  text:     "var(--ink)",
+  muted:    "var(--ink-2)",
+  secondary:"var(--ink-2)",
+  green:    "var(--success)",
   red:      "#ef4444",
-  blue:     "#6366f1",
+  blue:     "var(--brand)",
   purple:   "#a78bfa",
   yellow:   "#fbbf24",
 };

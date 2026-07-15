@@ -33,13 +33,19 @@ public interface AssessmentRepository extends JpaRepository<Assessment, UUID> {
             @Param("pendingStatus") JoinRequestStatus pendingStatus);
 
     @Query("""
-        SELECT a FROM Assessment a WHERE
-          (a.visibilityMode = com.university.platform.assessment.VisibilityMode.MODULE_ONLY
-            AND a.module IS NOT NULL
-            AND a.module.division.divisionId = :divisionId
-            AND a.module.semester.semesterId = :semesterId)
-          OR a.visibilityMode = com.university.platform.assessment.VisibilityMode.ACCESS_CODE
-          OR a.visibilityMode = com.university.platform.assessment.VisibilityMode.REQUEST_BASED
+        SELECT a FROM Assessment a
+          LEFT JOIN a.module m
+          LEFT JOIN m.division d
+          LEFT JOIN m.semester s
+        WHERE a.isPublished = true
+          AND (
+            (a.visibilityMode = com.university.platform.assessment.VisibilityMode.MODULE_ONLY
+              AND m IS NOT NULL
+              AND d.divisionId = :divisionId
+              AND s.semesterId = :semesterId)
+            OR a.visibilityMode = com.university.platform.assessment.VisibilityMode.ACCESS_CODE
+            OR a.visibilityMode = com.university.platform.assessment.VisibilityMode.REQUEST_BASED
+          )
         """)
     List<Assessment> findVisibleToStudent(@Param("divisionId") UUID divisionId,
                                           @Param("semesterId") UUID semesterId);

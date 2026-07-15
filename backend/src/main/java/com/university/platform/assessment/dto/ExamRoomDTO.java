@@ -14,5 +14,9 @@ public record ExamRoomDTO(
     /** Max attempts per problem. Populated for TPs (null = unlimited); null for exams. */
     Integer maxAttempts,
     /** Whether final grades/verdicts have been released to the student (live exams). */
-    boolean gradesRevealed
+    boolean gradesRevealed,
+    /** ISO-8601 timestamp of this student's final "Submit TP" action. Null until
+     *  they final-submit; always null for live exams. Once set, the TP is
+     *  read-only for this student. */
+    String finalSubmittedAt
 ) {}

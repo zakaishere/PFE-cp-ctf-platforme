@@ -136,7 +136,8 @@ public class CompetitionController {
         }
 
         boolean includeTeacherData = "TEACHER".equals(role) || "ADMIN".equals(role);
-        return ResponseEntity.ok(competitionService.listCompetitions(statusFilter, studentId, includeTeacherData));
+        UUID teacherId = "TEACHER".equals(role) ? UUID.fromString(claims.getSubject()) : null;
+        return ResponseEntity.ok(competitionService.listCompetitions(statusFilter, studentId, includeTeacherData, teacherId));
     }
 
     // -------------------------------------------------------------------------

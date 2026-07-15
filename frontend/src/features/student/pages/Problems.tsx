@@ -31,10 +31,8 @@ export default function ProblemsPage() {
     debounceTimer.current = setTimeout(() => setSearch(val), 350);
   }
 
-  const { problems, loading, initialLoad, error, hasMore, totalElements, sentinelRef } =
+  const { problems, loading, initialLoad, error, hasMore, sentinelRef } =
     useInfiniteProblems({ search, difficulty });
-
-  const solvedCount = problems.filter(p => p.solvedByCurrentUser).length;
 
   const visible = problems.filter(p => {
     if (solvedFilter === "solved"   && !p.solvedByCurrentUser) return false;
@@ -49,14 +47,9 @@ export default function ProblemsPage() {
       <Navbar />
       <div className="psp-main">
         <div style={{ marginBottom: 20 }}>
-          <div style={{ display: "flex", alignItems: "baseline", gap: 10 }}>
-            <div style={{ fontSize: 20, fontWeight: 700, color: "var(--ink)" }}>Problem Set</div>
-            {solvedCount > 0 && (
-              <span style={{ fontSize: 12, color: "var(--ink-3)" }}>{solvedCount} solved</span>
-            )}
-          </div>
+          <div style={{ fontSize: 20, fontWeight: 700, color: "var(--ink)" }}>Problem Set</div>
           <div style={{ fontSize: 13, color: "var(--ink-2)", marginTop: 3 }}>
-            {totalElements > 0 ? `${totalElements} problems available` : "Practice on public problems and earn points"}
+            Practice on public problems and earn points
           </div>
         </div>
 
@@ -190,7 +183,7 @@ export default function ProblemsPage() {
           {/* End of list */}
           {!hasMore && problems.length > 0 && (
             <div style={{ textAlign: "center", padding: "12px 0", fontSize: 12, color: "var(--ink-3)" }}>
-              All {totalElements} problems loaded
+              All problems loaded
             </div>
           )}
         </div>

@@ -13,6 +13,7 @@ import {
   getCompetitionTeamActivity,
   getApiBaseUrl,
   reportCompetitionViolation,
+  pingAuditSession,
   type ArenaDTO,
   type ArenaProblem,
 } from "@/lib/api";
@@ -23,8 +24,9 @@ import { useAntiCheat, type ViolationEvent } from "@/hooks/useAntiCheat";
 import { useAuth } from "@/features/auth/contexts/AuthContext";
 import ArenaShell, { type ArenaTab } from "@/features/arena/components/ArenaShell";
 import CPScoreboard from "@/features/competitions/components/CPScoreboard";
+import TaskRail, { type TaskRailItem } from "@/components/arena/TaskRail";
+import SubmissionsTab from "@/features/arena/tp/SubmissionsTab";
 import { Code, Play, ShieldAlert, Trophy, Medal, Flag, AlertTriangle, X, HardDrive, Clock, Check, Lock, Send } from "lucide-react";
-import { APP_MARK } from "@/lib/brand";
 
 const MEDAL_COLORS = ["#f5c451", "#c7cdd9", "#cd8a52"]; // gold, silver, bronze
 
@@ -215,7 +217,7 @@ export default function ArenaPage() {
 
   // ── UI state ────────────────────────────────────────────────────────────────
   const [activeProblemIdx, setActiveProblemIdx] = useState(0);
-  const [rightPanel, setRightPanel]             = useState<"editor" | "scoreboard">("editor");
+  const [rightPanel, setRightPanel]             = useState<"editor" | "submissions" | "scoreboard">("editor");
   const [phase, setPhase]                       = useState<Phase>("briefing");
 
   // ── Editor state ────────────────────────────────────────────────────────────
@@ -270,6 +272,11 @@ export default function ArenaPage() {
       reportCompetitionViolation(competitionId, event).catch(() => {});
     }, [competitionId]),
   });
+
+  // Audit session heartbeat — capture the participant's IP on entry (multi-IP detection).
+  useEffect(() => {
+    pingAuditSession("CP", competitionId).catch(() => {});
+  }, [competitionId]);
 
   // ─── Load arena data ────────────────────────────────────────────────────────
 
@@ -593,6 +600,18 @@ export default function ArenaPage() {
       ),
     },
     {
+      key: "submissions",
+      label: "My Submissions",
+      icon: <Send size={14} />,
+      content: buildBody(
+        activeProblem && (
+          <div style={{ flex: 1, overflowY: "auto", padding: "20px 24px", background: "var(--bg)" }}>
+            <SubmissionsTab problemId={activeProblem.problemId} competitionId={competitionId} />
+          </div>
+        )
+      ),
+    },
+    {
       key: "scoreboard",
       label: "Scoreboard",
       icon: <Trophy size={14} />,
@@ -627,8 +646,8 @@ export default function ArenaPage() {
           antiCheat: false,
         }}
         tabs={tabs}
-        activeTabKey={rightPanel === "editor" ? "workspace" : "scoreboard"}
-        onTabChange={(k) => setRightPanel(k === "scoreboard" ? "scoreboard" : "editor")}
+        activeTabKey={rightPanel === "editor" ? "workspace" : rightPanel === "submissions" ? "submissions" : "scoreboard"}
+        onTabChange={(k) => setRightPanel(k === "scoreboard" ? "scoreboard" : k === "submissions" ? "submissions" : "editor")}
         topBarExtras={
           arena && (
             <CPTopBarExtras
@@ -683,12 +702,7 @@ function BriefingScreen({
         maxWidth: 520, width: "100%", boxShadow: "0 16px 40px rgba(0,0,0,0.5)",
       }}>
         <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 18 }}>
-          <div style={{
-            width: 36, height: 36, background: "var(--accent)", borderRadius: 9,
-            display: "grid", placeItems: "center",
-            color: "#0a0a0a", font: "700 15px var(--font-mono)",
-            boxShadow: "0 0 12px rgba(0,255,0,.4)",
-          }}>{APP_MARK}</div>
+          <img src="/algora-logo-icon.png" alt="" width={36} height={36} style={{ objectFit: "contain" }} />
           <div>
             <div style={{ fontSize: 11, color: "var(--ink-3)", textTransform: "uppercase", letterSpacing: 0.6 }}>
               Entering competition
@@ -870,84 +884,59 @@ function LeftPanel({
 }) {
   const progressPct = problems.length > 0 ? (solvedCount / problems.length) * 100 : 0;
 
+  const items: TaskRailItem[] = problems.map((p) => ({
+    id: p.problemId,
+    label: p.label,
+    title: p.title,
+    points: p.points,
+    status: p.solveStatus === "SOLVED" ? "solved" : p.solveStatus === "ATTEMPTED" ? "attempted" : "unsolved",
+    meta: p.solveStatus === "ATTEMPTED" ? `×${p.attempts}` : p.solveStatus === "UNSOLVED" ? "—" : undefined,
+  }));
+
   return (
-    <div style={{ width: 220, background: "var(--bg)", display: "flex", flexDirection: "column", flexShrink: 0, borderRight: "1px solid var(--line-2)", overflowY: "auto" }}>
-      <div style={{ padding: "14px 14px 10px", borderBottom: "1px solid var(--line-2)", display: "flex", alignItems: "center", justifyContent: "space-between", position: "sticky", top: 0, background: "var(--bg)", zIndex: 2 }}>
-        <span style={{ fontSize: 10, fontWeight: 700, color: "var(--ink-3)", textTransform: "uppercase", letterSpacing: "0.1em" }}>Problems</span>
-        <span style={{ font: "600 11.5px var(--font-mono)", color: "var(--accent)" }}>{solvedCount} / {problems.length}</span>
-      </div>
-
-      <div style={{ padding: 8 }}>
-        {problems.map((p, i) => {
-          const solved  = p.solveStatus === "SOLVED";
-          const wrong   = p.solveStatus === "ATTEMPTED";
-          const active  = activeProblemIdx === i;
-          const badgeStyle: React.CSSProperties = solved
-            ? { background: "rgba(0,255,0,.12)", color: "var(--accent)", border: "1px solid var(--accent-ring)" }
-            : wrong
-            ? { background: "var(--danger-soft)", color: "var(--danger)" }
-            : active
-            ? { background: "var(--accent-glow)", color: "var(--accent)" }
-            : { background: "var(--surface-2)", color: "var(--ink-2)" };
-          return (
-            <button key={p.problemId} onClick={() => setActiveProblemIdx(i)}
-              onMouseEnter={e => { if (!active) e.currentTarget.style.background = "var(--surface-2)"; }}
-              onMouseLeave={e => { if (!active) e.currentTarget.style.background = "transparent"; }}
-              style={{
-              display: "flex", alignItems: "center", gap: 9, padding: "9px 10px",
-              borderRadius: 9, cursor: "pointer", marginBottom: 3, width: "100%", textAlign: "left",
-              background: active ? "var(--accent-dim)" : "transparent",
-              border: active ? "1px solid var(--accent-ring)" : "1px solid transparent",
-              transition: "background 0.1s",
-            }}>
-              <div style={{ width: 28, height: 28, borderRadius: 7, display: "grid", placeItems: "center", font: "700 12px var(--font-mono)", flexShrink: 0, ...badgeStyle }}>
-                {p.label}
-              </div>
-              <div style={{ flex: 1, minWidth: 0 }}>
-                <div style={{ fontSize: 13, color: "var(--ink)", fontWeight: 600, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{p.title}</div>
-                <div style={{ font: "500 11px var(--font-mono)", color: "var(--ink-3)", marginTop: 2 }}>{p.points} pts</div>
-              </div>
-              <span style={{ font: "650 11.5px var(--font-mono)", flexShrink: 0, color: solved ? "var(--accent)" : wrong ? "var(--danger)" : "var(--ink-3)" }}>
-                {solved ? <Check size={13} /> : wrong ? `×${p.attempts}` : "—"}
-              </span>
-            </button>
-          );
-        })}
-      </div>
-
-      <div style={{ padding: 14, borderTop: "1px solid var(--line-2)" }}>
-        <div style={{ fontSize: 10, fontWeight: 700, color: "var(--ink-3)", textTransform: "uppercase", letterSpacing: "0.1em", marginBottom: 10 }}>Progress</div>
-        <div style={{ background: "var(--surface-3)", height: 4, borderRadius: 4, overflow: "hidden", marginBottom: 8 }}>
-          <div style={{ background: "var(--accent)", height: 4, borderRadius: 4, width: `${progressPct}%`, boxShadow: "0 0 8px rgba(0,255,0,.5)", transition: "width 0.3s" }} />
-        </div>
-        <div style={{ font: "600 12px var(--font-mono)", color: "var(--ink-2)", marginBottom: 12 }}>{solvedCount} / {problems.length} solved</div>
-        <div style={{ display: "flex", flexDirection: "column", gap: 5 }}>
-          {([["Solved", "var(--accent)"], ["Attempted", "var(--warn)"], ["Unsolved", "var(--ink-3)"]] as const).map(([label, color]) => (
-            <div key={label} style={{ display: "flex", alignItems: "center", gap: 7, fontSize: 12, color: "var(--ink-2)" }}>
-              <div style={{ width: 7, height: 7, borderRadius: "50%", background: color, flexShrink: 0 }} />
-              {label}
+    <TaskRail
+      items={items}
+      activeIndex={activeProblemIdx}
+      onSelect={setActiveProblemIdx}
+      heading="PROBLEMS"
+      width={220}
+      footer={
+        <>
+          <div style={{ padding: 14, borderTop: "1px solid var(--line-2)" }}>
+            <div style={{ fontSize: 10, fontWeight: 700, color: "var(--ink-3)", textTransform: "uppercase", letterSpacing: "0.1em", marginBottom: 10 }}>Progress</div>
+            <div style={{ background: "var(--surface-3)", height: 4, borderRadius: 4, overflow: "hidden", marginBottom: 8 }}>
+              <div style={{ background: "var(--accent)", height: 4, borderRadius: 4, width: `${progressPct}%`, boxShadow: "0 0 8px rgba(0,255,0,.5)", transition: "width 0.3s" }} />
             </div>
-          ))}
-        </div>
-      </div>
-
-      {mode === "TEAM" && (
-        <div style={{ padding: 14, borderTop: "1px solid var(--line-2)", flex: 1 }}>
-          <div style={{ fontSize: 10, fontWeight: 700, color: "var(--ink-3)", textTransform: "uppercase", letterSpacing: "0.1em", marginBottom: 10 }}>Team activity</div>
-          {activity.length === 0 ? (
-            <div style={{ fontSize: 11, color: "var(--ink-3)", textAlign: "center", paddingTop: 8 }}>No submissions yet</div>
-          ) : activity.map((a, i) => (
-            <div key={i} style={{ display: "flex", alignItems: "center", gap: 8, padding: "7px 0", borderBottom: "1px solid var(--line-2)" }}>
-              <div style={{ flex: 1, minWidth: 0 }}>
-                <div style={{ fontSize: 12, color: "var(--ink)", fontWeight: 600, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{a.studentName}</div>
-                <div style={{ font: "500 11px var(--font-mono)", color: "var(--ink-3)", marginTop: 2 }}>Problem {a.problemLabel}</div>
-              </div>
-              <span style={{ font: "650 11px var(--font-mono)", color: verdictColor(a.verdict) }}>{a.verdict}</span>
+            <div style={{ font: "600 12px var(--font-mono)", color: "var(--ink-2)", marginBottom: 12 }}>{solvedCount} / {problems.length} solved</div>
+            <div style={{ display: "flex", flexDirection: "column", gap: 5 }}>
+              {([["Solved", "var(--accent)"], ["Attempted", "var(--warn)"], ["Unsolved", "var(--ink-3)"]] as const).map(([label, color]) => (
+                <div key={label} style={{ display: "flex", alignItems: "center", gap: 7, fontSize: 12, color: "var(--ink-2)" }}>
+                  <div style={{ width: 7, height: 7, borderRadius: "50%", background: color, flexShrink: 0 }} />
+                  {label}
+                </div>
+              ))}
             </div>
-          ))}
-        </div>
-      )}
-    </div>
+          </div>
+
+          {mode === "TEAM" && (
+            <div style={{ padding: 14, borderTop: "1px solid var(--line-2)", flex: 1 }}>
+              <div style={{ fontSize: 10, fontWeight: 700, color: "var(--ink-3)", textTransform: "uppercase", letterSpacing: "0.1em", marginBottom: 10 }}>Team activity</div>
+              {activity.length === 0 ? (
+                <div style={{ fontSize: 11, color: "var(--ink-3)", textAlign: "center", paddingTop: 8 }}>No submissions yet</div>
+              ) : activity.map((a, i) => (
+                <div key={i} style={{ display: "flex", alignItems: "center", gap: 8, padding: "7px 0", borderBottom: "1px solid var(--line-2)" }}>
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div style={{ fontSize: 12, color: "var(--ink)", fontWeight: 600, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{a.studentName}</div>
+                    <div style={{ font: "500 11px var(--font-mono)", color: "var(--ink-3)", marginTop: 2 }}>Problem {a.problemLabel}</div>
+                  </div>
+                  <span style={{ font: "650 11px var(--font-mono)", color: verdictColor(a.verdict) }}>{a.verdict}</span>
+                </div>
+              ))}
+            </div>
+          )}
+        </>
+      }
+    />
   );
 }
 

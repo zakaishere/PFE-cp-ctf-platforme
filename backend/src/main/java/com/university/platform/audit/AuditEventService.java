@@ -94,6 +94,39 @@ public class AuditEventService {
         return out.toByteArray();
     }
 
+    /**
+     * Global CSV export with optional filters (domain/severity/time range).
+     * Same column layout and quoting rules as {@link #exportCsv}. Used by the
+     * admin Governance → Audit Logs screen.
+     */
+    public byte[] exportGlobalCsv(AuditDomain domain, Severity severity,
+                                  java.time.LocalDateTime from, java.time.LocalDateTime to) {
+        var events = repo.findForExport(domain, severity, from, to);
+        ByteArrayOutputStream out = new ByteArrayOutputStream();
+        try (PrintWriter w = new PrintWriter(out, false, StandardCharsets.UTF_8)) {
+            w.println("id,created_at,domain,event_type,severity,context_id,challenge_id,"
+                    + "actor_user_id,actor_team_id,source_team_id,dismissed,dismissed_by,detail");
+            for (AuditEvent e : events) {
+                w.println(String.join(",",
+                        csv(e.getId()),
+                        csv(e.getCreatedAt()),
+                        csv(e.getDomain()),
+                        csv(e.getEventType()),
+                        csv(e.getSeverity()),
+                        csv(e.getContextId()),
+                        csv(e.getChallengeId()),
+                        csv(e.getActorUserId()),
+                        csv(e.getActorTeamId()),
+                        csv(e.getSourceTeamId()),
+                        csv(e.getDismissed()),
+                        csv(e.getDismissedBy()),
+                        csv(detailJson(e.getDetail()))
+                ));
+            }
+        }
+        return out.toByteArray();
+    }
+
     private String detailJson(Map<String, Object> detail) {
         if (detail == null || detail.isEmpty()) return "";
         try {

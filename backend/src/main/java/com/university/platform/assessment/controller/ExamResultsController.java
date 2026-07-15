@@ -83,10 +83,13 @@ public class ExamResultsController {
             var problem = ap.getProblem();
             UUID pid = problem.getProblemId();
             String label = i < LABELS.length ? LABELS[i] : String.valueOf(i + 1);
-            int maxPoints = ap.getPointsOverride() != null ? ap.getPointsOverride() : 0;
+            int maxPoints = ap.effectiveMaxPoints();
 
             ExamAttemptResult ar = attemptByProblem.get(pid);
-            int earned = ar != null ? Math.min(ar.getBestScore(), maxPoints) : 0;
+            // earnedScore already reflects this exam's configured scoring mode
+            // (LAST_SUBMISSION vs BEST_SUBMISSION) — bestScore alone would
+            // silently ignore LAST_SUBMISSION and always show the best attempt.
+            int earned = ar != null ? Math.min(ar.getEarnedScore(), maxPoints) : 0;
             int passedCases = ar != null ? ar.getBestPassed() : 0;
             int totalCases = ar != null ? ar.getBestTotal() : 0;
             int attempts = ar != null ? ar.getAttempts() : 0;

@@ -35,6 +35,14 @@ public class CTFChallengeService {
     public CTFChallengeDTO getChallengeDetail(UUID id, UUID userId) {
         CTFChallenge challenge = challengeRepository.findByIdAndDeletedFalse(id)
                 .orElseThrow(() -> new EntityNotFoundException("Challenge not found: " + id));
+        if (!Boolean.TRUE.equals(challenge.getIsActive())
+                || challenge.getCompetitionId() != null
+                || Boolean.TRUE.equals(challenge.getIsLibrary())) {
+            // Hidden drafts, competition copies and library templates are not
+            // visible in practice — mirrors findPracticeChallenges() and the
+            // submit guard, so a known id can't bypass the practice list.
+            throw new EntityNotFoundException("Challenge not found: " + id);
+        }
         return toDTO(challenge, userId, true);
     }
 
@@ -69,10 +77,9 @@ public class CTFChallengeService {
         CTFChallenge.CTFCategory cat = parseCategory(category);
         CTFChallenge.CTFDifficulty diff = parseDifficulty(difficulty);
 
-        if (cat != null && diff != null) return challengeRepository.findByCategoryAndDifficultyAndIsActiveTrueAndDeletedFalse(cat, diff);
-        if (cat != null)                 return challengeRepository.findByCategoryAndIsActiveTrueAndDeletedFalse(cat);
-        if (diff != null)                return challengeRepository.findByDifficultyAndIsActiveTrueAndDeletedFalse(diff);
-        return challengeRepository.findByIsActiveTrueAndDeletedFalse();
+        // Practice list — competition-attached copies and library templates are
+        // private to their competition / owner and must never appear here.
+        return challengeRepository.findPracticeChallenges(cat, diff);
     }
 
     private CTFChallengeDTO toDTO(CTFChallenge c, UUID userId, boolean includeDescription) {

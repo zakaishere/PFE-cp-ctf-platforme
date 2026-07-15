@@ -35,6 +35,8 @@ import org.springframework.amqp.rabbit.core.RabbitTemplate;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.support.TransactionSynchronization;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
 import org.springframework.web.server.ResponseStatusException;
 
 import java.security.SecureRandom;
@@ -249,10 +251,20 @@ public class CompetitionService {
     @Transactional(readOnly = true)
     public List<CompetitionSummaryDTO> listCompetitions(CompetitionStatus statusFilter,
                                                          UUID studentId,
-                                                         boolean includeTeacherData) {
+                                                         boolean includeTeacherData,
+                                                         UUID teacherId) {
         List<Competition> competitions = statusFilter != null
                 ? competitionRepository.findByStatus(statusFilter)
                 : competitionRepository.findAll();
+
+        // Teacher's own manage list — same scoping AssessmentController already
+        // applies for exams/TPs. Without this, every teacher sees every other
+        // teacher's competitions with no way to tell which one they just created.
+        if (teacherId != null) {
+            competitions = competitions.stream()
+                    .filter(c -> teacherId.equals(c.getCreatedBy()))
+                    .toList();
+        }
 
         // Batch pending count — single query
         Map<UUID, Long> pendingCountMap = Collections.emptyMap();
@@ -691,9 +703,27 @@ public class CompetitionService {
                 .runOnly(false)
                 .build();
 
-        rabbitTemplate.convertAndSend(RabbitMQConfig.EXCHANGE_NAME, RabbitMQConfig.ROUTING_KEY, message);
-        log.info("[COMPETITION] Submission {} queued for competition {} student {} problem {}",
-                submission.getSubmissionId(), competitionId, studentId, req.getProblemId());
+        // Publish only after this transaction commits — RabbitMQ can deliver to the
+        // worker faster than Postgres commits the row on another connection, and the
+        // worker's findById(submissionId) would then race ahead of the commit and
+        // silently drop the job ("not found in DB"), leaving the submission stuck
+        // PENDING forever. Same race already fixed in SubmissionService.submit();
+        // this path never got the same treatment.
+        UUID submissionId = submission.getSubmissionId();
+        if (TransactionSynchronizationManager.isSynchronizationActive()) {
+            TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
+                @Override
+                public void afterCommit() {
+                    rabbitTemplate.convertAndSend(RabbitMQConfig.EXCHANGE_NAME, RabbitMQConfig.ROUTING_KEY, message);
+                    log.info("[COMPETITION] Submission {} queued for competition {} student {} problem {} (after commit)",
+                            submissionId, competitionId, studentId, req.getProblemId());
+                }
+            });
+        } else {
+            rabbitTemplate.convertAndSend(RabbitMQConfig.EXCHANGE_NAME, RabbitMQConfig.ROUTING_KEY, message);
+            log.info("[COMPETITION] Submission {} queued for competition {} student {} problem {} (no active tx)",
+                    submissionId, competitionId, studentId, req.getProblemId());
+        }
 
         return submission.getSubmissionId();
     }

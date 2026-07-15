@@ -24,6 +24,10 @@ const mono = JetBrains_Mono({
 export const metadata: Metadata = {
   title: `${APP_NAME} — University Problem Solving`,
   description: "Secure, real-time coding assessment platform for universities.",
+  icons: {
+    icon: "/algora-logo-icon.png",
+    apple: "/algora-logo-icon.png",
+  },
 };
 
 export default function RootLayout({

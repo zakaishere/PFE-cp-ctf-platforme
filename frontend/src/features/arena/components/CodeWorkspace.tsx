@@ -496,15 +496,17 @@ function ResultsSection({
           }}
         >
           {verdict === "accepted" ? <CheckCircle2 size={16} /> : <XCircle size={16} />}
+          {/* TP/Exam use the results.status vocabulary (PASS/FAIL/ERROR/TIME_OUT/
+              MEMORY_OUT) — not the CP-only AC/WA/TLE short codes. */}
           {verdict === "accepted"
-            ? "Accepted — All test cases passed"
+            ? "Pass — All test cases passed"
             : verdict === "tle"
-              ? "Time Limit Exceeded"
+              ? "Time Out"
               : verdict === "mle"
-                ? "Memory Limit Exceeded"
+                ? "Memory Out"
                 : verdict === "error"
-                  ? "Runtime / Compile Error"
-                  : "Wrong Answer — Some test cases failed"}
+                  ? "Error"
+                  : "Fail — Some test cases failed"}
         </div>
       )}
     </div>

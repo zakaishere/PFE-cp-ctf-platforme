@@ -33,25 +33,25 @@ export interface InstancePanelProps {
   /** Pass to scope the instance to a competition team */
   competitionId?: string;
   teamId?: string;
-  /** true = arena dark theme (#0f172a base), false = main theme CSS vars */
+  /** true = arena dark theme (var(--bg-2) base), false = main theme CSS vars */
   dark?: boolean;
 }
 
 // ── Colour palettes ───────────────────────────────────────────────────────────
 
 const DARK = {
-  card:        "#0f172a",
-  cardBorder:  "#1e293b",
-  text:        "#f8fafc",
-  muted:       "#64748b",
-  secondary:   "#94a3b8",
-  green:       "#22c55e",
+  card:        "var(--bg-2)",
+  cardBorder:  "var(--line)",
+  text:        "var(--ink)",
+  muted:       "var(--ink-2)",
+  secondary:   "var(--ink-2)",
+  green:       "var(--success)",
   red:         "#ef4444",
   yellow:      "#eab308",
-  blue:        "#6366f1",
+  blue:        "var(--brand)",
   purple:      "#a78bfa",
-  bg:          "#020617",
-  codeBg:      "#020617",
+  bg:          "var(--bg)",
+  codeBg:      "var(--bg)",
 };
 
 const LIGHT = {

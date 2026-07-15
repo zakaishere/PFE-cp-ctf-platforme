@@ -8,7 +8,7 @@ import {
   CheckCircle2, XCircle, Clock, Loader2, ChevronRight,
 } from "lucide-react";
 import { getAssessments, getExamSubmissions, closeLiveExam } from "@/lib/api";
-import { useToast } from "@/hooks/use-toast";
+import { toast } from "@/components/ui/PSPToast";
 
 // ── helpers ───────────────────────────────────────────────────────────────────
 
@@ -85,7 +85,6 @@ function submissionStats(subs: any[]) {
 // ── Main ──────────────────────────────────────────────────────────────────────
 
 export default function LiveExamMonitor() {
-  const { toast } = useToast();
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   const [exams, setExams] = useState<any[]>([]);
@@ -109,7 +108,7 @@ export default function LiveExamMonitor() {
           setSelected(first);
         }
       })
-      .catch(() => toast({ title: "Failed to load exams", variant: "destructive" }))
+      .catch(() => toast.error("Failed to load exams"))
       .finally(() => setLoading(false));
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -151,11 +150,11 @@ export default function LiveExamMonitor() {
     setClosing(true);
     try {
       await closeLiveExam(id);
-      toast({ title: "Exam closed" });
+      toast.success("Exam closed");
       setExams(prev => prev.map(e => (e.id || e.assessmentId) === id ? { ...e, isClosed: true } : e));
       setSelected((s: any) => s ? { ...s, isClosed: true } : s);
-    } catch (e: any) {
-      toast({ title: "Failed to close", description: e.message, variant: "destructive" });
+    } catch (e) {
+      toast.error("Failed to close", e instanceof Error ? e.message : undefined);
     }
     setClosing(false);
   };

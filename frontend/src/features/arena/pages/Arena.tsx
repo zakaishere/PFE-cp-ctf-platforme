@@ -2,14 +2,16 @@
 
 import { useState, useEffect, useRef } from "react";
 import Link from "next/link";
-import { AlertTriangle, Clock, FileText, Play, ShieldAlert, List, Code2 } from "lucide-react";
+import { AlertTriangle, Clock, FileText, Play, ShieldAlert, List, Code2, Lock } from "lucide-react";
 import { Client as StompClient } from "@stomp/stompjs";
 import SockJS from "sockjs-client";
 import {
   submitCode, logCheatEvent, getExamRoom, getExamResults, getApiBaseUrl,
+  verifyAssessmentAccessCode, ApiException,
   type ExamRoomDTO, type ExamProblemDTO, type ExamResultsDTO,
 } from "@/lib/api";
 import { useAuth } from "@/features/auth/contexts/AuthContext";
+import { toast } from "@/components/ui/PSPToast";
 import CodeWorkspace, {
   DEFAULT_WORKSPACE_CODE as DEFAULT_CODE,
   type WorkspaceTestResult,
@@ -17,12 +19,24 @@ import CodeWorkspace, {
 } from "@/features/arena/components/CodeWorkspace";
 import ArenaShell, { type ArenaTab } from "@/features/arena/components/ArenaShell";
 import { type ViolationEvent } from "@/hooks/useAntiCheat";
-import QuestionNav from "@/components/arena/exam/QuestionNav";
+import TaskRail, { type TaskRailItem } from "@/components/arena/TaskRail";
 import QuestionStatement from "@/components/arena/exam/QuestionStatement";
 import ExamResults from "@/components/arena/exam/ExamResults";
 
 type Verdict = WorkspaceVerdict;
 type TestResult = WorkspaceTestResult;
+
+// The verified access code is cached per-assessment for the tab session only —
+// never persisted, never sent anywhere except this assessment's own endpoints.
+function accessCodeKey(examId: string) { return `arena_access_code_${examId}`; }
+function getCachedAccessCode(examId: string): string | null {
+  if (typeof window === "undefined") return null;
+  return sessionStorage.getItem(accessCodeKey(examId));
+}
+function setCachedAccessCode(examId: string, code: string) {
+  if (typeof window === "undefined") return;
+  sessionStorage.setItem(accessCodeKey(examId), code);
+}
 
 interface ArenaProps {
   examId?: string;
@@ -38,6 +52,14 @@ export default function Arena({ examId, mode = "exam" }: ArenaProps) {
   const [examRoom, setExamRoom]     = useState<ExamRoomDTO | null>(null);
   const [loading, setLoading]       = useState(true);
   const [accessError, setAccessError] = useState<string | null>(null);
+
+  // Access-code gate — shown instead of the arena when the assessment requires
+  // a code and none has been verified yet in this tab.
+  const [needsAccessCode, setNeedsAccessCode] = useState(false);
+  const [accessCode, setAccessCode]           = useState<string | null>(null);
+  const [codeInput, setCodeInput]             = useState("");
+  const [codeError, setCodeError]             = useState("");
+  const [verifyingCode, setVerifyingCode]     = useState(false);
 
   // Countdown
   const [remainingSecs, setRemainingSecs] = useState(0);
@@ -59,24 +81,57 @@ export default function Arena({ examId, mode = "exam" }: ArenaProps) {
   // Entry-flow phase: briefing → active. Practice mode skips briefing.
   const [phase, setPhase] = useState<Phase>(mode === "practice" ? "active" : "briefing");
   const enforceLockdown   = mode === "exam";
+  // Audit/anti-cheat logging runs for both exams and TPs (take-home TPs get the
+  // same tab-switch/focus/copy-paste + multi-IP tracking, minus the fullscreen gate).
+  const auditEnabled      = mode === "exam" || mode === "tp";
 
-  // Load exam room
+  // Load exam room. If the assessment requires an access code and none is
+  // cached yet, show the code gate instead of a generic access-denied screen.
   useEffect(() => {
     if (!examId) {
       setAccessError("No exam ID provided.");
       setLoading(false);
       return;
     }
-    getExamRoom(examId)
+    const cached = getCachedAccessCode(examId) ?? undefined;
+    getExamRoom(examId, cached)
       .then((data) => {
         setExamRoom(data);
         setRemainingSecs(data.remainingSeconds);
+        if (cached) setAccessCode(cached);
       })
-      .catch((err: Error) => {
-        setAccessError(err.message || "Failed to load exam.");
+      .catch((err: unknown) => {
+        const isBadCode = err instanceof ApiException && err.status === 403
+          && /access code/i.test(err.message);
+        if (isBadCode) {
+          setNeedsAccessCode(true);
+        } else {
+          setAccessError(err instanceof Error ? err.message : "Failed to load exam.");
+        }
       })
       .finally(() => setLoading(false));
   }, [examId]);
+
+  async function handleAccessCodeSubmit() {
+    if (!examId || !codeInput.trim()) return;
+    setVerifyingCode(true);
+    setCodeError("");
+    try {
+      await verifyAssessmentAccessCode(examId, codeInput.trim());
+      setCachedAccessCode(examId, codeInput.trim());
+      setAccessCode(codeInput.trim());
+      setNeedsAccessCode(false);
+      setLoading(true);
+      const data = await getExamRoom(examId, codeInput.trim());
+      setExamRoom(data);
+      setRemainingSecs(data.remainingSeconds);
+    } catch {
+      setCodeError("Invalid access code — try again");
+    } finally {
+      setVerifyingCode(false);
+      setLoading(false);
+    }
+  }
 
   // Start countdown once after exam room loads
   useEffect(() => {
@@ -99,7 +154,7 @@ export default function Arena({ examId, mode = "exam" }: ArenaProps) {
   // Reports every violation to the assessment audit endpoint; bumps the
   // tab-switch counter shown in the sidebar for visibility violations.
   const reportViolation = (event: ViolationEvent) => {
-    if (!enforceLockdown || !examId || !userId) return;
+    if (!auditEnabled || !examId || !userId) return;
     if (event.type === "TAB_SWITCH") setTabSwitches((n) => n + 1);
     logCheatEvent({
       studentId:     userId,
@@ -149,6 +204,7 @@ export default function Arena({ examId, mode = "exam" }: ArenaProps) {
         sourceCode: code,
         language: lang.toUpperCase(),
         runOnly,
+        accessCode: accessCode ?? undefined,
       });
 
       const client = new StompClient({
@@ -158,19 +214,37 @@ export default function Arena({ examId, mode = "exam" }: ArenaProps) {
           client.subscribe(`/topic/submissions/${res.submissionId}`, (frame) => {
             try {
               const data = JSON.parse(frame.body);
-              const testResults: TestResult[] = (data.testCaseResults || []).map(
-                (r: any, i: number) => ({
-                  idx: i,
-                  status: r.status === "PASS" ? "pass" : r.status === "TIMEOUT" ? "tle" : "fail",
-                  executionTimeMs: r.executionTimeMs,
-                })
-              );
-              setResults(testResults);
-              const allPassed = testResults.length > 0 && testResults.every((r) => r.status === "pass");
-              const hasTle    = testResults.some((r) => r.status === "tle");
-              setVerdict(hasTle ? "tle" : allPassed ? "accepted" : "wrong");
-              setJudging(false);
-              client.deactivate();
+
+              // Two message shapes share this topic (see WebSocketSubmissionMessage
+              // on the backend) — neither has a `testCaseResults` array, so this
+              // must branch on `type` rather than reading a field that never exists.
+              if (data.type === "TEST_CASE_RESULT") {
+                const status: TestResult["status"] =
+                  data.status === "PASS" ? "pass"
+                  : data.status === "TIME_OUT" ? "tle"
+                  : data.status === "MEMORY_OUT" ? "mle"
+                  : data.status === "ERROR" ? "error"
+                  : "fail";
+                setResults((prev) => {
+                  const next = [...prev];
+                  next[data.testCaseIndex] = { idx: data.testCaseIndex, status, executionTimeMs: data.executionTimeMs };
+                  return next;
+                });
+                return;
+              }
+
+              if (data.type === "SUBMISSION_COMPLETE") {
+                const verdict: Verdict =
+                  data.finalStatus === "PASS" ? "accepted"
+                  : data.finalStatus === "TIME_OUT" ? "tle"
+                  : data.finalStatus === "MEMORY_OUT" ? "mle"
+                  : data.finalStatus === "RUNTIME_ERROR" ? "error"
+                  : data.finalStatus === "COMPILATION_ERROR" ? "error"
+                  : "wrong"; // FAIL
+                setVerdict(verdict);
+                setJudging(false);
+                client.deactivate();
+              }
             } catch (e) {
               console.error("STOMP parse error", e);
             }
@@ -185,7 +259,15 @@ export default function Arena({ examId, mode = "exam" }: ArenaProps) {
         if (stompRef.current?.active) {
           stompRef.current.deactivate();
           setJudging(false);
-          setVerdict((v) => (v === "pending" ? "wrong" : v));
+          setVerdict((v) => {
+            if (v !== "pending") return v;
+            console.warn("Judge result never arrived within 30s for submission", res.submissionId);
+            toast.warning(
+              "Still waiting on the judge",
+              "This is taking longer than expected. Your submission was recorded — try resubmitting in a moment if this persists."
+            );
+            return null;
+          });
         }
       }, 30_000);
     } catch (e) {
@@ -194,6 +276,69 @@ export default function Arena({ examId, mode = "exam" }: ArenaProps) {
       setVerdict(null);
     }
   };
+
+  // ── Access-code gate ──────────────────────────────────────────────────────
+  // Shown instead of everything else when the assessment requires a code the
+  // student hasn't verified yet in this tab (direct-link entry, expired cache).
+  if (needsAccessCode) {
+    return (
+      <div style={{
+        minHeight: "100vh", display: "flex", alignItems: "center",
+        justifyContent: "center", background: "var(--bg)",
+      }}>
+        <div style={{
+          background: "var(--surface)", border: "1px solid var(--line-2)",
+          borderRadius: 16, padding: "40px 48px", width: 380,
+          display: "flex", flexDirection: "column", gap: 20,
+        }}>
+          <div style={{ textAlign: "center" }}>
+            <Lock size={32} style={{ color: "var(--accent)", marginBottom: 12 }} />
+            <h2 style={{ fontSize: 20, fontWeight: 700, marginBottom: 4, color: "var(--ink)" }}>
+              Access code required
+            </h2>
+            <p style={{ fontSize: 13, color: "var(--ink-2)" }}>
+              Enter the access code to continue
+            </p>
+          </div>
+
+          <input
+            type="text"
+            placeholder="Access code"
+            value={codeInput}
+            onChange={(e) => setCodeInput(e.target.value)}
+            onKeyDown={(e) => e.key === "Enter" && handleAccessCodeSubmit()}
+            style={{
+              padding: "10px 14px", borderRadius: 10, fontSize: 14,
+              background: "var(--bg-2)",
+              border: `1px solid ${codeError ? "var(--danger)" : "var(--line-2)"}`,
+              color: "var(--ink)", outline: "none", textAlign: "center",
+              fontFamily: "var(--font-mono)", letterSpacing: "2px",
+            }}
+            autoFocus
+          />
+
+          {codeError && (
+            <p style={{ fontSize: 12, color: "var(--danger)", textAlign: "center", marginTop: -12 }}>
+              {codeError}
+            </p>
+          )}
+
+          <button
+            onClick={handleAccessCodeSubmit}
+            disabled={verifyingCode || !codeInput.trim()}
+            style={{
+              padding: "11px 0", borderRadius: 10, fontWeight: 700,
+              fontSize: 14, background: "var(--accent)", color: "#0a0a0a",
+              border: "none", cursor: verifyingCode ? "default" : "pointer",
+              opacity: verifyingCode || !codeInput.trim() ? 0.6 : 1,
+            }}
+          >
+            {verifyingCode ? "Checking…" : "Enter"}
+          </button>
+        </div>
+      </div>
+    );
+  }
 
   // ── Briefing screen (Exam/TP entry gate) ─────────────────────────────────
   if (!loading && !accessError && examRoom && phase === "briefing") {
@@ -210,6 +355,14 @@ export default function Arena({ examId, mode = "exam" }: ArenaProps) {
   }
 
   const problems = examRoom?.problems ?? [];
+  const taskRailItems: TaskRailItem[] = problems.map((p) => ({
+    id: p.problemId,
+    label: p.label,
+    title: p.title,
+    points: p.points,
+    status: p.solvedByCurrentUser ? "solved" : (p.attemptsUsed ?? 0) > 0 ? "attempted" : "unsolved",
+    meta: !p.solvedByCurrentUser && (p.attemptsUsed ?? 0) > 0 ? `×${p.attemptsUsed}` : undefined,
+  }));
 
   // Live exams hide verdicts/scores until the exam closes; TP & practice show
   // results live. The submitted banner reflects a prior accepted submission.
@@ -245,11 +398,11 @@ export default function Arena({ examId, mode = "exam" }: ArenaProps) {
 
       {/* Left: problem/task navigator */}
       <div style={leftPaneStyle}>
-        <QuestionNav
-          problems={problems}
-          currentIndex={activeProblemIdx}
+        <TaskRail
+          items={taskRailItems}
+          activeIndex={activeProblemIdx}
           onSelect={(i) => { setActiveProblemIdx(i); if (isMobile) setMobilePanel("statement"); }}
-          label={mode === "tp" ? "Tasks" : "Questions"}
+          heading={mode === "tp" ? "TASKS" : "QUESTIONS"}
         />
       </div>
 
@@ -416,12 +569,25 @@ export default function Arena({ examId, mode = "exam" }: ArenaProps) {
       loading={loading}
       loadingMessage="Loading…"
       accessError={accessError}
-      lockdown={enforceLockdown ? {
-        fullscreen:  true,
-        antiCheat:   true,
-        contextId:   examId,
-        onViolation: reportViolation,
-      } : undefined}
+      lockdown={
+        enforceLockdown
+          ? {
+              fullscreen:  true,
+              antiCheat:   true,
+              contextId:   examId,
+              auditDomain: "EXAM",
+              onViolation: reportViolation,
+            }
+          : mode === "tp"
+            // TP: audit logging without the fullscreen lockdown gate.
+            ? {
+                antiCheat:   true,
+                contextId:   examId,
+                auditDomain: "TP",
+                onViolation: reportViolation,
+              }
+            : undefined
+      }
       tabs={tabs}
     />
   );

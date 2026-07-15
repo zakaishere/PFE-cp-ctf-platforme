@@ -113,10 +113,10 @@ function PreStartView({ startTime, categoryCounts, hasTeam }: {
       maxWidth: 640, margin: "40px auto", textAlign: "center",
       display: "flex", flexDirection: "column", alignItems: "center", gap: 24,
     }}>
-      <Lock size={56} color="#475569" />
+      <Lock size={56} color="var(--ink-3)" />
       <div>
-        <div style={{ fontSize: 22, fontWeight: 800, color: "#f8fafc" }}>Challenges are locked</div>
-        <div style={{ fontSize: 13, color: "#64748b", marginTop: 6 }}>
+        <div style={{ fontSize: 22, fontWeight: 800, color: "var(--ink)" }}>Challenges are locked</div>
+        <div style={{ fontSize: 13, color: "var(--ink-2)", marginTop: 6 }}>
           {ms !== null ? "The competition starts in:" : "Waiting for the host to start the competition."}
         </div>
       </div>
@@ -151,11 +151,11 @@ function PreStartView({ startTime, categoryCounts, hasTeam }: {
               );
             })}
           </div>
-          <div style={{ fontSize: 11, color: "#64748b" }}>
+          <div style={{ fontSize: 11, color: "var(--ink-2)" }}>
             Categories: {Object.keys(categoryCounts).map(c => catFor(c).label).join(" · ")}
           </div>
           {totalChallenges !== null && (
-            <div style={{ fontSize: 12, color: "#94a3b8", marginTop: 8 }}>
+            <div style={{ fontSize: 12, color: "var(--ink-2)", marginTop: 8 }}>
               {totalChallenges} challenge{totalChallenges !== 1 ? "s" : ""} waiting
             </div>
           )}
@@ -173,7 +173,7 @@ function PreStartView({ startTime, categoryCounts, hasTeam }: {
             <div style={{ fontSize: 13, fontWeight: 700, color: "#fbbf24" }}>
               You don't have a team yet
             </div>
-            <div style={{ fontSize: 12, color: "#cbd5e1", marginTop: 4 }}>
+            <div style={{ fontSize: 12, color: "var(--ink)", marginTop: 4 }}>
               Join or create one before the competition starts.
             </div>
           </div>
@@ -201,10 +201,10 @@ function NoTeamView({ competition, status }: {
       maxWidth: 480, margin: "40px auto", textAlign: "center",
       display: "flex", flexDirection: "column", alignItems: "center", gap: 20,
     }}>
-      <Users size={56} color="#475569" />
+      <Users size={56} color="var(--ink-3)" />
       <div>
-        <div style={{ fontSize: 22, fontWeight: 800, color: "#f8fafc" }}>No Team Yet</div>
-        <div style={{ fontSize: 13, color: "#64748b", marginTop: 6 }}>
+        <div style={{ fontSize: 22, fontWeight: 800, color: "var(--ink)" }}>No Team Yet</div>
+        <div style={{ fontSize: 13, color: "var(--ink-2)", marginTop: 6 }}>
           You need to be on a team to view and solve challenges.
         </div>
       </div>
@@ -221,7 +221,7 @@ function NoTeamView({ competition, status }: {
       ) : status === "ENDED" ? (
         <div style={{
           background: "rgba(148,163,184,0.08)", border: "1px solid rgba(148,163,184,0.2)",
-          borderRadius: 8, padding: "12px 16px", fontSize: 13, color: "#94a3b8",
+          borderRadius: 8, padding: "12px 16px", fontSize: 13, color: "var(--ink-2)",
         }}>
           This competition has ended — team registration is closed.
         </div>
@@ -240,14 +240,14 @@ function NoTeamView({ competition, status }: {
 function Unit({ n, label }: { n: number; label: string }) {
   return (
     <div style={{ display: "flex", flexDirection: "column", alignItems: "center" }}>
-      <span style={{ fontSize: 34, color: "#f8fafc", lineHeight: 1 }}>{pad2(n)}</span>
-      <span style={{ fontSize: 10, color: "#475569", marginTop: 6, letterSpacing: "0.08em", textTransform: "uppercase" }}>
+      <span style={{ fontSize: 34, color: "var(--ink)", lineHeight: 1 }}>{pad2(n)}</span>
+      <span style={{ fontSize: 10, color: "var(--ink-3)", marginTop: 6, letterSpacing: "0.08em", textTransform: "uppercase" }}>
         {label}
       </span>
     </div>
   );
 }
-function Sep() { return <span style={{ fontSize: 30, color: "#334155", lineHeight: 1 }}>:</span>; }
+function Sep() { return <span style={{ fontSize: 30, color: "var(--line-2)", lineHeight: 1 }}>:</span>; }
 
 // ── Active board ─────────────────────────────────────────────────────────────
 
@@ -336,21 +336,21 @@ function ActiveBoard({ competitionId, challenges, isEnded }: {
 
         {/* Search bar */}
         <div className="ctf-chall-search">
-          <Search size={14} color="#64748b" />
+          <Search size={14} color="var(--ink-2)" />
           <input
             className="input"
             placeholder="Search challenges…"
             value={query}
             onChange={(e) => setQuery(e.target.value)}
-            style={{ background: "transparent", border: "none", color: "#f8fafc", flex: 1 }}
+            style={{ background: "transparent", border: "none", color: "var(--ink)", flex: 1 }}
           />
         </div>
 
         {/* Grid */}
         {filtered.length === 0 ? (
           <div style={{
-            border: "1px solid #1e293b", borderRadius: 8, padding: 60,
-            textAlign: "center", color: "#475569",
+            border: "1px solid var(--line)", borderRadius: 8, padding: 60,
+            textAlign: "center", color: "var(--ink-3)",
           }}>
             {challenges.length === 0
               ? "No challenges have been revealed yet."
@@ -372,8 +372,8 @@ function ActiveBoard({ competitionId, challenges, isEnded }: {
         {isEnded && (
           <div style={{
             marginTop: 18, padding: "10px 14px",
-            background: "#0f172a", border: "1px solid #1e293b", borderRadius: 8,
-            fontSize: 12, color: "#94a3b8", textAlign: "center",
+            background: "var(--bg-2)", border: "1px solid var(--line)", borderRadius: 8,
+            fontSize: 12, color: "var(--ink-2)", textAlign: "center",
           }}>
             Competition has ended — challenges remain visible for review but submissions are closed.
           </div>
@@ -386,7 +386,7 @@ function ActiveBoard({ competitionId, challenges, isEnded }: {
 function PageSpinner() {
   return (
     <div style={{ display: "flex", justifyContent: "center", padding: 60 }}>
-      <Loader2 size={28} style={{ animation: "spin 1s linear infinite", color: "#6366f1" }} />
+      <Loader2 size={28} style={{ animation: "spin 1s linear infinite", color: "var(--brand)" }} />
     </div>
   );
 }

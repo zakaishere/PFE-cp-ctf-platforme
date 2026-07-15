@@ -31,9 +31,9 @@ export default function CTFNotificationBell({ notifications, unreadCount, onMark
         title="Notifications"
         style={{
           position: "relative",
-          background: "transparent", border: "1px solid #334155",
+          background: "transparent", border: "1px solid var(--line-2)",
           borderRadius: 6, padding: "6px 8px", cursor: "pointer",
-          color: "#94a3b8", display: "inline-flex", alignItems: "center", gap: 4,
+          color: "var(--ink-2)", display: "inline-flex", alignItems: "center", gap: 4,
         }}
       >
         <Bell size={14} />
@@ -43,7 +43,7 @@ export default function CTFNotificationBell({ notifications, unreadCount, onMark
             background: "#ef4444", color: "#fff",
             fontSize: 9, fontWeight: 700, borderRadius: 10,
             padding: "1px 5px", minWidth: 16, textAlign: "center",
-            border: "1px solid #0b1220",
+            border: "1px solid var(--bg-2)",
           }}>
             {unreadCount > 99 ? "99+" : unreadCount}
           </span>
@@ -62,25 +62,25 @@ export default function CTFNotificationBell({ notifications, unreadCount, onMark
             onClick={(e) => e.stopPropagation()}
             style={{
               width: 360, maxWidth: "92vw", height: "100vh",
-              background: "#0b1220", borderLeft: "1px solid #1e293b",
+              background: "var(--bg-2)", borderLeft: "1px solid var(--line)",
               display: "flex", flexDirection: "column",
               animation: "ctf-panel-in 200ms ease",
             }}
           >
             <div style={{
-              padding: "14px 16px", borderBottom: "1px solid #1e293b",
+              padding: "14px 16px", borderBottom: "1px solid var(--line)",
               display: "flex", justifyContent: "space-between", alignItems: "center",
             }}>
               <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
                 <Bell size={14} color="#a78bfa" />
-                <span style={{ fontSize: 14, fontWeight: 700, color: "#f8fafc" }}>Notifications</span>
-                <span style={{ fontSize: 11, color: "#64748b" }}>
+                <span style={{ fontSize: 14, fontWeight: 700, color: "var(--ink)" }}>Notifications</span>
+                <span style={{ fontSize: 11, color: "var(--ink-2)" }}>
                   {notifications.length} total
                 </span>
               </div>
               <button
                 onClick={() => setOpen(false)}
-                style={{ background: "none", border: "none", color: "#64748b", cursor: "pointer", padding: 4 }}
+                style={{ background: "none", border: "none", color: "var(--ink-2)", cursor: "pointer", padding: 4 }}
                 aria-label="Close"
               >
                 <X size={14} />
@@ -89,7 +89,7 @@ export default function CTFNotificationBell({ notifications, unreadCount, onMark
 
             <div style={{ flex: 1, overflowY: "auto", padding: "8px 0" }}>
               {notifications.length === 0 ? (
-                <div style={{ textAlign: "center", padding: "40px 16px", color: "#475569", fontSize: 13 }}>
+                <div style={{ textAlign: "center", padding: "40px 16px", color: "var(--ink-3)", fontSize: 13 }}>
                   No notifications yet.
                 </div>
               ) : notifications.map((n, i) => {
@@ -97,21 +97,21 @@ export default function CTFNotificationBell({ notifications, unreadCount, onMark
                 return (
                   <div key={n.id} style={{
                     padding: "10px 16px",
-                    borderBottom: i < notifications.length - 1 ? "1px solid #0f172a" : "none",
+                    borderBottom: i < notifications.length - 1 ? "1px solid var(--bg-2)" : "none",
                     display: "flex", gap: 10, alignItems: "flex-start",
                   }}>
                     <div style={{ color: s.accent, marginTop: 2, flexShrink: 0 }}>{s.icon}</div>
                     <div style={{ flex: 1, minWidth: 0 }}>
-                      <div style={{ fontSize: 12, fontWeight: 600, color: "#f8fafc" }}>{n.title}</div>
+                      <div style={{ fontSize: 12, fontWeight: 600, color: "var(--ink)" }}>{n.title}</div>
                       {n.body && (
-                        <div style={{ fontSize: 11, color: "#94a3b8", marginTop: 2, lineHeight: 1.5,
+                        <div style={{ fontSize: 11, color: "var(--ink-2)", marginTop: 2, lineHeight: 1.5,
                           fontStyle: n.type === "CUSTOM" ? "italic" : "normal",
                           whiteSpace: "pre-wrap", wordBreak: "break-word",
                         }}>
                           {n.body}
                         </div>
                       )}
-                      <div style={{ fontSize: 10, color: "#475569", marginTop: 4 }}>
+                      <div style={{ fontSize: 10, color: "var(--ink-3)", marginTop: 4 }}>
                         {timeAgo(n.sentAt)}
                       </div>
                     </div>
@@ -147,14 +147,14 @@ function stylesFor(t: CTFNotificationType): { icon: React.ReactNode; accent: str
     case "HINT_ADDED":             return { icon: <Lightbulb size={14} />,     accent: "#fbbf24" };
     case "CHALLENGE_UPDATED":      return { icon: <Bell size={14} />,          accent: "#60a5fa" };
     case "COMPETITION_PAUSED":     return { icon: <Pause size={14} />,         accent: "#f59e0b" };
-    case "COMPETITION_RESUMED":    return { icon: <Play size={14} />,          accent: "#22c55e" };
+    case "COMPETITION_RESUMED":    return { icon: <Play size={14} />,          accent: "var(--success)" };
     case "COMPETITION_ENDING_SOON":return { icon: <AlertTriangle size={14} />, accent: "#f87171" };
-    case "COMPETITION_ENDED":      return { icon: <Trophy size={14} />,        accent: "#94a3b8" };
-    case "COMPETITION_STARTED":    return { icon: <Trophy size={14} />,        accent: "#22c55e" };
+    case "COMPETITION_ENDED":      return { icon: <Trophy size={14} />,        accent: "var(--ink-2)" };
+    case "COMPETITION_STARTED":    return { icon: <Trophy size={14} />,        accent: "var(--success)" };
     case "SCOREBOARD_FROZEN":      return { icon: <Snowflake size={14} />,     accent: "#22d3ee" };
     case "SCOREBOARD_UNFROZEN":    return { icon: <Flame size={14} />,         accent: "#fb923c" };
     case "TEAM_DISQUALIFIED":      return { icon: <Ban size={14} />,           accent: "#f87171" };
-    case "CUSTOM":                 return { icon: <Megaphone size={14} />,     accent: "#94a3b8" };
-    default:                       return { icon: <Bell size={14} />,          accent: "#94a3b8" };
+    case "CUSTOM":                 return { icon: <Megaphone size={14} />,     accent: "var(--ink-2)" };
+    default:                       return { icon: <Bell size={14} />,          accent: "var(--ink-2)" };
   }
 }

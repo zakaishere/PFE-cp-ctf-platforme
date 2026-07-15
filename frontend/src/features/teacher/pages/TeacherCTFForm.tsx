@@ -283,7 +283,8 @@ const TeacherCTFForm = ({ editId }: Props) => {
           difficulty:          c.difficulty,
           basePoints:          String(c.basePoints),
           plainFlag:           "",
-          flagType:            (c.flagType === "DYNAMIC" ? "DYNAMIC" : "STATIC") as "STATIC" | "DYNAMIC",
+          // Practice challenges are solo — the flag is always static.
+          flagType:            "STATIC" as const,
           flagFormat:          c.flagFormat ?? "",
           requiresInstance:    c.requiresInstance ?? false,
           dockerImage:         c.dockerImage ?? "",
@@ -463,7 +464,7 @@ const TeacherCTFForm = ({ editId }: Props) => {
         });
         toast.success("Challenge created", publish ? "Challenge is now live." : "Saved as draft.");
       }
-      router.push("/teacher/ctf");
+      router.push("/teacher/ctf/practice");
     } catch (err: unknown) {
       const apiErr = err as { fieldErrors?: Record<string, string>; message?: string };
       if (apiErr?.fieldErrors) {
@@ -623,72 +624,27 @@ const TeacherCTFForm = ({ editId }: Props) => {
           </div>
 
           <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
-            {/* Flag type toggle */}
+            {/* Practice challenges are solo (no teams), so the flag is always
+                static — one flag for everyone. Dynamic per-team flags only
+                apply to competitions. */}
             <div>
-              <label className="psp-form-label">Flag Type *</label>
-              <div style={{ display: "flex", gap: 8 }}>
-                {(["STATIC", "DYNAMIC"] as const).map(type => (
-                  <label key={type} style={{
-                    flex: 1, display: "flex", alignItems: "flex-start", gap: 10,
-                    padding: "10px 14px", borderRadius: 6, cursor: "pointer",
-                    border: `1px solid ${form.flagType === type ? "var(--blue)" : "var(--border)"}`,
-                    background: form.flagType === type ? "rgba(96,165,250,0.08)" : "var(--bg-secondary)",
-                  }}>
-                    <input
-                      type="radio"
-                      name="flagType"
-                      value={type}
-                      checked={form.flagType === type}
-                      onChange={() => set("flagType", type)}
-                      style={{ marginTop: 2, accentColor: "var(--blue)" }}
-                    />
-                    <div>
-                      <div style={{ fontSize: 13, fontWeight: 600, color: "var(--text-primary)" }}>
-                        {type === "STATIC" ? "Static" : "Dynamic"}
-                      </div>
-                      <div style={{ fontSize: 11, color: "var(--text-muted)", marginTop: 2 }}>
-                        {type === "STATIC"
-                          ? "One flag for all teams — you set it now."
-                          : "Per-team unique flag — auto-generated, injected into the Docker container."}
-                      </div>
-                    </div>
-                  </label>
-                ))}
-              </div>
+              <label className="psp-form-label">
+                {isEdit ? "New Flag (leave blank to keep current)" : "Flag *"}
+              </label>
+              <input
+                className="psp-form-input"
+                value={form.plainFlag}
+                onChange={e => set("plainFlag", e.target.value)}
+                placeholder="e.g. CTF{example_flag}"
+                spellCheck={false}
+                autoComplete="off"
+              />
+              <p style={{ fontSize: 11, color: "var(--text-muted)", marginTop: 4 }}>
+                Any format you want — e.g. <code style={{ background: "var(--bg-tertiary)", padding: "0 4px", borderRadius: 2 }}>HTB{"{...}"}</code>, <code style={{ background: "var(--bg-tertiary)", padding: "0 4px", borderRadius: 2 }}>UNICTF{"{...}"}</code>, or any string.
+                Stored as SHA-256 — never visible again after saving.
+              </p>
+              <FieldError errors={errors} fieldName="plainFlag" />
             </div>
-
-            {/* Plain flag input — only for STATIC */}
-            {form.flagType === "STATIC" && (
-              <div>
-                <label className="psp-form-label">
-                  {isEdit ? "New Flag (leave blank to keep current)" : "Flag *"}
-                </label>
-                <input
-                  className="psp-form-input"
-                  value={form.plainFlag}
-                  onChange={e => set("plainFlag", e.target.value)}
-                  placeholder="e.g. CTF{example_flag}"
-                  spellCheck={false}
-                  autoComplete="off"
-                />
-                <p style={{ fontSize: 11, color: "var(--text-muted)", marginTop: 4 }}>
-                  Any format you want — e.g. <code style={{ background: "var(--bg-tertiary)", padding: "0 4px", borderRadius: 2 }}>HTB{"{...}"}</code>, <code style={{ background: "var(--bg-tertiary)", padding: "0 4px", borderRadius: 2 }}>UNICTF{"{...}"}</code>, or any string.
-                  Stored as SHA-256 — never visible again after saving.
-                </p>
-                <FieldError errors={errors} fieldName="plainFlag" />
-              </div>
-            )}
-
-            {/* Dynamic flag info */}
-            {form.flagType === "DYNAMIC" && (
-              <div style={{
-                padding: "10px 14px", borderRadius: 6,
-                background: "rgba(96,165,250,0.06)", border: "1px solid rgba(96,165,250,0.2)",
-                fontSize: 12, color: "var(--text-secondary)", lineHeight: 1.5,
-              }}>
-                Each team receives a unique flag automatically generated by the server using your format template (e.g. <code style={{ fontFamily: "monospace" }}>UNICTF{"{…}"}</code>). It will be injected into the Docker container via environment variables — make sure your challenge reads and exposes it to the player.
-              </div>
-            )}
 
             <div>
               <label className="psp-form-label">Flag Format Hint (shown to students)</label>
@@ -1000,7 +956,7 @@ const TeacherCTFForm = ({ editId }: Props) => {
 
         {/* ═══ Footer actions ══════════════════════════════════════════════ */}
         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", paddingBottom: 32 }}>
-          <Link href="/teacher/ctf">
+          <Link href="/teacher/ctf/practice">
             <button className="psp-btn psp-btn-secondary" style={{ display: "flex", alignItems: "center", gap: 6 }}>
               <ArrowLeft size={14} /> Cancel
             </button>

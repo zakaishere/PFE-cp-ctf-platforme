@@ -5,7 +5,8 @@ import Link from "next/link";
 import { AlertTriangle, Loader2, Lock, LogOut } from "lucide-react";
 import { FullscreenGate } from "@/components/arena/FullscreenGate";
 import { useAntiCheat, type ViolationEvent } from "@/hooks/useAntiCheat";
-import { APP_NAME, APP_MARK } from "@/lib/brand";
+import { pingAuditSession, type AuditDomain } from "@/lib/api";
+import { APP_NAME } from "@/lib/brand";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -28,6 +29,9 @@ export interface LockdownPolicy {
   fullscreen?:   boolean;
   antiCheat?:    boolean;
   contextId?:    string;
+  /** When set (with contextId), pings the audit session endpoint on entry so
+   *  the platform records this participant's IP for multi-IP detection. */
+  auditDomain?:  AuditDomain;
   onViolation?:  (e: ViolationEvent) => void;
 }
 
@@ -135,6 +139,13 @@ export default function ArenaShell({
       lockdown?.onViolation?.(ev);
     },
   });
+
+  // Audit session heartbeat — one fire-and-forget IP capture on entry.
+  const acDomain = lockdown?.auditDomain;
+  useEffect(() => {
+    if (!acEnabled || !acDomain || acContext === "__disabled__") return;
+    pingAuditSession(acDomain, acContext).catch(() => { /* never disrupt the arena */ });
+  }, [acEnabled, acDomain, acContext]);
 
   const active = tabs.find((t) => t.key === currentTab) ?? tabs[0];
 
@@ -254,12 +265,7 @@ function TopBar({ title, subtitle, leftExtras, backHref, backLabel, remainingSec
         color: "var(--ink)", fontWeight: 700, fontSize: 15,
         padding: "0 18px", borderRight: "1px solid var(--line-2)", flex: "none",
       }}>
-        <div style={{
-          width: 28, height: 28, background: "var(--accent)", borderRadius: 8,
-          display: "grid", placeItems: "center",
-          color: "#0a0a0a", font: "700 12px var(--font-mono)",
-          boxShadow: "0 0 12px rgba(0,255,0,.4)",
-        }}>{APP_MARK}</div>
+        <img src="/algora-logo-icon.png" alt="" width={28} height={28} style={{ objectFit: "contain" }} />
         {APP_NAME}
       </div>
 

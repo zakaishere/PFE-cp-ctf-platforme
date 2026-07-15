@@ -133,7 +133,7 @@ const TeacherCTF = () => {
                 <Trophy size={13} /> Competitions
               </button>
             </Link>
-            <Link href="/teacher/ctf/new">
+            <Link href="/teacher/ctf/practice/new">
               <button className="psp-btn psp-btn-secondary">
                 <Flag size={13} /> New Challenge
               </button>
@@ -226,7 +226,7 @@ const TeacherCTF = () => {
                 {search || catFilter !== "all" || diffFilter !== "all" || statusFilter !== "all"
                   ? "Try adjusting your filters."
                   : <>Create your first CTF challenge.{" "}
-                    <Link href="/teacher/ctf/new" style={{ color: "var(--brand)", fontWeight: 600 }}>Get started →</Link>
+                    <Link href="/teacher/ctf/practice/new" style={{ color: "var(--brand)", fontWeight: 600 }}>Get started →</Link>
                   </>
                 }
               </div>
@@ -337,6 +337,20 @@ function ChallengeRow({ challenge: c, onToggle, onDelete }: RowProps) {
       <span className={`psp-badge ${diffBadge(c.difficulty)}`} style={{ fontSize: 10 }}>
         {c.difficulty.charAt(0) + c.difficulty.slice(1).toLowerCase()}
       </span>
+
+      {/* Visibility — public (practice) vs private (competition) */}
+      {(() => {
+        const v = c.isLibrary
+          ? { cls: "b-priv", label: "Library", title: "Reusable library template" }
+          : c.competitionId
+            ? { cls: "b-comp", label: "Private", title: "Belongs to a competition" }
+            : { cls: "b-pub", label: "Public", title: "Available in student practice" };
+        return (
+          <span className={`psp-badge ${v.cls}`} style={{ fontSize: 10 }} title={v.title}>
+            {v.label}
+          </span>
+        );
+      })()}
 
       {/* Status */}
       <span className={`psp-badge ${c.isActive ? "b-tp" : "b-priv"}`} style={{ fontSize: 10 }}>

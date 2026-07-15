@@ -6,7 +6,7 @@ import Navbar from "@/components/Navbar";
 import Spinner from "@/components/ui/Spinner";
 import { FileText, Calendar, Search, BookOpen } from "lucide-react";
 import { getAssessments, requestToJoinAssessment } from "@/lib/api";
-import { useToast } from "@/hooks/use-toast";
+import { toast } from "@/components/ui/PSPToast";
 import { EventCard, type EventStatus } from "@/components/ui/EventCard";
 
 type AssessmentStatus = "LIVE" | "UPCOMING" | "OPEN" | "CLOSED" | string;
@@ -69,7 +69,6 @@ type TabKey = "All" | "Live Exams" | "Open TPs" | "Closed";
 
 export default function ExamsTpsPage() {
   const router = useRouter();
-  const { toast } = useToast();
   const [assessments, setAssessments] = useState<any[]>([]);
   const [loading, setLoading]         = useState(true);
   const [activeTab, setActiveTab]     = useState<TabKey>("All");
@@ -92,12 +91,12 @@ export default function ExamsTpsPage() {
         case "request":
           await requestToJoinAssessment(id);
           patchAssessment(id, { myJoinStatus: "PENDING" });
-          toast({ title: "Request sent", description: "You'll be notified when approved." });
+          toast.success("Request sent", "You'll be notified when approved.");
           break;
         case "register":
         case "enter-code":
           patchAssessment(id, { myJoinStatus: "APPROVED" });
-          toast({ title: "Access granted!" });
+          toast.success("Access granted!");
           break;
         case "enter":
         case "lobby":
@@ -109,11 +108,12 @@ export default function ExamsTpsPage() {
           else router.push(`/arena/exam/${id}`);
           break;
       }
-    } catch (e: any) {
-      if (e.message?.includes("409")) {
+    } catch (e) {
+      const message = e instanceof Error ? e.message : "";
+      if (message.includes("409")) {
         patchAssessment(id, { myJoinStatus: "APPROVED" });
       } else {
-        toast({ title: "Action failed", description: e.message, variant: "destructive" });
+        toast.error("Action failed", message);
       }
     }
   };

@@ -471,13 +471,15 @@ function SubmissionsTab({
 }
 
 function StatusBadge({ status }: { status: string }) {
+  // Plain practice (no assessmentId/competitionId) uses the results.status
+  // vocabulary — PASS/FAIL/TIME_OUT/ERROR/MEMORY_OUT — matching
+  // ProblemController.getMySubmissions's unscoped branch.
   const config: Record<string, { color: string; bg: string; label: string }> = {
-    ACCEPTED:              { color: "var(--success-ink)", bg: "rgba(87,217,163,0.1)",  label: "Accepted"      },
-    WRONG_ANSWER:          { color: "var(--danger-ink)", bg: "rgba(255,107,74,0.1)",  label: "Wrong Answer"  },
-    TIME_LIMIT_EXCEEDED:   { color: "#ffc107", bg: "rgba(255,193,7,0.1)",   label: "Time Limit"    },
-    RUNTIME_ERROR:         { color: "#c678dd", bg: "rgba(198,120,221,0.1)", label: "Runtime Error" },
-    COMPILATION_ERROR:     { color: "#888",    bg: "rgba(136,136,136,0.1)", label: "Compile Error" },
-    MEMORY_LIMIT_EXCEEDED: { color: "#56b6c2", bg: "rgba(86,182,194,0.1)",  label: "Memory Limit"  },
+    PASS:       { color: "var(--success-ink)", bg: "rgba(87,217,163,0.1)",  label: "Pass"        },
+    FAIL:       { color: "var(--danger-ink)", bg: "rgba(255,107,74,0.1)",  label: "Fail"        },
+    TIME_OUT:   { color: "#ffc107", bg: "rgba(255,193,7,0.1)",   label: "Time Out"   },
+    ERROR:      { color: "#c678dd", bg: "rgba(198,120,221,0.1)", label: "Error"      },
+    MEMORY_OUT: { color: "#56b6c2", bg: "rgba(86,182,194,0.1)",  label: "Memory Out" },
   };
   const c = config[status] ?? { color: "#888", bg: "rgba(136,136,136,0.1)", label: status };
   return (

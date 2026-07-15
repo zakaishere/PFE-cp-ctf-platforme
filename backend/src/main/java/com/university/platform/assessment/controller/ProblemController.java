@@ -4,9 +4,12 @@ import com.university.platform.assessment.dto.CreateProblemDTO;
 import com.university.platform.assessment.dto.ProblemBrowseDTO;
 import com.university.platform.assessment.dto.ProblemDetailDTO;
 import com.university.platform.assessment.dto.UpdateProblemDTO;
+import com.university.platform.assessment.model.AssessmentProblem;
 import com.university.platform.assessment.model.Problem;
 import com.university.platform.assessment.model.TestCase;
+import com.university.platform.assessment.repository.AssessmentProblemRepository;
 import com.university.platform.assessment.repository.ProblemRepository;
+import com.university.platform.competition.repository.CompetitionProblemRepository;
 import com.university.platform.execution.dto.RunRequestDTO;
 import com.university.platform.execution.dto.RunResultDTO;
 import com.university.platform.execution.repository.SubmissionRepository;
@@ -43,6 +46,8 @@ import java.util.stream.Collectors;
 public class ProblemController {
 
     private final ProblemRepository problemRepository;
+    private final AssessmentProblemRepository assessmentProblemRepository;
+    private final CompetitionProblemRepository competitionProblemRepository;
     private final TeacherRepository teacherRepository;
     private final JwtService jwtService;
     private final SubmissionRepository submissionRepository;
@@ -60,12 +65,17 @@ public class ProblemController {
         Teacher teacher = teacherRepository.findById(teacherId).orElse(null);
 
         String diffStr = dto.getDifficultyLevel() != null ? dto.getDifficultyLevel().toUpperCase() : "EASY";
+        boolean isPublic = dto.getIsPublic() != null ? dto.getIsPublic() : false;
+        Problem.ProblemVisibility visibility = dto.getVisibility() != null
+                ? Problem.ProblemVisibility.valueOf(dto.getVisibility())
+                : (isPublic ? Problem.ProblemVisibility.GLOBAL : Problem.ProblemVisibility.PRIVATE);
 
         Problem problem = Problem.builder()
                 .title(dto.getTitle())
                 .description(dto.getDescription())
                 .difficultyLevel(Problem.DifficultyLevel.valueOf(diffStr))
-                .isPublic(dto.getIsPublic() != null ? dto.getIsPublic() : false)
+                .isPublic(isPublic)
+                .visibility(visibility)
                 .timeLimitMs(dto.getTimeLimitMs() != null ? dto.getTimeLimitMs() : 2000)
                 .memoryLimitMb(dto.getMemoryLimitMb() != null ? dto.getMemoryLimitMb() : 256)
                 .createdBy(teacher)
@@ -284,13 +294,30 @@ public class ProblemController {
 
     @Transactional
     @GetMapping("/picker")
-    public ResponseEntity<?> getProblemsForPicker(@RequestHeader("Authorization") String authHeader) {
+    public ResponseEntity<?> getProblemsForPicker(
+            @RequestParam(name = "for", required = false) String forScope,
+            @RequestHeader("Authorization") String authHeader) {
+
+        UUID callerId = UUID.fromString(jwtService.parseToken(authHeader.substring(7)).getSubject());
+
+        // Scoped picker (TP/exam builder): GLOBAL problems, problems flagged for
+        // this exact scope, plus the caller's own PRIVATE problems. No `for` param
+        // (legacy/unscoped callers) keeps the old behavior of showing everything.
+        Problem.ProblemVisibility scoped = "TP".equalsIgnoreCase(forScope) ? Problem.ProblemVisibility.TP_ONLY
+                : "EXAM".equalsIgnoreCase(forScope) ? Problem.ProblemVisibility.EXAM_ONLY
+                : null;
+
         List<Map<String, Object>> result = problemRepository.findAll().stream()
+                .filter(p -> scoped == null
+                        || p.getVisibility() == Problem.ProblemVisibility.GLOBAL
+                        || p.getVisibility() == scoped
+                        || (p.getCreatedBy() != null && callerId.equals(p.getCreatedBy().getId())))
                 .map(p -> Map.<String, Object>of(
                         "problemId", p.getProblemId(),
                         "title", p.getTitle(),
                         "difficulty", p.getDifficultyLevel().name(),
-                        "isPublic", Boolean.TRUE.equals(p.getIsPublic())
+                        "isPublic", Boolean.TRUE.equals(p.getIsPublic()),
+                        "visibility", p.getVisibility().name()
                 ))
                 .toList();
         return ResponseEntity.ok(result);
@@ -300,14 +327,39 @@ public class ProblemController {
     @GetMapping("/{id}/my-submissions")
     public ResponseEntity<?> getMySubmissions(
             @PathVariable UUID id,
+            @RequestParam(required = false) UUID assessmentId,
+            @RequestParam(required = false) UUID competitionId,
             @RequestHeader("Authorization") String authHeader) {
 
         String token = authHeader.substring(7);
         UUID userId  = UUID.fromString(jwtService.parseToken(token).getSubject());
 
         Pageable pageable = PageRequest.of(0, 20, Sort.by("timestamp").descending());
+        // Optional scope: the TP/exam/CP "My Submissions" tab shows only attempts
+        // made inside that assessment/competition, not the student's whole
+        // practice history.
         List<com.university.platform.execution.model.Submission> subs =
-                submissionRepository.findMySubmissionsForProblem(userId, id, pageable);
+                assessmentId != null ? submissionRepository.findMySubmissionsForProblemInAssessment(userId, id, assessmentId, pageable)
+                : competitionId != null ? submissionRepository.findMySubmissionsForProblemInCompetition(userId, id, competitionId, pageable)
+                : submissionRepository.findMySubmissionsForProblem(userId, id, pageable);
+
+        // Result.pointsAwarded is a generic practice-gamification score
+        // (EASY=10/MEDIUM=20/HARD=30, unrelated to any assessment/competition) —
+        // inside a scoped "My Submissions" tab that number is meaningless next to
+        // the overview page's real score. Substitute the actual point value for
+        // this problem in this context instead.
+        Integer assessmentMaxPoints =
+                assessmentId != null ? assessmentProblemRepository.findByAssessment_AssessmentIdAndProblem_ProblemId(assessmentId, id)
+                        .map(AssessmentProblem::effectiveMaxPoints).orElse(null)
+                : competitionId != null ? competitionProblemRepository.findByCompetitionIdAndProblem_ProblemId(competitionId, id)
+                        .map(com.university.platform.competition.model.CompetitionProblem::getPoints).orElse(null)
+                : null;
+
+        // CP uses the AC/WA/TLE vocabulary (competition_submissions.verdict);
+        // everything else (practice, TP, exam) uses the same PASS/FAIL/...
+        // vocabulary as results.status — this tab must not always speak CP,
+        // even though it's shared across all three arena types.
+        boolean cpVocabulary = competitionId != null;
 
         LocalDateTime now = LocalDateTime.now();
         List<Map<String, Object>> result = subs.stream().map(s -> {
@@ -315,20 +367,23 @@ public class ProblemController {
             String status;
             long   timeMs    = 0;
             long   memoryKb  = 0;
+            String passStatus = cpVocabulary ? "ACCEPTED" : "PASS";
 
             if (Boolean.TRUE.equals(s.getIsAccepted())) {
-                status = "ACCEPTED";
+                status = passStatus;
             } else if (r != null) {
-                status = switch (r.getStatus()) {
-                    case PASS       -> "ACCEPTED";
-                    case FAIL       -> "WRONG_ANSWER";
-                    case TIME_OUT   -> "TIME_LIMIT_EXCEEDED";
-                    case ERROR      -> "RUNTIME_ERROR";
-                    case MEMORY_OUT -> "MEMORY_LIMIT_EXCEEDED";
-                };
+                status = cpVocabulary
+                        ? switch (r.getStatus()) {
+                            case PASS       -> "ACCEPTED";
+                            case FAIL       -> "WRONG_ANSWER";
+                            case TIME_OUT   -> "TIME_LIMIT_EXCEEDED";
+                            case ERROR      -> "RUNTIME_ERROR";
+                            case MEMORY_OUT -> "MEMORY_LIMIT_EXCEEDED";
+                        }
+                        : r.getStatus().name(); // PASS / FAIL / TIME_OUT / ERROR / MEMORY_OUT
             } else {
                 status = s.getStatus() == com.university.platform.execution.model.Submission.SubmissionStatus.PENDING
-                        ? "PENDING" : "COMPILATION_ERROR";
+                        ? "PENDING" : (cpVocabulary ? "COMPILATION_ERROR" : "ERROR");
             }
 
             if (r != null) {
@@ -336,11 +391,15 @@ public class ProblemController {
                 memoryKb = r.getMemoryUsedMb()      != null ? r.getMemoryUsedMb() * 1024L : 0;
             }
 
+            int score = assessmentMaxPoints != null
+                    ? (passStatus.equals(status) ? assessmentMaxPoints : 0)
+                    : (r != null ? r.getPointsAwarded().intValue() : 0);
+
             return Map.<String, Object>of(
                     "id",          s.getSubmissionId(),
                     "status",      status,
                     "language",    s.getLanguage().name(),
-                    "score",       r != null ? r.getPointsAwarded().intValue() : 0,
+                    "score",       score,
                     "timeMs",      timeMs,
                     "memoryKb",    memoryKb,
                     "submittedAt", s.getTimestamp().toString(),

@@ -27,7 +27,9 @@ public class EphemeralRunRuntime implements ContainerRuntime {
     public boolean isAvailable() {
         try {
             Process p = new ProcessBuilder("docker", "info").redirectErrorStream(true).start();
-            boolean finished = p.waitFor(3, TimeUnit.SECONDS);
+            // `docker info` observed taking ~5s on this dev machine under load — 3s made
+            // this boot-time probe a false-negative every time despite Docker being fine.
+            boolean finished = p.waitFor(10, TimeUnit.SECONDS);
             if (!finished) {
                 p.destroyForcibly();
                 return false;

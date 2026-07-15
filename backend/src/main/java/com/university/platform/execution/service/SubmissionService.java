@@ -4,6 +4,7 @@ import com.university.platform.assessment.JoinRequest;
 import com.university.platform.assessment.JoinRequestStatus;
 import com.university.platform.assessment.VisibilityMode;
 import com.university.platform.assessment.repository.JoinRequestRepository;
+import com.university.platform.assessment.repository.TPFinalSubmissionRepository;
 import com.university.platform.execution.service.DockerService.TestCaseResult;
 import com.university.platform.assessment.model.LiveExam;
 import com.university.platform.assessment.model.OpenTP;
@@ -29,6 +30,8 @@ import org.springframework.amqp.rabbit.core.RabbitTemplate;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.support.TransactionSynchronization;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
 import org.springframework.web.server.ResponseStatusException;
 
 import java.time.LocalDateTime;
@@ -44,6 +47,7 @@ public class SubmissionService {
     private final ProblemRepository     problemRepository;
     private final AssessmentRepository  assessmentRepository;
     private final JoinRequestRepository joinRequestRepository;
+    private final TPFinalSubmissionRepository tpFinalSubmissionRepository;
     private final RabbitTemplate        rabbitTemplate;
     private final com.university.platform.config.RateLimitConfig rateLimitConfig;
 
@@ -78,6 +82,13 @@ public class SubmissionService {
             if (assessment != null) {
                 attemptNumber = 1 + (int) submissionRepository
                         .countAttempts(student.getId(), problem.getProblemId(), assessment.getAssessmentId());
+                // Enforce per-task attempt cap on TPs (null = unlimited).
+                if (assessment instanceof OpenTP openTP
+                        && openTP.getMaxAttemptsAllowed() != null
+                        && attemptNumber > openTP.getMaxAttemptsAllowed()) {
+                    throw new ResponseStatusException(HttpStatus.FORBIDDEN,
+                            "You have reached the maximum number of attempts for this task.");
+                }
             } else {
                 attemptNumber = 1 + (int) submissionRepository
                         .countByStudent_IdAndProblem_ProblemIdAndAssessmentIsNullAndPlanningModeFalse(
@@ -114,13 +125,35 @@ public class SubmissionService {
                 .runOnly(request.isRunOnly())
                 .build();
 
-        rabbitTemplate.convertAndSend(
-                RabbitMQConfig.EXCHANGE_NAME,
-                RabbitMQConfig.ROUTING_KEY,
-                message
-        );
-        log.info("[SUBMISSION] Published job {} to queue '{}'",
-                submission.getSubmissionId(), RabbitMQConfig.QUEUE_NAME);
+        // Publish only after this transaction commits. RabbitMQ can deliver to
+        // the worker faster than Postgres commits the row on another
+        // connection — the worker's findById(submissionId) would then race
+        // ahead of the commit and silently drop the job ("not found in DB"),
+        // leaving the submission stuck PENDING forever with no result. This
+        // was intermittent under a cold JVM/connection pool and became
+        // consistent once warm, hence "takes a long time then returns WA" —
+        // the frontend's 30s timeout was firing because the message was
+        // never actually processed at all.
+        UUID submissionId = submission.getSubmissionId();
+        if (TransactionSynchronizationManager.isSynchronizationActive()) {
+            TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
+                @Override
+                public void afterCommit() {
+                    rabbitTemplate.convertAndSend(
+                            RabbitMQConfig.EXCHANGE_NAME,
+                            RabbitMQConfig.ROUTING_KEY,
+                            message
+                    );
+                    log.info("[SUBMISSION] Published job {} to queue '{}' (after commit)",
+                            submissionId, RabbitMQConfig.QUEUE_NAME);
+                }
+            });
+        } else {
+            // No active transaction (shouldn't happen — this method is @Transactional) —
+            // publish immediately rather than silently dropping the job.
+            rabbitTemplate.convertAndSend(RabbitMQConfig.EXCHANGE_NAME, RabbitMQConfig.ROUTING_KEY, message);
+            log.info("[SUBMISSION] Published job {} to queue '{}' (no active tx)", submissionId, RabbitMQConfig.QUEUE_NAME);
+        }
 
         return new SubmissionResponseDTO(
                 submission.getSubmissionId(),
@@ -133,6 +166,11 @@ public class SubmissionService {
     private void validateStudentAccess(Assessment assessment, UUID studentId, String providedCode) {
         VisibilityMode mode = assessment.getVisibilityMode();
 
+        if (!Boolean.TRUE.equals(assessment.getIsPublished())) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN,
+                    "This assessment has not been published yet.");
+        }
+
         if (assessment instanceof LiveExam liveExam) {
             LocalDateTime now = LocalDateTime.now();
             LocalDateTime start = liveExam.getScheduledStartTime();
@@ -142,13 +180,35 @@ public class SubmissionService {
             }
         }
 
+        if (assessment instanceof OpenTP openTP) {
+            if (openTP.getDeadline() != null && LocalDateTime.now().isAfter(openTP.getDeadline())) {
+                throw new ResponseStatusException(HttpStatus.FORBIDDEN,
+                        "The deadline for this TP has passed.");
+            }
+            // Once the student clicks "Submit TP" their work is locked.
+            if (tpFinalSubmissionRepository.existsByAssessmentIdAndStudentId(
+                    assessment.getAssessmentId(), studentId)) {
+                throw new ResponseStatusException(HttpStatus.FORBIDDEN,
+                        "You have already submitted this TP — no further changes are allowed.");
+            }
+        }
+
         switch (mode) {
             case MODULE_ONLY -> {
                 // Module filtering is enforced at the discovery level; no additional check at submission.
             }
             case ACCESS_CODE -> {
                 if (assessment instanceof LiveExam liveExam) {
-                    if (!liveExam.getStrictAccessCode().equals(providedCode)) {
+                    String expected = liveExam.getStrictAccessCode();
+                    if (expected != null && !expected.isBlank() && !expected.equals(providedCode)) {
+                        throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Invalid access code.");
+                    }
+                } else if (assessment instanceof OpenTP openTP) {
+                    String expected = openTP.getStrictAccessCode();
+                    // A blank/unset code (TPs created before this column existed never
+                    // had one) means nothing was ever configured — don't hard-lock the
+                    // TP with an unsatisfiable check; only enforce when a real code is set.
+                    if (expected != null && !expected.isBlank() && !expected.equals(providedCode)) {
                         throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Invalid access code.");
                     }
                 }

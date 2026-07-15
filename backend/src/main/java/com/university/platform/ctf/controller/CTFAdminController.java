@@ -1,5 +1,7 @@
 package com.university.platform.ctf.controller;
 
+import com.university.platform.ctf.dto.CTFAdminChallengeDTO;
+import com.university.platform.ctf.dto.CTFAdminInstanceDTO;
 import com.university.platform.ctf.dto.CTFGraphPointDTO;
 import com.university.platform.ctf.dto.CTFResourceConfigRequest;
 import com.university.platform.ctf.dto.CTFScoreboardEntryDTO;
@@ -13,6 +15,9 @@ import com.university.platform.ctf.repository.CTFTeamRepository;
 import com.university.platform.ctf.service.CTFAdminService;
 import com.university.platform.ctf.service.CTFCompetitionService;
 import com.university.platform.ctf.service.CTFInstanceService;
+import com.university.platform.audit.AuditDomain;
+import com.university.platform.audit.AuditEventService;
+import com.university.platform.audit.Severity;
 import com.university.platform.identity.service.JwtService;
 import io.jsonwebtoken.Claims;
 import lombok.RequiredArgsConstructor;
@@ -38,6 +43,10 @@ public class CTFAdminController {
     private final CTFCompetitionService competitionService;
     private final CTFInstanceService   instanceService;
     private final JwtService           jwtService;
+    private final AuditEventService    auditEventService;
+
+    /** Platform-level context for admin events that act on no single entity. */
+    private static final UUID PLATFORM_CONTEXT = new UUID(0L, 0L);
 
     @GetMapping("/config")
     public ResponseEntity<CTFResourceConfig> getConfig(
@@ -54,7 +63,21 @@ public class CTFAdminController {
 
         requireAdmin(authHeader);
         UUID adminId = extractUserId(authHeader);
-        return ResponseEntity.ok(adminService.updateResourceConfig(dto, adminId));
+        CTFResourceConfig updated = adminService.updateResourceConfig(dto, adminId);
+
+        auditEventService.record(
+                AuditDomain.ADMIN, "CTF_CONFIG_UPDATED",
+                PLATFORM_CONTEXT, null, adminId, null, null,
+                Map.of(
+                        "maxConcurrentInstances", String.valueOf(updated.getMaxConcurrentInstances()),
+                        "maxInstancesPerUser", String.valueOf(updated.getMaxInstancesPerUser()),
+                        "maxInstanceDurationMinutes", String.valueOf(updated.getMaxInstanceDurationMinutes()),
+                        "containerMemoryLimitMb", String.valueOf(updated.getContainerMemoryLimitMb()),
+                        "containerCpuPercent", String.valueOf(updated.getContainerCpuPercent()),
+                        "cleanupIntervalSeconds", String.valueOf(updated.getCleanupIntervalSeconds())
+                ),
+                Severity.INFO);
+        return ResponseEntity.ok(updated);
     }
 
     @GetMapping("/submissions")
@@ -78,11 +101,16 @@ public class CTFAdminController {
     }
 
     @GetMapping("/challenges")
-    public ResponseEntity<List<CTFChallenge>> getAllChallengesAdmin(
+    public ResponseEntity<List<CTFAdminChallengeDTO>> getAllChallengesAdmin(
             @RequestHeader("Authorization") String authHeader) {
 
         requireTeacherOrAdmin(authHeader);
-        return ResponseEntity.ok(adminService.getAllChallengesAdmin());
+        // Map to a DTO that never carries flagValue/flagHash — the raw entity
+        // must never be serialized to the browser.
+        List<CTFAdminChallengeDTO> dtos = adminService.getAllChallengesAdmin().stream()
+                .map(CTFAdminChallengeDTO::from)
+                .toList();
+        return ResponseEntity.ok(dtos);
     }
 
     /**
@@ -144,10 +172,15 @@ public class CTFAdminController {
     // ── Admin: instances ─────────────────────────────────────────────────────
 
     @GetMapping("/instances")
-    public ResponseEntity<List<CTFInstance>> getAllInstances(
+    public ResponseEntity<List<CTFAdminInstanceDTO>> getAllInstances(
             @RequestHeader("Authorization") String authHeader) {
         requireAdmin(authHeader);
-        return ResponseEntity.ok(instanceService.getAllActiveInstances());
+        // Map to a DTO that never carries flagValue — the live flag must never
+        // be serialized to the browser.
+        List<CTFAdminInstanceDTO> dtos = instanceService.getAllActiveInstances().stream()
+                .map(CTFAdminInstanceDTO::from)
+                .toList();
+        return ResponseEntity.ok(dtos);
     }
 
     @DeleteMapping("/instances/{instanceId}")
@@ -156,6 +189,12 @@ public class CTFAdminController {
             @RequestHeader("Authorization") String authHeader) {
         requireAdmin(authHeader);
         instanceService.adminStopInstance(instanceId);
+
+        auditEventService.record(
+                AuditDomain.ADMIN, "CTF_INSTANCE_FORCE_STOPPED",
+                instanceId, null, extractUserId(authHeader), null, null,
+                Map.of("instanceId", instanceId.toString()),
+                Severity.WARN);
         return ResponseEntity.ok(Map.of("message", "Instance stopped."));
     }
 
@@ -174,6 +213,13 @@ public class CTFAdminController {
             @RequestHeader("Authorization") String authHeader) {
         requireAdmin(authHeader);
         instanceService.prewarmImages(imageRefs);
+
+        auditEventService.record(
+                AuditDomain.ADMIN, "CTF_IMAGES_PREWARMED",
+                PLATFORM_CONTEXT, null, extractUserId(authHeader), null, null,
+                Map.of("imageCount", String.valueOf(imageRefs.size()),
+                       "images", String.join(", ", imageRefs)),
+                Severity.INFO);
         return ResponseEntity.ok(Map.of("message", "Pre-warm started for " + imageRefs.size() + " image(s)."));
     }
 

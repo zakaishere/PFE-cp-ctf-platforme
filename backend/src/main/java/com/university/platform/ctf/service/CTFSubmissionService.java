@@ -62,6 +62,10 @@ public class CTFSubmissionService {
         if (!Boolean.TRUE.equals(challenge.getIsActive())) {
             throw new IllegalStateException("This challenge is not active.");
         }
+        if (challenge.getCompetitionId() != null || Boolean.TRUE.equals(challenge.getIsLibrary())) {
+            // Competition copies must be solved through the competition arena only.
+            throw new IllegalStateException("This challenge is not available in practice.");
+        }
 
         if (solveRepository.findByChallengeIdAndUserId(challengeId, userId).isPresent()) {
             throw new CTFAlreadySolvedException("You have already solved this challenge!");

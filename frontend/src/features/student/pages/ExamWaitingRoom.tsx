@@ -4,15 +4,20 @@ import { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
 import Navbar from "@/components/Navbar";
 import Spinner from "@/components/ui/Spinner";
-import { ArrowLeft, Clock, Lock, FileText, Calendar, Play, ShieldCheck, AlertTriangle } from "lucide-react";
-import { getAssessments } from "@/lib/api";
+import { ArrowLeft, Clock, Lock, FileText, Calendar, Play, ShieldCheck, AlertTriangle, Hourglass, UserCheck, Send, Loader2 } from "lucide-react";
+import { getAssessments, requestToJoinAssessment, verifyAssessmentAccessCode } from "@/lib/api";
+import { toast } from "@/components/ui/PSPToast";
 
 /**
  * Pre-start waiting room for a LIVE_EXAM. Reached by clicking a SCHEDULED
  * (UPCOMING) exam card. Pulls its data from the existing assessments list
- * endpoint (no new API), shows a live countdown to the start time, an
- * access-code field when required, and gates the "Enter exam" button until
- * the scheduled start. Once live it links into the arena at /arena/exam/[id].
+ * endpoint (no new API), shows a live countdown to the start time, and — the
+ * important part — lets the student get *cleared for entry before the exam
+ * starts*:
+ *   • REQUEST_BASED → send a join request and wait for teacher approval.
+ *   • ACCESS_CODE   → enter the access code to confirm access.
+ * Once cleared, the student simply waits for the countdown; when it goes live
+ * the "Enter exam" button unlocks and drops them straight into /arena/exam/[id].
  *
  * The backend does NOT enforce a start-time gate on the exam-room endpoint,
  * so this page holds that gate on the client.
@@ -45,6 +50,11 @@ export default function ExamWaitingRoom({ id }: { id: string }) {
   const [notFound, setNotFound] = useState(false);
   const [now, setNow]         = useState(() => Date.now());
   const [code, setCode]       = useState("");
+  const [codeConfirmed, setCodeConfirmed] = useState(false);
+  const [verifyingCode, setVerifyingCode] = useState(false);
+  const [codeError, setCodeError]         = useState("");
+  const [joinStatus, setJoinStatus] = useState<string | null>(null);
+  const [requesting, setRequesting] = useState(false);
   const refetchedAtStart      = useRef(false);
 
   const load = () =>
@@ -52,7 +62,11 @@ export default function ExamWaitingRoom({ id }: { id: string }) {
       .then((list) => {
         const found = (list as any[]).find((a) => String(a.id) === String(id));
         if (!found) setNotFound(true);
-        else { setExam(found); setNotFound(false); }
+        else {
+          setExam(found);
+          setNotFound(false);
+          if (found.myJoinStatus) setJoinStatus(found.myJoinStatus);
+        }
       })
       .catch(() => setNotFound(true))
       .finally(() => setLoading(false));
@@ -64,6 +78,14 @@ export default function ExamWaitingRoom({ id }: { id: string }) {
     const t = setInterval(() => setNow(Date.now()), 1000);
     return () => clearInterval(t);
   }, []);
+
+  // Poll every 15s so a pending request flipping to approved — and the exam
+  // going live — show up without the student needing to reload.
+  useEffect(() => {
+    const t = setInterval(() => { load(); }, 15000);
+    return () => clearInterval(t);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [id]);
 
   const startMs = exam?.scheduledStartTime ? new Date(exam.scheduledStartTime).getTime() : null;
   const status: string = exam?.status ?? "";
@@ -80,6 +102,20 @@ export default function ExamWaitingRoom({ id }: { id: string }) {
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [started]);
+
+  const sendJoinRequest = async () => {
+    setRequesting(true);
+    try {
+      await requestToJoinAssessment(id);
+      setJoinStatus("PENDING");
+      toast.success("Request sent — waiting for your teacher to approve.");
+      load();
+    } catch (e: any) {
+      toast.error(e?.message || "Could not send request. Please try again.");
+    } finally {
+      setRequesting(false);
+    }
+  };
 
   if (loading) {
     return (
@@ -114,8 +150,35 @@ export default function ExamWaitingRoom({ id }: { id: string }) {
   }
 
   const vis = (exam.visibilityMode || (exam.strictAccessCode ? "ACCESS_CODE" : "MODULE_ONLY")).toUpperCase();
-  const needsCode = vis === "ACCESS_CODE";
-  const codeOk = !needsCode || code.trim() === String(exam.strictAccessCode ?? "").trim();
+  const needsCode    = vis === "ACCESS_CODE";
+  const needsRequest = vis === "REQUEST_BASED";
+
+  // "Cleared for entry": the student has done what's needed to be allowed in
+  // once the exam starts. MODULE_ONLY needs nothing; ACCESS_CODE needs the
+  // code verified server-side (never compared in the browser — the real
+  // value isn't sent to students); REQUEST_BASED needs an approved request.
+  const cleared =
+    needsRequest ? joinStatus === "APPROVED"
+    : needsCode  ? codeConfirmed
+    : true;
+
+  async function handleConfirmAccess() {
+    if (!code.trim()) return;
+    setVerifyingCode(true);
+    setCodeError("");
+    try {
+      await verifyAssessmentAccessCode(id, code.trim());
+      if (typeof window !== "undefined") {
+        sessionStorage.setItem(`arena_access_code_${id}`, code.trim());
+      }
+      setCodeConfirmed(true);
+      toast.success("Access confirmed — you're in.");
+    } catch {
+      setCodeError("Invalid access code — try again");
+    } finally {
+      setVerifyingCode(false);
+    }
+  }
 
   const t = breakdown((startMs ?? now) - now);
   const enterExam = () => router.push(`/arena/exam/${id}`);
@@ -166,54 +229,102 @@ export default function ExamWaitingRoom({ id }: { id: string }) {
                   {hasProblems ? "View result" : "Grades pending"}
                 </button>
               </div>
-            ) : isLive ? (
-              <>
-                <div style={{
-                  display: "flex", alignItems: "center", gap: 8, justifyContent: "center",
-                  color: "var(--accent)", fontSize: 13, fontWeight: 700, marginBottom: 16,
-                }}>
-                  <span style={{ width: 8, height: 8, borderRadius: "50%", background: "var(--accent)", boxShadow: "0 0 8px var(--accent)" }} />
-                  Exam is live now
-                </div>
-                {needsCode && <AccessCodeField code={code} setCode={setCode} ok={codeOk} />}
-                <button
-                  className="psp-btn psp-btn-primary"
-                  disabled={!codeOk}
-                  onClick={codeOk ? enterExam : undefined}
-                  style={{ width: "100%", justifyContent: "center", gap: 8, opacity: codeOk ? 1 : 0.6 }}
-                >
-                  <Play size={14} /> Enter exam
-                </button>
-              </>
             ) : (
               <>
-                <div style={{ textAlign: "center", marginBottom: 6, fontSize: 12.5, color: "var(--ink-2)" }}>
-                  Starts in
-                </div>
-                <div style={{ display: "flex", justifyContent: "center", gap: 10, marginBottom: 20 }}>
-                  {(t.d > 0 ? [["d", t.d], ["h", t.h], ["m", t.m], ["s", t.s]] : [["h", t.h], ["m", t.m], ["s", t.s]]).map(([label, val]) => (
-                    <div key={label as string} style={{
-                      background: "var(--bg-2)", border: "1px solid var(--line-2)", borderRadius: 8,
-                      padding: "10px 12px", minWidth: 56, textAlign: "center",
-                    }}>
-                      <div style={{ fontSize: 22, fontWeight: 800, fontFamily: "var(--font-mono)", color: "var(--ink)", lineHeight: 1 }}>
-                        {String(val).padStart(2, "0")}
-                      </div>
-                      <div style={{ fontSize: 10, color: "var(--ink-3)", textTransform: "uppercase", marginTop: 4 }}>{label}</div>
+                {/* Live indicator when the exam has started */}
+                {isLive && (
+                  <div style={{
+                    display: "flex", alignItems: "center", gap: 8, justifyContent: "center",
+                    color: "var(--accent)", fontSize: 13, fontWeight: 700, marginBottom: 16,
+                  }}>
+                    <span style={{ width: 8, height: 8, borderRadius: "50%", background: "var(--accent)", boxShadow: "0 0 8px var(--accent)" }} />
+                    Exam is live now
+                  </div>
+                )}
+
+                {/* Countdown while still upcoming */}
+                {!isLive && (
+                  <>
+                    <div style={{ textAlign: "center", marginBottom: 6, fontSize: 12.5, color: "var(--ink-2)" }}>
+                      Starts in
                     </div>
-                  ))}
-                </div>
-                {needsCode && <AccessCodeField code={code} setCode={setCode} ok={codeOk} />}
-                <button
-                  className="psp-btn psp-btn-primary"
-                  disabled
-                  style={{ width: "100%", justifyContent: "center", gap: 8, opacity: 0.55, cursor: "not-allowed" }}
-                >
-                  <Lock size={13} /> Not started yet
-                </button>
-                <div style={{ fontSize: 11.5, color: "var(--ink-3)", textAlign: "center", marginTop: 10 }}>
-                  This page will unlock automatically when the exam starts.
-                </div>
+                    <div style={{ display: "flex", justifyContent: "center", gap: 10, marginBottom: 20 }}>
+                      {(t.d > 0 ? [["d", t.d], ["h", t.h], ["m", t.m], ["s", t.s]] : [["h", t.h], ["m", t.m], ["s", t.s]]).map(([label, val]) => (
+                        <div key={label as string} style={{
+                          background: "var(--bg-2)", border: "1px solid var(--line-2)", borderRadius: 8,
+                          padding: "10px 12px", minWidth: 56, textAlign: "center",
+                        }}>
+                          <div style={{ fontSize: 22, fontWeight: 800, fontFamily: "var(--font-mono)", color: "var(--ink)", lineHeight: 1 }}>
+                            {String(val).padStart(2, "0")}
+                          </div>
+                          <div style={{ fontSize: 10, color: "var(--ink-3)", textTransform: "uppercase", marginTop: 4 }}>{label}</div>
+                        </div>
+                      ))}
+                    </div>
+                  </>
+                )}
+
+                {/* Registration / access — available BEFORE and after the start */}
+                {needsRequest && <RequestJoinBlock
+                  status={joinStatus}
+                  requesting={requesting}
+                  onRequest={sendJoinRequest}
+                />}
+                {needsCode && !cleared && (
+                  <>
+                    <AccessCodeField code={code} setCode={setCode} />
+                    {codeError && (
+                      <div style={{ fontSize: 12, color: "var(--danger)", textAlign: "center", marginBottom: 10 }}>
+                        {codeError}
+                      </div>
+                    )}
+                  </>
+                )}
+                {needsCode && !codeConfirmed && !isLive && (
+                  <button
+                    className="psp-btn psp-btn-primary"
+                    disabled={verifyingCode || !code.trim()}
+                    onClick={handleConfirmAccess}
+                    style={{ width: "100%", justifyContent: "center", gap: 8, marginBottom: 12, opacity: verifyingCode || !code.trim() ? 0.6 : 1 }}
+                  >
+                    <ShieldCheck size={14} /> {verifyingCode ? "Checking…" : "Confirm access"}
+                  </button>
+                )}
+
+                {/* Cleared-and-waiting confirmation */}
+                {cleared && !isLive && (
+                  <div style={{
+                    display: "flex", alignItems: "center", gap: 8, justifyContent: "center",
+                    color: "var(--accent)", fontSize: 12.5, fontWeight: 600, marginBottom: 14,
+                  }}>
+                    <UserCheck size={14} /> You&apos;re in — the exam will unlock automatically when it starts.
+                  </div>
+                )}
+
+                {/* Primary action */}
+                {isLive && cleared ? (
+                  <button
+                    className="psp-btn psp-btn-primary"
+                    onClick={enterExam}
+                    style={{ width: "100%", justifyContent: "center", gap: 8 }}
+                  >
+                    <Play size={14} /> Enter exam
+                  </button>
+                ) : isLive && !cleared ? (
+                  <div style={{ fontSize: 11.5, color: "var(--ink-3)", textAlign: "center", marginTop: 4 }}>
+                    {needsRequest
+                      ? "You need an approved request to enter this exam."
+                      : "Enter the access code above to enter this exam."}
+                  </div>
+                ) : cleared ? (
+                  <button
+                    className="psp-btn psp-btn-primary"
+                    disabled
+                    style={{ width: "100%", justifyContent: "center", gap: 8, opacity: 0.55, cursor: "not-allowed" }}
+                  >
+                    <Lock size={13} /> Not started yet
+                  </button>
+                ) : null}
               </>
             )}
           </div>
@@ -245,8 +356,53 @@ function Meta({ icon, text }: { icon: React.ReactNode; text: string }) {
   );
 }
 
-function AccessCodeField({ code, setCode, ok }: { code: string; setCode: (v: string) => void; ok: boolean }) {
-  const entered = code.trim().length > 0;
+/** REQUEST_BASED: request-to-join and its status, usable before the start. */
+function RequestJoinBlock({
+  status, requesting, onRequest,
+}: { status: string | null; requesting: boolean; onRequest: () => void }) {
+  if (status === "APPROVED") return null; // handled by the "you're in" banner
+
+  if (status === "PENDING") {
+    return (
+      <div style={{
+        display: "flex", alignItems: "center", gap: 10, padding: "12px 14px", marginBottom: 14,
+        background: "var(--warn-soft)", border: "1px solid var(--line-2)", borderRadius: 8,
+        color: "var(--warn)", fontSize: 12.5, fontWeight: 600,
+      }}>
+        <Hourglass size={15} />
+        Request sent — waiting for your teacher to approve. Keep this page open.
+      </div>
+    );
+  }
+
+  if (status === "REJECTED") {
+    return (
+      <div style={{
+        display: "flex", alignItems: "center", gap: 10, padding: "12px 14px", marginBottom: 14,
+        background: "var(--danger-soft)", border: "1px solid var(--line-2)", borderRadius: 8,
+        color: "var(--danger)", fontSize: 12.5, fontWeight: 600,
+      }}>
+        <AlertTriangle size={15} />
+        Your request was declined by the teacher.
+      </div>
+    );
+  }
+
+  // NOT_REQUESTED (or null)
+  return (
+    <button
+      className="psp-btn psp-btn-primary"
+      onClick={onRequest}
+      disabled={requesting}
+      style={{ width: "100%", justifyContent: "center", gap: 8, marginBottom: 12, opacity: requesting ? 0.7 : 1 }}
+    >
+      {requesting ? <Loader2 size={14} style={{ animation: "spin 1s linear infinite" }} /> : <Send size={14} />}
+      {requesting ? "Sending request…" : "Request to join"}
+    </button>
+  );
+}
+
+function AccessCodeField({ code, setCode }: { code: string; setCode: (v: string) => void }) {
   return (
     <div style={{ marginBottom: 16 }}>
       <label className="psp-form-label" style={{ display: "flex", alignItems: "center", gap: 6 }}>
@@ -258,14 +414,6 @@ function AccessCodeField({ code, setCode, ok }: { code: string; setCode: (v: str
         onChange={(e) => setCode(e.target.value)}
         placeholder="Enter the code from your teacher"
       />
-      {entered && (
-        <div style={{
-          display: "flex", alignItems: "center", gap: 6, marginTop: 6,
-          fontSize: 11.5, color: ok ? "var(--accent)" : "var(--danger)",
-        }}>
-          {ok ? <><ShieldCheck size={12} /> Code accepted</> : "Code doesn't match yet"}
-        </div>
-      )}
     </div>
   );
 }

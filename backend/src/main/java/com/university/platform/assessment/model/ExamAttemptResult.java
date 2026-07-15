@@ -64,6 +64,34 @@ public class ExamAttemptResult {
     @Builder.Default
     private int attempts = 0;
 
+    @Column(name = "last_score", nullable = false)
+    @Builder.Default
+    private int lastScore = 0;
+
+    @Column(name = "last_passed", nullable = false)
+    @Builder.Default
+    private int lastPassed = 0;
+
+    @Column(name = "last_total", nullable = false)
+    @Builder.Default
+    private int lastTotal = 0;
+
+    /** True once this problem has been fully passed (bestPassed == bestTotal) at least once. */
+    @Column(name = "solved", nullable = false)
+    @Builder.Default
+    private boolean solved = false;
+
+    /** Attempts that weren't a full pass, counted before {@link #solved} first became true. */
+    @Column(name = "failed_attempts", nullable = false)
+    @Builder.Default
+    private int failedAttempts = 0;
+
+    /** Final awarded score after the assessment's configured scoring mode
+     *  (+ TP attempt-penalty, if enabled) is applied. This is what totals/grades sum. */
+    @Column(name = "earned_score", nullable = false)
+    @Builder.Default
+    private int earnedScore = 0;
+
     @Column(name = "finalized", nullable = false)
     @Builder.Default
     private boolean finalized = false;

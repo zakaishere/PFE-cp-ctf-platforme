@@ -54,4 +54,9 @@ public class LiveExam extends Assessment {
     @Column(name = "passing_score", nullable = false)
     @Builder.Default
     private Integer passingScore = 50;
+
+    /** LAST_SUBMISSION (final answer counts) or BEST_SUBMISSION (default, current behavior). */
+    @Column(name = "scoring_mode", nullable = false, length = 20)
+    @Builder.Default
+    private String scoringMode = "BEST_SUBMISSION";
 }

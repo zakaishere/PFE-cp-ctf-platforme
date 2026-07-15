@@ -259,13 +259,17 @@ public class ExecutionWorkerService {
         }
     }
 
+    // Mirrors results.status (PASS/FAIL/ERROR/TIME_OUT/MEMORY_OUT) exactly —
+    // this used to rename PASS/FAIL to CP-style ACCEPTED/WRONG_ANSWER on the
+    // wire, which caused the practice/TP/Exam arenas (which should show the
+    // same PASS/FAIL vocabulary as the DB) to display CP terminology instead.
     private String toFinalStatus(ResultStatus status) {
         return switch (status) {
-            case PASS       -> "ACCEPTED";
-            case FAIL       -> "WRONG_ANSWER";
+            case PASS       -> "PASS";
+            case FAIL       -> "FAIL";
             case ERROR      -> "RUNTIME_ERROR";
             case TIME_OUT   -> "TIME_OUT";
-            case MEMORY_OUT -> "MEMORY_LIMIT_EXCEEDED";
+            case MEMORY_OUT -> "MEMORY_OUT";
         };
     }
 

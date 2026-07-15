@@ -17,6 +17,8 @@ import java.security.NoSuchAlgorithmException;
 import java.util.Comparator;
 import java.util.HexFormat;
 import java.util.UUID;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipInputStream;
 
@@ -134,6 +136,40 @@ public class CTFStorageService {
                     .findFirst()
                     .orElse(null);
         }
+    }
+
+    /**
+     * Parses the first {@code EXPOSE <port>} instruction in the Dockerfile at
+     * the root of {@code dockerContext} and returns the port number.
+     *
+     * <p>Handles all common forms:
+     * <ul>
+     *   <li>{@code EXPOSE 8080}</li>
+     *   <li>{@code EXPOSE 1337/tcp}</li>
+     *   <li>{@code EXPOSE 9000/udp}</li>
+     *   <li>Multiple ports on one line: {@code EXPOSE 80 443} — first wins</li>
+     * </ul>
+     *
+     * @param dockerContext the directory that contains the {@code Dockerfile}
+     * @return the first exposed port, or {@code null} if the Dockerfile does not
+     *         exist or contains no {@code EXPOSE} instruction
+     */
+    public Integer parseDockerfileExposePort(Path dockerContext) {
+        Path dockerfile = dockerContext.resolve("Dockerfile");
+        if (!Files.exists(dockerfile)) return null;
+        Pattern pat = Pattern.compile("(?i)^\\s*EXPOSE\\s+(\\d{1,5})(?:/(?:tcp|udp))?");
+        try {
+            for (String line : Files.readAllLines(dockerfile)) {
+                Matcher m = pat.matcher(line);
+                if (m.find()) {
+                    int port = Integer.parseInt(m.group(1));
+                    if (port >= 1 && port <= 65535) return port;
+                }
+            }
+        } catch (IOException e) {
+            log.warn("Could not read Dockerfile at {}: {}", dockerfile, e.getMessage());
+        }
+        return null;
     }
 
     /**

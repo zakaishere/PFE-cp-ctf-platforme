@@ -23,6 +23,19 @@ public interface CTFChallengeRepository extends JpaRepository<CTFChallenge, UUID
     List<CTFChallenge> findByCategoryAndDifficultyAndIsActiveTrueAndDeletedFalse(
             CTFChallenge.CTFCategory category, CTFChallenge.CTFDifficulty difficulty);
 
+    // ── Practice-facing (standalone only: no competition copies, no library templates) ──
+
+    @Query("""
+        SELECT c FROM CTFChallenge c
+        WHERE c.isActive = true AND c.deleted = false
+          AND c.competitionId IS NULL AND c.isLibrary = false
+          AND (:category IS NULL OR c.category = :category)
+          AND (:difficulty IS NULL OR c.difficulty = :difficulty)
+        """)
+    List<CTFChallenge> findPracticeChallenges(
+            @Param("category") CTFChallenge.CTFCategory category,
+            @Param("difficulty") CTFChallenge.CTFDifficulty difficulty);
+
     Optional<CTFChallenge> findByIdAndDeletedFalse(UUID id);
 
     // ── Teacher-facing (own challenges, not deleted) ─────────────────────────

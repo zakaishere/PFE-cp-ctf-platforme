@@ -28,8 +28,8 @@ export default function NotificationsPage() {
     <div style={{ maxWidth: 760, margin: "0 auto" }}>
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 18 }}>
         <div>
-          <div style={{ fontSize: 22, fontWeight: 800, color: "#f8fafc" }}>Notifications</div>
-          <div style={{ fontSize: 13, color: "#64748b", marginTop: 2 }}>
+          <div style={{ fontSize: 22, fontWeight: 800, color: "var(--ink)" }}>Notifications</div>
+          <div style={{ fontSize: 13, color: "var(--ink-2)", marginTop: 2 }}>
             {ctx.notifications.length} total
             {ctx.unreadCount > 0 && ` · ${ctx.unreadCount} unread`}
           </div>
@@ -48,11 +48,11 @@ export default function NotificationsPage() {
       {ctx.notifications.length === 0 ? (
         <div style={{
           textAlign: "center", padding: 60,
-          background: "#0f172a", border: "1px solid #1e293b", borderRadius: 8,
+          background: "var(--bg-2)", border: "1px solid var(--line)", borderRadius: 8,
         }}>
-          <Bell size={36} color="#475569" style={{ margin: "0 auto 12px" }} />
-          <div style={{ fontSize: 14, fontWeight: 700, color: "#cbd5e1" }}>No notifications yet</div>
-          <div style={{ fontSize: 12, color: "#64748b", marginTop: 4 }}>
+          <Bell size={36} color="var(--ink-3)" style={{ margin: "0 auto 12px" }} />
+          <div style={{ fontSize: 14, fontWeight: 700, color: "var(--ink)" }}>No notifications yet</div>
+          <div style={{ fontSize: 12, color: "var(--ink-2)", marginTop: 4 }}>
             You'll be notified about new challenges, hints, and updates.
           </div>
         </div>
@@ -61,7 +61,7 @@ export default function NotificationsPage() {
           {grouped.map(group => (
             <div key={group.label}>
               <div style={{
-                fontSize: 11, color: "#475569",
+                fontSize: 11, color: "var(--ink-3)",
                 textTransform: "uppercase", letterSpacing: "0.06em", fontWeight: 700,
                 marginBottom: 8, padding: "0 4px",
               }}>
@@ -94,19 +94,19 @@ function NotificationRow({ n, unread, onView }: {
   return (
     <div style={{
       display: "flex", gap: 12, padding: "12px 14px",
-      background: unread ? "rgba(99,102,241,0.05)" : "#0f172a",
-      border: `1px solid ${unread ? "rgba(99,102,241,0.25)" : "#1e293b"}`,
+      background: unread ? "rgba(99,102,241,0.05)" : "var(--bg-2)",
+      border: `1px solid ${unread ? "rgba(99,102,241,0.25)" : "var(--line)"}`,
       borderRadius: 8,
     }}>
       <div style={{ color: v.accent, flexShrink: 0, marginTop: 2 }}>{v.icon}</div>
       <div style={{ flex: 1, minWidth: 0 }}>
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", gap: 8 }}>
-          <span style={{ fontSize: 13, fontWeight: 700, color: "#f8fafc" }}>{n.title}</span>
-          <span style={{ fontSize: 11, color: "#64748b", whiteSpace: "nowrap" }}>{relTime(n.sentAt)}</span>
+          <span style={{ fontSize: 13, fontWeight: 700, color: "var(--ink)" }}>{n.title}</span>
+          <span style={{ fontSize: 11, color: "var(--ink-2)", whiteSpace: "nowrap" }}>{relTime(n.sentAt)}</span>
         </div>
         {n.body && (
           <div style={{
-            fontSize: 12, color: "#94a3b8", marginTop: 4, lineHeight: 1.5,
+            fontSize: 12, color: "var(--ink-2)", marginTop: 4, lineHeight: 1.5,
             whiteSpace: "pre-wrap", wordBreak: "break-word",
             fontStyle: n.type === "CUSTOM" ? "italic" : "normal",
           }}>
@@ -142,15 +142,15 @@ function visualFor(n: CTFNotificationDTO): { icon: React.ReactNode; accent: stri
     case "HINT_ADDED":             return { icon: <Lightbulb size={16} />,     accent: "#fbbf24" };
     case "CHALLENGE_UPDATED":      return { icon: <Bell size={16} />,          accent: "#60a5fa" };
     case "COMPETITION_PAUSED":     return { icon: <Pause size={16} />,         accent: "#f59e0b" };
-    case "COMPETITION_RESUMED":    return { icon: <Play size={16} />,          accent: "#22c55e" };
+    case "COMPETITION_RESUMED":    return { icon: <Play size={16} />,          accent: "var(--success)" };
     case "COMPETITION_ENDING_SOON":return { icon: <AlertTriangle size={16} />, accent: "#f87171" };
     case "SCOREBOARD_FROZEN":      return { icon: <Snowflake size={16} />,     accent: "#22d3ee" };
     case "SCOREBOARD_UNFROZEN":    return { icon: <Flame size={16} />,         accent: "#fb923c" };
     case "COMPETITION_ENDED":      return { icon: <Trophy size={16} />,        accent: "#f59e0b" };
-    case "COMPETITION_STARTED":    return { icon: <Trophy size={16} />,        accent: "#22c55e" };
+    case "COMPETITION_STARTED":    return { icon: <Trophy size={16} />,        accent: "var(--success)" };
     case "TEAM_DISQUALIFIED":      return { icon: <Ban size={16} />,           accent: "#f87171" };
-    case "CUSTOM":                 return { icon: <Megaphone size={16} />,     accent: "#94a3b8" };
-    default:                       return { icon: <Bell size={16} />,          accent: "#94a3b8" };
+    case "CUSTOM":                 return { icon: <Megaphone size={16} />,     accent: "var(--ink-2)" };
+    default:                       return { icon: <Bell size={16} />,          accent: "var(--ink-2)" };
   }
 }
 

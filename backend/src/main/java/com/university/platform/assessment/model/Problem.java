@@ -54,6 +54,14 @@ public class Problem {
     @Builder.Default
     private Boolean isPublic = false;
 
+    /** Scopes where this problem is selectable from (practice bank, TP builder,
+     *  exam builder). Independent of {@link #isPublic}, which only gates the
+     *  student-facing practice bank. */
+    @Column(name = "visibility", nullable = false, length = 20)
+    @Enumerated(EnumType.STRING)
+    @Builder.Default
+    private ProblemVisibility visibility = ProblemVisibility.GLOBAL;
+
     @JsonIgnore
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "teacher_id", foreignKey = @ForeignKey(name = "fk_problems_teacher"))
@@ -86,6 +94,10 @@ public class Problem {
 
     public enum DifficultyLevel {
         EASY, MEDIUM, HARD
+    }
+
+    public enum ProblemVisibility {
+        GLOBAL, TP_ONLY, EXAM_ONLY, PRIVATE
     }
 }
 

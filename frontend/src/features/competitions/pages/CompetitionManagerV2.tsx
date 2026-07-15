@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import Navbar from "@/components/Navbar";
 import { Trophy, Plus, Calendar, Users, Search } from "lucide-react";
 import { getCompetitions } from "@/lib/api";
-import { useToast } from "@/hooks/use-toast";
+import { toast } from "@/components/ui/PSPToast";
 
 // ─── helpers ────────────────────────────────────────────────────────────────
 
@@ -27,7 +27,6 @@ type FilterKey = "all" | "registration" | "active" | "ended";
 // ─── Main ────────────────────────────────────────────────────────────────────
 
 export default function CompetitionManagerV2() {
-  const { toast } = useToast();
   const router = useRouter();
 
   const [list, setList]               = useState<any[]>([]);
@@ -39,7 +38,7 @@ export default function CompetitionManagerV2() {
     setListLoading(true);
     getCompetitions()
       .then(data => setList(data))
-      .catch(e => toast({ title: "Failed to load competitions", description: e.message, variant: "destructive" }))
+      .catch(e => toast.error("Failed to load competitions", e instanceof Error ? e.message : undefined))
       .finally(() => setListLoading(false));
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);

@@ -299,7 +299,11 @@ public class DockerService {
         cmd.add("--network"); cmd.add("none");
 
         cmd.add("--memory");  cmd.add(memFlag);
-        cmd.add("--cpus");    cmd.add("0.5");
+        // 0.5 cores made javac/compile-heavy languages the dominant latency cost
+        // (measured 6.6s @ 0.5 cores vs 2.2s @ 1.0 core for a trivial Java compile+run).
+        // Host has 8 cores; --cpus is a soft throttle, not a reservation, so this is
+        // safe even with several submissions judged concurrently.
+        cmd.add("--cpus");    cmd.add("1.0");
 
         if (enableStdin) cmd.add("-i");
 

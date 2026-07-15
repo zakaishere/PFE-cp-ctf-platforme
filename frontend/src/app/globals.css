@@ -2,6 +2,15 @@
 @tailwind components;
 @tailwind utilities;
 
+::selection {
+  background: #00ff66;
+  color: #030708;
+}
+::-moz-selection {
+  background: #00ff66;
+  color: #030708;
+}
+
 /* ── LIGHT THEME (default) ───────────────────────────────── */
 :root,
 [data-theme="light"] {
@@ -822,7 +831,7 @@ button, a, input, select, textarea, [role="button"] {
   from { opacity: 0; transform: translateY(12px); }
   to   { opacity: 1; transform: translateY(0); }
 }
-.slide-up { animation: slide-up 0.25s ease-out; }
+.slide-up { animation: slide-up 0.25s ease-out both; }
 
 /* ── Stagger children ────────────────────────────────────── */
 .stagger > *:nth-child(1) { animation-delay: 0ms;   }
@@ -831,6 +840,88 @@ button, a, input, select, textarea, [role="button"] {
 .stagger > *:nth-child(4) { animation-delay: 120ms; }
 .stagger > *:nth-child(5) { animation-delay: 160ms; }
 .stagger > *:nth-child(6) { animation-delay: 200ms; }
+
+/* ── Auth page entrance / accents ────────────────────────── */
+@keyframes logo-breathe {
+  0%, 100% { filter: drop-shadow(0 0 12px var(--accent-glow)); }
+  50%      { filter: drop-shadow(0 0 26px var(--accent-glow)) drop-shadow(0 0 44px var(--accent-dim)); }
+}
+.auth-logo-breathe { animation: logo-breathe 3s ease-in-out infinite; }
+
+@keyframes slide-in-right {
+  from { opacity: 0; transform: translateX(40px); }
+  to   { opacity: 1; transform: translateX(0); }
+}
+.auth-slide-in-right { animation: slide-in-right 0.5s ease-out both; }
+
+@keyframes grid-drift {
+  from { background-position: 0 0; }
+  to   { background-position: 28px 28px; }
+}
+.auth-grid-drift { animation: grid-drift 9s linear infinite; }
+
+@keyframes shake {
+  0%, 100% { transform: translateX(0); }
+  15%      { transform: translateX(-6px); }
+  30%      { transform: translateX(6px); }
+  45%      { transform: translateX(-4px); }
+  60%      { transform: translateX(4px); }
+  75%      { transform: translateX(-2px); }
+}
+.alert-shake { animation: shake 0.45s ease; }
+
+@keyframes btn-shimmer {
+  from { background-position: -200% center; }
+  to   { background-position: 200% center; }
+}
+.auth-submit .btn {
+  position: relative; overflow: hidden;
+}
+.auth-submit .btn::after {
+  content: '';
+  position: absolute; inset: 0;
+  background: linear-gradient(105deg, transparent 40%, rgba(255,255,255,.18) 50%, transparent 60%);
+  background-size: 200% 100%;
+  opacity: 0;
+  transition: opacity .2s;
+  pointer-events: none;
+}
+.auth-submit .btn:hover:not(:disabled)::after {
+  opacity: 1;
+  animation: btn-shimmer .6s ease forwards;
+}
+
+/* ── Unified dropdown (PSPDropdown.tsx) ──────────────────── */
+@keyframes psp-dd-in {
+  from { opacity: 0; transform: translateY(-8px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+.psp-dd-content[data-state="open"] { animation: psp-dd-in 0.15s ease-out; }
+.psp-dd-content[data-state="closed"] { animation: fade-in 0.1s ease-out reverse; }
+
+.psp-dd-item { color: var(--ink-2); background: transparent; transition: background .12s, color .12s; }
+.psp-dd-item[data-highlighted] { background: var(--surface-2); color: var(--ink); }
+.psp-dd-item-danger { color: var(--danger); }
+.psp-dd-item-danger[data-highlighted] { background: var(--danger-soft); color: var(--danger); }
+
+.psp-dd-icon {
+  width: 30px; height: 30px; border-radius: 8px; flex-shrink: 0;
+  display: flex; align-items: center; justify-content: center;
+  background: var(--surface-2); color: inherit;
+  transition: background .12s, color .12s;
+}
+.psp-dd-item[data-highlighted] .psp-dd-icon { background: var(--surface-3); }
+.psp-dd-item-danger[data-highlighted] .psp-dd-icon { background: rgba(240,99,122,.15); }
+
+/* ── Reduced motion ───────────────────────────────────────── */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
 
 /* ── Success check animation ─────────────────────────────── */
 @keyframes check-pop {
@@ -2218,13 +2309,9 @@ body,
   font-weight: 700; font-size: 16px; color: var(--ink);
   margin-right: 18px; white-space: nowrap;
 }
-.anav-mark {
-  width: 30px; height: 30px; border-radius: 9px;
-  background: var(--accent);
-  display: grid; place-items: center;
-  color: #0a0a0a; font-family: var(--font-mono), monospace;
-  font-weight: 700; font-size: 13px; flex-shrink: 0;
-  box-shadow: 0 0 12px rgba(0,255,0,.4);
+.anav-mark-img {
+  width: 30px; height: 30px; object-fit: contain; flex-shrink: 0;
+  filter: drop-shadow(0 0 8px rgba(0,255,0,.35));
 }
 .anav-links { display: flex; align-items: center; gap: 2px; }
 .anav-link {
@@ -2268,11 +2355,6 @@ body,
   padding: 5px 6px 5px 5px; border-radius: 10px; cursor: pointer;
 }
 .anav-me:hover { background: var(--surface); }
-.anav-av {
-  width: 32px; height: 32px; border-radius: 9px;
-  display: grid; place-items: center;
-  color: #1a1206; font-weight: 700; font-size: 12px; flex-shrink: 0;
-}
 .anav-nm { font-weight: 600; font-size: 13px; line-height: 1.15; color: var(--ink); }
 .anav-rl { font-size: 11px; color: var(--ink-3); }
 @media (max-width: 860px) {
@@ -2364,4 +2446,42 @@ input[type="range"]::-webkit-slider-runnable-track {
 input[type="range"]::-webkit-slider-thumb {
   background: #00FF00;
   box-shadow: 0 0 8px rgba(0,255,0,.4);
+}
+
+/* ================================================================
+   Student Dashboard — responsive layout (sd- namespace)
+   Content only; the navbar is owned elsewhere and untouched.
+   ================================================================ */
+.sd-hero {
+  display: grid;
+  grid-template-columns: 1.25fr 0.75fr;
+  gap: 0;
+}
+.sd-stats {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 12px;
+}
+.sd-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1.9fr) minmax(300px, 0.85fr);
+  gap: 18px;
+  align-items: start;
+}
+.sd-col { display: grid; gap: 18px; align-content: start; }
+.sd-row-hover { transition: background 140ms ease; }
+.sd-row-hover:hover { background: var(--surface-2); }
+.sd-lift { transition: transform 140ms ease, border-color 140ms ease; }
+.sd-lift:hover { transform: translateY(-1px); border-color: var(--line-2); }
+
+@media (max-width: 1080px) {
+  .sd-stats { grid-template-columns: repeat(2, 1fr); }
+  .sd-grid  { grid-template-columns: 1fr; }
+}
+@media (max-width: 720px) {
+  .sd-hero  { grid-template-columns: 1fr; }
+  .sd-hero-art { display: none; }
+}
+@media (max-width: 520px) {
+  .sd-stats { grid-template-columns: 1fr; }
 }

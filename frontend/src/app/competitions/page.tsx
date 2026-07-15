@@ -4,7 +4,7 @@ import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import Navbar from "@/components/Navbar";
 import Spinner from "@/components/ui/Spinner";
-import { useToast } from "@/hooks/use-toast";
+import { toast } from "@/components/ui/PSPToast";
 import { Trophy, Search, Calendar, FileText } from "lucide-react";
 import { getCompetitions, registerForCompetition, requestToJoinCompetition } from "@/lib/api";
 import { EventCard, type EventStatus } from "@/components/ui/EventCard";
@@ -91,7 +91,6 @@ function competitionStatus(status: string): EventStatus {
 
 export default function CompetitionsPage() {
   const router = useRouter();
-  const { toast } = useToast();
   const [competitions, setCompetitions] = useState<any[]>([]);
   const [loading, setLoading]           = useState(true);
   const [filter, setFilter]             = useState<FilterTab>("all");
@@ -100,7 +99,7 @@ export default function CompetitionsPage() {
   useEffect(() => {
     getCompetitions()
       .then(setCompetitions)
-      .catch(e => toast({ title: "Failed to load competitions", description: e.message, variant: "destructive" }))
+      .catch(e => toast.error("Failed to load competitions", e instanceof Error ? e.message : undefined))
       .finally(() => setLoading(false));
   }, []);
 
@@ -114,12 +113,12 @@ export default function CompetitionsPage() {
         case "enter-code":
           await registerForCompetition(id);
           patchComp(id, { myJoinStatus: "APPROVED" });
-          toast({ title: "Registered!", description: "Enter the lobby to prepare." });
+          toast.success("Registered!", "Enter the lobby to prepare.");
           break;
         case "request":
           await requestToJoinCompetition(id);
           patchComp(id, { myJoinStatus: "PENDING" });
-          toast({ title: "Request sent", description: "You'll be notified when approved." });
+          toast.success("Request sent", "You'll be notified when approved.");
           break;
         case "enter":
         case "lobby":
@@ -127,12 +126,13 @@ export default function CompetitionsPage() {
           router.push(`/competitions/${id}/lobby`);
           break;
       }
-    } catch (e: any) {
-      if (e.message?.includes("409")) {
+    } catch (e) {
+      const message = e instanceof Error ? e.message : "";
+      if (message.includes("409")) {
         if (action === "register" || action === "enter-code") patchComp(id, { myJoinStatus: "APPROVED" });
         if (action === "request")  patchComp(id, { myJoinStatus: "PENDING" });
       } else {
-        toast({ title: "Action failed", description: e.message, variant: "destructive" });
+        toast.error("Action failed", message);
       }
     }
   };

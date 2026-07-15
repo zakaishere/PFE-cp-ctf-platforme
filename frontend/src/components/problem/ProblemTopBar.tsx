@@ -3,7 +3,6 @@
 import Link from "next/link";
 import { CheckCircle2 } from "lucide-react";
 import type { ProblemDetailDTO } from "@/lib/api";
-import { APP_MARK } from "@/lib/brand";
 
 interface ProblemTopBarProps {
   problem:  ProblemDetailDTO | null;
@@ -25,15 +24,7 @@ export function ProblemTopBar({ problem, loading, initials = "U" }: ProblemTopBa
     }}>
       {/* Logo */}
       <Link href="/" style={{ display: "flex", alignItems: "center", gap: 6, textDecoration: "none", flexShrink: 0 }}>
-        <div style={{
-          width: 26, height: 26,
-          background: "linear-gradient(150deg, var(--brand), #9db0ff)",
-          borderRadius: 7,
-          display: "flex", alignItems: "center", justifyContent: "center",
-          color: "#0a0e18", fontFamily: "var(--font-mono), monospace", fontWeight: 700, fontSize: 12, flexShrink: 0,
-        }}>
-          {APP_MARK}
-        </div>
+        <img src="/algora-logo-icon.png" alt="" width={26} height={26} style={{ objectFit: "contain" }} />
       </Link>
 
       <span style={{ color: "rgba(255,255,255,0.2)", fontSize: 16 }}>|</span>

@@ -14,7 +14,9 @@ import { CSS } from "@dnd-kit/utilities";
 import { toast } from "@/components/ui/PSPToast";
 import Navbar from "@/components/Navbar";
 import Link from "next/link";
+import AuditLogButton from "@/features/audit/AuditLogButton";
 import CPScoreboard from "@/features/competitions/components/CPScoreboard";
+import CreateProblemModal from "@/features/teacher/components/CreateProblemModal";
 import {
   getCompetitionDetail, getCompetitionOverview, startCompetition, endCompetition,
   patchCompetitionSettings, attachCompetitionProblem, detachCompetitionProblem,
@@ -250,6 +252,7 @@ export default function CompetitionManagePage() {
               <div style={{ fontSize: 21, fontWeight: 700, color: "var(--ink)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{comp?.title ?? "Competition"}</div>
             </div>
             {statusPill(compStatus)}
+            <AuditLogButton domain="CP" contextId={id} />
             <Link href="/teacher/competitions" style={{ fontSize: 12, color: "var(--ink-3)", textDecoration: "none", display: "inline-flex", alignItems: "center", gap: 4, flexShrink: 0, marginLeft: 4 }}>
               <ChevronLeft size={13} /> Back
             </Link>
@@ -392,6 +395,7 @@ function ProblemsTab({ comp, detail, onChanged }: { comp: any; detail: any; onCh
   const [pickerLoading, setPickerLoading] = useState(false);
   const [attaching, setAttaching]   = useState<string | null>(null);
   const [removing, setRemoving]     = useState<string | null>(null);
+  const [showCreate, setShowCreate] = useState(false);
   const problems: any[] = detail?.problems ?? [];
   const compId = comp?.competitionId ?? comp?.id;
 
@@ -450,10 +454,21 @@ function ProblemsTab({ comp, detail, onChanged }: { comp: any; detail: any; onCh
     <div>
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16 }}>
         <span style={{ fontSize: 13, color: "var(--text-muted)" }}>{problems.length} problem{problems.length !== 1 ? "s" : ""}</span>
-        <button className="psp-btn psp-btn-primary psp-btn-sm" onClick={openPicker}>
-          <Plus size={12} /> Add from Problem Bank
-        </button>
+        <div style={{ display: "flex", gap: 8 }}>
+          <button className="psp-btn psp-btn-secondary psp-btn-sm" onClick={openPicker}>
+            <Plus size={12} /> Add from Problem Bank
+          </button>
+          <button className="psp-btn psp-btn-primary psp-btn-sm" onClick={() => setShowCreate(true)}>
+            <Plus size={12} /> Create New
+          </button>
+        </div>
       </div>
+
+      <CreateProblemModal
+        open={showCreate}
+        onClose={() => setShowCreate(false)}
+        onCreated={attachProblem}
+      />
 
       {problems.length === 0 ? (
         <div className="psp-empty" style={{ padding: "32px 24px" }}>

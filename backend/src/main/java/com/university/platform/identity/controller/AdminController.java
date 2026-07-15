@@ -4,9 +4,15 @@ import com.university.platform.identity.model.Admin;
 import com.university.platform.identity.model.Teacher;
 import com.university.platform.identity.model.Teacher.TeacherStatus;
 import com.university.platform.identity.model.Teacher.TeacherStatus;
+import com.university.platform.identity.dto.AdminUserDTO;
+import com.university.platform.identity.model.User;
 import com.university.platform.identity.repository.TeacherRepository;
 import com.university.platform.identity.repository.StudentRepository;
+import com.university.platform.identity.repository.UserRepository;
 import com.university.platform.identity.service.EmailService;
+import com.university.platform.audit.AuditDomain;
+import com.university.platform.audit.AuditEventService;
+import com.university.platform.audit.Severity;
 import com.university.platform.assessment.repository.AssessmentRepository;
 import com.university.platform.assessment.repository.ProblemRepository;
 import com.university.platform.assessment.model.LiveExam;
@@ -20,14 +26,21 @@ import org.springframework.amqp.core.QueueInformation;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.actuate.health.HealthComponent;
 import org.springframework.boot.actuate.health.HealthEndpoint;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.server.ResponseStatusException;
 import org.springframework.http.HttpStatus;
 
 import javax.sql.DataSource;
+import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.time.ZoneId;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -47,7 +60,20 @@ public class AdminController {
     private final ProblemRepository     problemRepository;
     private final SubmissionRepository  submissionRepository;
     private final CompetitionRepository competitionRepository;
+    private final UserRepository        userRepository;
     private final EmailService          emailService;
+    private final AuditEventService     auditEventService;
+
+    /** Resolves the authenticated admin's UUID from the JWT principal (the token subject). */
+    private UUID currentAdminId() {
+        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+        if (auth == null || auth.getPrincipal() == null) return null;
+        try {
+            return UUID.fromString(auth.getPrincipal().toString());
+        } catch (IllegalArgumentException ex) {
+            return null;
+        }
+    }
 
     @Autowired(required = false)
     private AmqpAdmin amqpAdmin;
@@ -114,6 +140,13 @@ public class AdminController {
 
         emailService.sendTeacherApprovedEmail(teacher.getEmail(), teacher.getFirstName());
         log.info("[ADMIN] Teacher activated: {}", teacher.getEmail());
+
+        auditEventService.record(
+                AuditDomain.ADMIN, "TEACHER_APPROVED",
+                teacher.getId(), null, currentAdminId(), null, null,
+                Map.of("teacherEmail", teacher.getEmail(),
+                       "teacherName", teacher.getFirstName() + " " + teacher.getLastName()),
+                Severity.INFO);
 
         return ResponseEntity.ok(Map.of("message",
                 "Teacher " + teacher.getFirstName() + " " + teacher.getLastName()
@@ -240,9 +273,62 @@ public class AdminController {
                     "Cannot reject an already active teacher.");
         }
 
+        // Capture identity before deletion so the audit record survives the row.
+        UUID teacherId = teacher.getId();
+        String teacherEmail = teacher.getEmail();
+        String teacherName = teacher.getFirstName() + " " + teacher.getLastName();
+
         teacherRepository.delete(teacher);
-        log.info("[ADMIN] Teacher rejected and deleted: {}", teacher.getEmail());
+        log.info("[ADMIN] Teacher rejected and deleted: {}", teacherEmail);
+
+        auditEventService.record(
+                AuditDomain.ADMIN, "TEACHER_REJECTED",
+                teacherId, null, currentAdminId(), null, null,
+                Map.of("teacherEmail", teacherEmail, "teacherName", teacherName),
+                Severity.WARN);
 
         return ResponseEntity.ok(Map.of("message", "Teacher application has been rejected."));
+    }
+
+    // ─────────────────────────────────────────────────────────────────────────
+    // Users list (read-only) — search + role filter + pagination.
+    // Inspect only; no suspend/ban/role-change in this pass.
+    // ─────────────────────────────────────────────────────────────────────────
+
+    @GetMapping("/users")
+    @Transactional(readOnly = true)
+    public ResponseEntity<Page<AdminUserDTO>> listUsers(
+            @RequestParam(required = false) String role,
+            @RequestParam(required = false) String search,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "20") int size) {
+
+        User.Role roleFilter = null;
+        if (role != null && !role.isBlank()) {
+            try {
+                roleFilter = User.Role.valueOf(role.trim().toUpperCase());
+            } catch (IllegalArgumentException ex) {
+                throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Unknown role: " + role);
+            }
+        }
+        String searchFilter = (search != null && !search.isBlank()) ? search.trim() : null;
+
+        Pageable pageable = PageRequest.of(Math.max(0, page), Math.min(Math.max(1, size), 100));
+        Page<AdminUserDTO> result = userRepository
+                .searchForAdmin(roleFilter, searchFilter, pageable)
+                .map(AdminUserDTO::from);
+        return ResponseEntity.ok(result);
+    }
+
+    // ─────────────────────────────────────────────────────────────────────────
+    // KPI: submissions created today (server-local day).
+    // ─────────────────────────────────────────────────────────────────────────
+
+    @GetMapping("/stats/submissions-today")
+    @Transactional(readOnly = true)
+    public ResponseEntity<Map<String, Long>> submissionsToday() {
+        LocalDateTime startOfDay = LocalDate.now(ZoneId.systemDefault()).atStartOfDay();
+        long count = submissionRepository.countByTimestampAfter(startOfDay);
+        return ResponseEntity.ok(Map.of("count", count));
     }
 }

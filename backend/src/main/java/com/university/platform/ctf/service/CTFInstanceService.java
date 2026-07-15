@@ -5,6 +5,7 @@ import com.github.dockerjava.api.async.ResultCallback;
 import com.github.dockerjava.api.command.InspectContainerResponse;
 import com.github.dockerjava.api.command.PullImageResultCallback;
 import com.github.dockerjava.api.model.*;
+import com.university.platform.ctf.config.WorkerAgentConfig;
 import com.university.platform.ctf.dto.CTFInstanceResponse;
 import com.university.platform.ctf.dto.CTFInstanceWebSocketMessage;
 import com.university.platform.ctf.entity.CTFChallenge;
@@ -31,6 +32,7 @@ import java.io.IOException;
 import java.net.ServerSocket;
 import java.net.URI;
 import java.time.LocalDateTime;
+import java.time.OffsetDateTime;
 import java.util.*;
 import java.util.concurrent.*;
 import java.util.stream.Collectors;
@@ -42,7 +44,12 @@ public class CTFInstanceService {
     private static final int    MAX_RENEWALS = 3;
     private static final String HTTP         = "HTTP";
     private static final String TCP          = "TCP";
+    private static final String SSH          = "SSH";
 
+    // TODO (PHASE 6 — deferred): Replace with a Redis SET for multi-node safety.
+    // On a single server this ConcurrentHashMap is correct. With two backend nodes,
+    // each has its own USED_PORTS and can assign the same port to different instances.
+    // Migration: use RedisTemplate.opsForSet() with SETNX for atomic port reservation.
     private static final Set<Integer> USED_PORTS = ConcurrentHashMap.newKeySet();
 
     private final CTFChallengeRepository    challengeRepo;
@@ -54,9 +61,19 @@ public class CTFInstanceService {
     private final Executor                  exec;
     private final DockerClient              dockerClient; // null = mock mode
     private final CTFFlagGenerator          flagGenerator;
+    private final WorkerAgentConfig         workerAgentConfig;
+    private final WorkerAgentClient         workerAgentClient;
 
     @Value("${ctf.instance.host:localhost}")
     private String instanceHost;
+
+    // Host used for internal health-check probes (waitForPort / waitForHttp).
+    // When the backend runs inside Docker, challenge containers publish their ports
+    // on the HOST, not on the backend container's loopback. Set to
+    // "host.docker.internal" (mapped via docker-compose extra_hosts) so probes
+    // reach the host's published ports instead of the container's own loopback.
+    @Value("${ctf.instance.health-check-host:localhost}")
+    private String healthCheckHost;
 
     @Value("${ctf.instance.port.min:32000}")
     private int portMin;
@@ -75,16 +92,20 @@ public class CTFInstanceService {
                               TransactionTemplate txTemplate,
                               @Qualifier("ctfInstanceExecutor") Executor exec,
                               @Nullable DockerClient dockerClient,
-                              CTFFlagGenerator flagGenerator) {
-        this.challengeRepo   = challengeRepo;
-        this.instanceRepo    = instanceRepo;
-        this.dockerImageRepo = dockerImageRepo;
-        this.configService   = configService;
-        this.ws              = ws;
-        this.txTemplate      = txTemplate;
-        this.exec            = exec;
-        this.dockerClient    = dockerClient;
-        this.flagGenerator   = flagGenerator;
+                              CTFFlagGenerator flagGenerator,
+                              WorkerAgentConfig workerAgentConfig,
+                              WorkerAgentClient workerAgentClient) {
+        this.challengeRepo    = challengeRepo;
+        this.instanceRepo     = instanceRepo;
+        this.dockerImageRepo  = dockerImageRepo;
+        this.configService    = configService;
+        this.ws               = ws;
+        this.txTemplate       = txTemplate;
+        this.exec             = exec;
+        this.dockerClient     = dockerClient;
+        this.flagGenerator    = flagGenerator;
+        this.workerAgentConfig = workerAgentConfig;
+        this.workerAgentClient = workerAgentClient;
     }
 
     // ── Port sync at startup ──────────────────────────────────────────────────
@@ -107,7 +128,9 @@ public class CTFInstanceService {
         instanceRepo.findOccupiedPorts().forEach(USED_PORTS::add);
         log.info("Synced {} occupied ports from DB.", USED_PORTS.size());
         if (dockerClient != null) {
-            exec.execute(this::prewarmAllImages);
+            if (!workerAgentConfig.isEnabled()) {
+                exec.execute(this::prewarmAllImages);
+            }
             exec.execute(this::reclaimOrphans); // reclaim any leaked containers/networks at boot
         }
     }
@@ -146,7 +169,9 @@ public class CTFInstanceService {
         var config = configService.getConfig();
 
         long userActive = instanceRepo.findByUserIdAndStatusIn(userId,
-                List.of("STARTING", "RUNNING")).size();
+                List.of("STARTING", "RUNNING")).stream()
+                .filter(i -> i.getExpiresAt() == null || i.getExpiresAt().isAfter(LocalDateTime.now()))
+                .count();
         if (userActive >= config.getMaxInstancesPerUser()) {
             throw new ResponseStatusException(HttpStatus.TOO_MANY_REQUESTS,
                     "Instance limit reached (" + config.getMaxInstancesPerUser() + ").");
@@ -218,6 +243,15 @@ public class CTFInstanceService {
                     "Maximum renewals reached (" + MAX_RENEWALS + ").");
         }
         int durationMinutes = configService.getConfig().getMaxInstanceDurationMinutes();
+        if (workerAgentConfig.isEnabled() && instance.getContainerId() != null) {
+            String newExpiry = workerAgentClient.extendInstance(
+                    instance.getContainerId(), durationMinutes);
+            instance.setExpiresAt(parseDateTime(newExpiry));
+            instance.setRenewalCount(instance.getRenewalCount() + 1);
+            instanceRepo.save(instance);
+            CTFChallenge challenge = challengeRepo.findById(instance.getChallengeId()).orElse(null);
+            return toResponse(instance, challenge, null);
+        }
         instance.setExpiresAt(LocalDateTime.now().plusMinutes(durationMinutes));
         instance.setRenewalCount(instance.getRenewalCount() + 1);
         instanceRepo.save(instance);
@@ -233,6 +267,13 @@ public class CTFInstanceService {
                 .orElseThrow(() -> new EntityNotFoundException("Instance not found."));
         if (!instance.getUserId().equals(userId)) {
             throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Not your instance.");
+        }
+        if (workerAgentConfig.isEnabled() && instance.getContainerId() != null) {
+            workerAgentClient.stopInstance(instance.getContainerId(), "MANUAL");
+            instance.setStatus("STOPPED");
+            instance.setStoppedAt(LocalDateTime.now());
+            instanceRepo.save(instance);
+            return;
         }
         exec.execute(() -> teardownContainer(instance));
         instance.setStatus("STOPPED");
@@ -256,7 +297,11 @@ public class CTFInstanceService {
                                 .status("EXPIRED")
                                 .build());
 
-                exec.execute(() -> teardownContainer(inst));
+                if (workerAgentConfig.isEnabled() && inst.getContainerId() != null) {
+                    workerAgentClient.stopInstance(inst.getContainerId(), "TIMEOUT");
+                } else {
+                    exec.execute(() -> teardownContainer(inst));
+                }
                 inst.setStatus("EXPIRED");
                 inst.setStoppedAt(LocalDateTime.now());
                 USED_PORTS.remove(inst.getAssignedPort());
@@ -360,7 +405,11 @@ public class CTFInstanceService {
     public void adminStopInstance(UUID instanceId) {
         CTFInstance instance = instanceRepo.findById(instanceId)
                 .orElseThrow(() -> new EntityNotFoundException("Instance not found."));
-        exec.execute(() -> teardownContainer(instance));
+        if (workerAgentConfig.isEnabled() && instance.getContainerId() != null) {
+            workerAgentClient.stopInstance(instance.getContainerId(), "ADMIN");
+        } else {
+            exec.execute(() -> teardownContainer(instance));
+        }
         instance.setStatus("STOPPED");
         instance.setStoppedAt(LocalDateTime.now());
         USED_PORTS.remove(instance.getAssignedPort());
@@ -384,7 +433,11 @@ public class CTFInstanceService {
             instance.setStoppedAt(LocalDateTime.now());
             USED_PORTS.remove(instance.getAssignedPort());
             instanceRepo.save(instance);
-            exec.execute(() -> teardownContainer(instance));
+            if (workerAgentConfig.isEnabled() && instance.getContainerId() != null) {
+                workerAgentClient.stopInstance(instance.getContainerId(), "SOLVED");
+            } else {
+                exec.execute(() -> teardownContainer(instance));
+            }
             log.info("Stopped instance {} for team {} after correct solve of challenge {}",
                     instance.getId(), teamId, challengeId);
             return true;
@@ -400,6 +453,7 @@ public class CTFInstanceService {
     }
 
     public void prewarmImages(List<String> imageRefs) {
+        if (workerAgentConfig.isEnabled()) return;
         for (String ref : imageRefs) {
             exec.execute(() -> pullAndTrackImage(ref));
         }
@@ -409,6 +463,90 @@ public class CTFInstanceService {
 
     private void spawnDockerAsync(UUID instanceId, UUID challengeId,
                                    CTFChallenge challenge, int port, String userDest) {
+        if (workerAgentConfig.isEnabled()) {
+            try {
+                CTFInstance inst = instanceRepo.findById(instanceId)
+                        .orElseThrow(() -> new jakarta.persistence.EntityNotFoundException("Instance not found"));
+                String imageName = challenge.getDockerImage();
+                int durationMinutes = configService.getConfig().getMaxInstanceDurationMinutes();
+                String protocol = connectionType(challenge);
+
+                // Build env map: teacher-supplied vars + team-specific FLAG
+                Map<String, String> envMap = new java.util.LinkedHashMap<>();
+                String flagKey = challenge.getDockerFlagEnv() != null ? challenge.getDockerFlagEnv() : "FLAG";
+                if (challenge.getDockerEnvVars() != null) {
+                    challenge.getDockerEnvVars().forEach((k, v) -> {
+                        if (!k.equalsIgnoreCase(flagKey) && !k.equalsIgnoreCase("FLAG")) {
+                            envMap.put(k, v);
+                        }
+                    });
+                }
+                if (inst.getFlagValue() != null) {
+                    envMap.put(flagKey, inst.getFlagValue());
+                }
+
+                var started = workerAgentClient.startInstance(
+                        imageName,
+                        inst.getTeamId() != null ? inst.getTeamId().toString() : null,
+                        challengeId.toString(),
+                        durationMinutes, protocol, envMap);
+                var ready = workerAgentClient.waitForReady(started.instanceId());
+
+                String connStr = HTTP.equals(protocol)
+                        ? "http://" + ready.host() + ":" + ready.port()
+                        : ready.host() + ":" + ready.port(); // TCP and SSH: host:port
+                LocalDateTime expiresAt = parseDateTime(ready.expiresAt());
+                final String finalConnStr = connStr;
+                final LocalDateTime finalExpiresAt = expiresAt;
+                final String agentInstanceId = started.instanceId();
+                final int agentPort = ready.port();
+
+                USED_PORTS.remove(port); // release the locally reserved port; agent manages its own
+
+                txTemplate.executeWithoutResult(s ->
+                        instanceRepo.findById(instanceId).ifPresent(i -> {
+                            i.setStatus("RUNNING");
+                            i.setContainerId(agentInstanceId);
+                            i.setConnectionString(finalConnStr);
+                            i.setExpiresAt(finalExpiresAt);
+                            i.setAssignedPort(agentPort);
+                            instanceRepo.save(i);
+                        }));
+
+                ws.convertAndSendToUser(userDest, "/queue/ctf/instance",
+                        CTFInstanceWebSocketMessage.builder()
+                                .instanceId(instanceId)
+                                .status("RUNNING")
+                                .connectionType(protocol)
+                                .connectionString(connStr)
+                                .accessUrl(HTTP.equals(protocol) ? connStr : null)
+                                .expiresAt(expiresAt)
+                                .renewalCount(0)
+                                .sshUsername(SSH.equals(protocol) ? challenge.getSshUsername() : null)
+                                .sshPassword(SSH.equals(protocol) ? challenge.getSshPassword() : null)
+                                .build());
+
+                log.info("CTF instance {} RUNNING via agent: host={} port={}",
+                        instanceId, ready.host(), ready.port());
+            } catch (Exception e) {
+                log.error("CTF instance {} failed via agent: {}", instanceId, e.getMessage());
+                txTemplate.executeWithoutResult(s ->
+                        instanceRepo.findById(instanceId).ifPresent(i -> {
+                            i.setStatus("FAILED");
+                            i.setErrorMessage(e.getMessage());
+                            USED_PORTS.remove(i.getAssignedPort());
+                            instanceRepo.save(i);
+                        }));
+                ws.convertAndSendToUser(userDest, "/queue/ctf/instance",
+                        CTFInstanceWebSocketMessage.builder()
+                                .instanceId(instanceId)
+                                .status("FAILED")
+                                .error("Failed to start environment via agent. Please try again.")
+                                .build());
+            }
+            return;
+        }
+
         String containerId  = null;
         String networkId    = null;
         String networkName  = null;
@@ -496,15 +634,22 @@ public class CTFInstanceService {
 
                 dockerClient.startContainerCmd(containerId).exec();
 
+                // Give the container a moment to boot before the first probe — on a
+                // loaded/slow host the app needs time before it binds its port.
+                try { Thread.sleep(2000); } catch (InterruptedException ie) {
+                    Thread.currentThread().interrupt();
+                }
+
                 // Wait until the published port actually accepts TCP connections.
                 // This gives the in-container process time to start, and surfaces
                 // "port not reachable" errors (wrong app port, app binds 127.0.0.1, etc.)
                 // before we tell the frontend the instance is RUNNING.
-                boolean healthy = waitForPort(port, 20, 750);
+                // 40 attempts × 1000ms = up to 40 s — generous for slow servers.
+                boolean healthy = waitForPort(port, 40, 1000);
                 if (!healthy) {
                     throw new IllegalStateException(
                         "Container started but port " + port + " is not accepting connections " +
-                        "after 15 s. Check that the challenge app listens on 0.0.0.0:" +
+                        "after 40 s. Check that the challenge app listens on 0.0.0.0:" +
                         resolvedPort + " inside the container.");
                 }
 
@@ -516,7 +661,7 @@ public class CTFInstanceService {
                 // the port is STILL reachable. A second successful connection proves the
                 // wrapper is in multi-connection mode; failure means the instance would be
                 // dead on arrival for every student that follows.
-                if (TCP.equals(connectionType(challenge))) {
+                if (TCP.equals(connectionType(challenge)) || SSH.equals(connectionType(challenge))) {
                     try { Thread.sleep(1500); } catch (InterruptedException ie) {
                         Thread.currentThread().interrupt();
                     }
@@ -559,7 +704,7 @@ public class CTFInstanceService {
                 // when the configured container port differs from the port the app actually
                 // listens on inside the container. Verify the app answers a real HTTP request
                 // (any status code, even 404, proves reachability).
-                if (HTTP.equals(connectionType(challenge)) && !waitForHttp(port, 12, 1000)) {
+                if (HTTP.equals(connectionType(challenge)) && !waitForHttp(port, 30, 2000)) {
                     throw new IllegalStateException(
                         "Port " + port + " (container port " + resolvedPort + ") is published but " +
                         "the app never answered an HTTP request. Make sure the app listens on " +
@@ -575,6 +720,11 @@ public class CTFInstanceService {
                 txTemplate.executeWithoutResult(status ->
                     instanceRepo.findById(instanceId).ifPresent(inst -> {
                         inst.setStatus("RUNNING");
+                        // Start the expiry clock NOW that the instance is actually usable —
+                        // not when the DB record was created. Docker pull/build/start time
+                        // must not eat into the player's session.
+                        inst.setExpiresAt(LocalDateTime.now()
+                                .plusMinutes(configService.getConfig().getMaxInstanceDurationMinutes()));
                         inst.setContainerId(cid);
                         inst.setNetworkId(nid);
                         inst.setContainerName(cname);
@@ -594,9 +744,13 @@ public class CTFInstanceService {
                                 .accessUrl(HTTP.equals(connType) ? connStr : null)
                                 .expiresAt(updated != null ? updated.getExpiresAt() : null)
                                 .renewalCount(0)
+                                .sshUsername(SSH.equals(connType) ? challenge.getSshUsername() : null)
+                                .sshPassword(SSH.equals(connType) ? challenge.getSshPassword() : null)
                                 .build());
 
-                log.info("CTF instance {} RUNNING port={} network={}", instanceId, port, networkName);
+                log.info("CTF instance {} RUNNING port={} network={} expires={}",
+                        instanceId, port, networkName,
+                        updated != null ? updated.getExpiresAt() : null);
 
             } else {
                 // Mock mode
@@ -606,6 +760,8 @@ public class CTFInstanceService {
                 txTemplate.executeWithoutResult(s ->
                     instanceRepo.findById(instanceId).ifPresent(inst -> {
                         inst.setStatus("RUNNING");
+                        inst.setExpiresAt(LocalDateTime.now()
+                                .plusMinutes(configService.getConfig().getMaxInstanceDurationMinutes()));
                         inst.setConnectionString(connStr);
                         instanceRepo.save(inst);
                     })
@@ -620,6 +776,8 @@ public class CTFInstanceService {
                                 .expiresAt(instanceRepo.findById(instanceId)
                                         .map(CTFInstance::getExpiresAt).orElse(null))
                                 .renewalCount(0)
+                                .sshUsername(SSH.equals(connType) ? challenge.getSshUsername() : null)
+                                .sshPassword(SSH.equals(connType) ? challenge.getSshPassword() : null)
                                 .build());
             }
 
@@ -928,7 +1086,7 @@ public class CTFInstanceService {
      */
     private boolean waitForPort(int hostPort, int maxAttempts, long delayMs) {
         for (int i = 0; i < maxAttempts; i++) {
-            try (java.net.Socket s = new java.net.Socket("localhost", hostPort)) {
+            try (java.net.Socket s = new java.net.Socket(healthCheckHost, hostPort)) {
                 return true;
             } catch (IOException ignored) {
                 // port not ready yet
@@ -949,7 +1107,7 @@ public class CTFInstanceService {
         for (int i = 0; i < maxAttempts; i++) {
             try {
                 java.net.HttpURLConnection conn = (java.net.HttpURLConnection)
-                        URI.create("http://localhost:" + hostPort + "/").toURL().openConnection();
+                        URI.create("http://" + healthCheckHost + ":" + hostPort + "/").toURL().openConnection();
                 conn.setConnectTimeout(2000);
                 conn.setReadTimeout(2000);
                 conn.setRequestMethod("GET");
@@ -992,14 +1150,18 @@ public class CTFInstanceService {
     }
 
     private String connectionType(CTFChallenge challenge) {
-        return TCP.equals(challenge.getConnectionType()) ? TCP : HTTP;
+        String ct = challenge.getConnectionType();
+        if (SSH.equals(ct)) return SSH;
+        if (TCP.equals(ct)) return TCP;
+        return HTTP;
     }
 
     private String buildConnectionString(CTFChallenge challenge, int port) {
-        if (TCP.equals(challenge.getConnectionType())) {
-            return instanceHost + ":" + port;
+        if (HTTP.equals(challenge.getConnectionType())) {
+            return "http://" + instanceHost + ":" + port;
         }
-        return "http://" + instanceHost + ":" + port;
+        // TCP and SSH both surface as host:port; SSH client adds user@ on the frontend
+        return instanceHost + ":" + port;
     }
 
     private int effectiveMemMb(CTFChallenge challenge, com.university.platform.ctf.entity.CTFResourceConfig config) {
@@ -1012,18 +1174,39 @@ public class CTFInstanceService {
                 : config.getContainerCpuPercent();
     }
 
+    private LocalDateTime parseDateTime(String dateTime) {
+        if (dateTime == null) {
+            return LocalDateTime.now().plusMinutes(
+                    configService.getConfig().getMaxInstanceDurationMinutes());
+        }
+        try {
+            return OffsetDateTime.parse(dateTime).toLocalDateTime();
+        } catch (Exception e) {
+            try {
+                return LocalDateTime.parse(dateTime);
+            } catch (Exception e2) {
+                log.warn("Could not parse datetime '{}', using default expiry", dateTime);
+                return LocalDateTime.now().plusMinutes(
+                        configService.getConfig().getMaxInstanceDurationMinutes());
+            }
+        }
+    }
+
     private CTFInstanceResponse toResponse(CTFInstance inst, CTFChallenge challenge, String message) {
-        String connType = (challenge != null && TCP.equals(challenge.getConnectionType())) ? TCP : HTTP;
+        String connType = challenge != null ? connectionType(challenge) : HTTP;
         String connStr  = inst.getConnectionString();
+        boolean running = "RUNNING".equals(inst.getStatus());
         return CTFInstanceResponse.builder()
                 .instanceId(inst.getId())
                 .connectionType(connType)
-                .connectionString("RUNNING".equals(inst.getStatus()) ? connStr : null)
-                .accessUrl("RUNNING".equals(inst.getStatus()) && HTTP.equals(connType) ? connStr : null)
+                .connectionString(running ? connStr : null)
+                .accessUrl(running && HTTP.equals(connType) ? connStr : null)
                 .expiresAt(inst.getExpiresAt())
                 .status(inst.getStatus())
                 .message(message)
                 .renewalCount(inst.getRenewalCount() != null ? inst.getRenewalCount() : 0)
+                .sshUsername(SSH.equals(connType) && challenge != null ? challenge.getSshUsername() : null)
+                .sshPassword(SSH.equals(connType) && challenge != null ? challenge.getSshPassword() : null)
                 .build();
     }
 }

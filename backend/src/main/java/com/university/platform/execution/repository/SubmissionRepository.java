@@ -28,6 +28,8 @@ public interface SubmissionRepository extends JpaRepository<Submission, UUID> {
 
     Page<Submission> findByAssessment_AssessmentId(UUID assessmentId, Pageable pageable);
 
+    List<Submission> findByAssessment_AssessmentIdOrderByTimestampDesc(UUID assessmentId);
+
     List<Submission> findByAssessment_AssessmentIdAndStudent_IdOrderByTimestampDesc(UUID assessmentId, UUID studentId);
 
 
@@ -81,6 +83,9 @@ public interface SubmissionRepository extends JpaRepository<Submission, UUID> {
             @Param("assessmentId") UUID assessmentId
     );
 
+    /** Admin KPI: submissions created since the given instant (start of day). */
+    long countByTimestampAfter(java.time.LocalDateTime since);
+
     long countByProblem_ProblemId(UUID problemId);
 
     long countByProblem_ProblemIdAndIsAcceptedTrue(UUID problemId);
@@ -95,6 +100,38 @@ public interface SubmissionRepository extends JpaRepository<Submission, UUID> {
     List<Submission> findMySubmissionsForProblem(
             @Param("studentId") UUID studentId,
             @Param("problemId") UUID problemId,
+            Pageable pageable
+    );
+
+    /** Same as above but scoped to one assessment (TP/exam "My Submissions" tab). */
+    @Query("""
+        SELECT s FROM Submission s
+        WHERE s.student.id                 = :studentId
+          AND s.problem.problemId          = :problemId
+          AND s.assessment.assessmentId    = :assessmentId
+          AND s.planningMode               = false
+        ORDER BY s.timestamp DESC
+    """)
+    List<Submission> findMySubmissionsForProblemInAssessment(
+            @Param("studentId")    UUID studentId,
+            @Param("problemId")    UUID problemId,
+            @Param("assessmentId") UUID assessmentId,
+            Pageable pageable
+    );
+
+    /** Same as above but scoped to one CP competition (My Submissions tab). */
+    @Query("""
+        SELECT s FROM Submission s
+        WHERE s.student.id        = :studentId
+          AND s.problem.problemId = :problemId
+          AND s.competitionId     = :competitionId
+          AND s.planningMode      = false
+        ORDER BY s.timestamp DESC
+    """)
+    List<Submission> findMySubmissionsForProblemInCompetition(
+            @Param("studentId")     UUID studentId,
+            @Param("problemId")     UUID problemId,
+            @Param("competitionId") UUID competitionId,
             Pageable pageable
     );
 

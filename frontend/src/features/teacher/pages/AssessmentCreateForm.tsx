@@ -8,7 +8,7 @@ import {
   createLiveExam, createOpenTP, getMyModules,
   CreateAssessmentRequest, ModuleOption,
 } from "@/lib/api";
-import { useToast } from "@/hooks/use-toast";
+import { toast } from "@/components/ui/PSPToast";
 
 const EMPTY_FORM: CreateAssessmentRequest = {
   title: "", description: "", moduleId: "",
@@ -19,7 +19,6 @@ const EMPTY_FORM: CreateAssessmentRequest = {
 
 export default function AssessmentCreateForm({ type }: { type: "exam" | "tp" }) {
   const router = useRouter();
-  const { toast } = useToast();
   const isExam = type === "exam";
 
   const [createForm, setCreateForm] = useState<CreateAssessmentRequest>({ ...EMPTY_FORM });
@@ -46,7 +45,27 @@ export default function AssessmentCreateForm({ type }: { type: "exam" | "tp" }) 
   const cancel = () => router.push("/teacher/exams");
 
   const handleCreate = async () => {
-    if (!createForm.title.trim()) return;
+    if (!createForm.title.trim()) {
+      toast.warning("Title required", "Give it a title first.");
+      return;
+    }
+    if (createForm.visibilityMode === "MODULE_ONLY" && !createForm.moduleId) {
+      toast.warning("Module required", "Pick a module, or switch visibility to Request based / Access code.");
+      return;
+    }
+    if (createForm.visibilityMode === "ACCESS_CODE" && !createForm.strictAccessCode?.trim()) {
+      toast.warning("Access code required", "Set a code students will enter to join.");
+      return;
+    }
+    if (isExam && !createForm.scheduledStartTime?.trim()) {
+      toast.warning("Start time required", "Pick a start date & time before creating.");
+      return;
+    }
+    if (!isExam && !createForm.deadline?.trim()) {
+      toast.warning("Deadline required", "Pick a deadline before creating.");
+      return;
+    }
+
     setCreating(true);
     try {
       if (isExam) {
@@ -54,10 +73,10 @@ export default function AssessmentCreateForm({ type }: { type: "exam" | "tp" }) 
       } else {
         await createOpenTP(createForm);
       }
-      toast({ title: isExam ? "Exam created" : "TP created" });
+      toast.success(isExam ? "Exam created" : "TP created", `"${createForm.title}" is ready — attach problems next.`);
       router.push("/teacher/exams");
-    } catch (e: any) {
-      toast({ title: "Failed to create", description: e.message, variant: "destructive" });
+    } catch (e) {
+      toast.error("Failed to create", e instanceof Error ? e.message : "Please try again.");
       setCreating(false);
     }
   };
