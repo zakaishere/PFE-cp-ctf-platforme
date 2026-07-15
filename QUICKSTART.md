@@ -24,6 +24,12 @@ This creates **`algora/.env`** (that's the exact file — repo root, next to
 random value. Re-running it is safe — it never overwrites a value you've
 already customized.
 
+It also auto-detects this server's public IP and sets `CORS_ALLOWED_ORIGIN_PATTERNS`
+to it, so the browser can talk to the API from that address without the
+insecure `*` (any origin) fallback. If detection fails, or you're accessing
+the site from a different IP/domain than the one detected, edit that line in
+`.env` directly — comma-separated, e.g. `http://1.2.3.4:3000,https://yourdomain.com`.
+
 ```bash
 make build                                  # only build path — needs disk+RAM
 echo "DDL_AUTO=update" >> .env              # first boot on a fresh DB only

@@ -1,5 +1,6 @@
 package com.university.platform.config;
 
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
@@ -118,11 +119,19 @@ public class SecurityConfig {
         return config.getAuthenticationManager();
     }
 
+    // Was hardcoded to "http://localhost:*" only — any deployment accessed via
+    // a real IP/domain (not localhost) had every browser-side API call silently
+    // blocked by CORS, which looks exactly like an infinite loading spinner
+    // (the request never completes because the browser refuses to expose the
+    // response, not because the backend is slow/down).
+    @Value("${cors.allowed-origin-patterns:http://localhost:*,http://127.0.0.1:*}")
+    private String allowedOriginPatterns;
+
     @Bean
     public CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration configuration = new CorsConfiguration();
-        
-        configuration.setAllowedOriginPatterns(Arrays.asList("http://localhost:*"));
+
+        configuration.setAllowedOriginPatterns(Arrays.asList(allowedOriginPatterns.split(",")));
         configuration.setAllowedMethods(Arrays.asList("GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"));
         
         configuration.setAllowedHeaders(Arrays.asList("Authorization", "Content-Type", "Accept", "Origin"));
