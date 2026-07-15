@@ -114,6 +114,12 @@ services:
       MAIL_HOST: ${MAIL_HOST:-smtp.gmail.com}
       MAIL_USERNAME: ${MAIL_USERNAME:-}
       MAIL_PASSWORD: ${MAIL_PASSWORD:-}
+      # Set true to skip real email entirely: accounts auto-verify, no OTP is
+      # ever sent, MAIL_USERNAME/MAIL_PASSWORD become irrelevant. Overrides
+      # application-prod.yml's disable-verification:false (Spring env vars
+      # win over any application-*.yml value). Off by default — real
+      # deployments should use real email.
+      APP_SECURITY_DISABLE_VERIFICATION: ${DISABLE_EMAIL_VERIFICATION:-false}
     extra_hosts:
       - "host.docker.internal:host-gateway"
     volumes:
