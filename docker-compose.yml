@@ -85,6 +85,14 @@ services:
       DB_USERNAME: psp_user
       DB_PASSWORD: ${DB_PASSWORD:-psp_password}
       DB_POOL_SIZE: 50
+      # Same connection, as libpq's native env vars — read directly by psql /
+      # pg_isready in docker-entrypoint.sh (the automatic schema bootstrap),
+      # no flags or JDBC-URL parsing needed.
+      PGHOST: postgres
+      PGPORT: "5432"
+      PGDATABASE: psp_db
+      PGUSER: psp_user
+      PGPASSWORD: ${DB_PASSWORD:-psp_password}
       JWT_SECRET: ${JWT_SECRET:-CHANGE_ME_IN_PRODUCTION}
       CTF_FLAG_SECRET: ${CTF_FLAG_SECRET:-CHANGE_ME_IN_PRODUCTION}
       RABBITMQ_HOST: rabbitmq
@@ -92,8 +100,9 @@ services:
       RABBITMQ_USER: ${RABBITMQ_USER:-psp}
       RABBITMQ_PASSWORD: ${RABBITMQ_PASSWORD:-psp_password}
       DOCKER_HOST: unix:///var/run/docker.sock
-      # Schema strategy: validate (default). Set DDL_AUTO=update ONLY for the
-      # very first boot on a fresh postgres volume, then unset it.
+      # Schema is now applied automatically on every boot by
+      # docker-entrypoint.sh (schema.sql + db/migration_v*.sql) — this is a
+      # safety-net override only, not required for normal operation anymore.
       DDL_AUTO: ${DDL_AUTO:-validate}
       # ── CTF worker agent (external service, runs from ../ctf-worker-agent's
       #    own docker-compose). Empty WORKER_AGENT_URL = agent disabled, the
