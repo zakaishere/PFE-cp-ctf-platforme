@@ -100,6 +100,11 @@ services:
       RABBITMQ_USER: ${RABBITMQ_USER:-psp}
       RABBITMQ_PASSWORD: ${RABBITMQ_PASSWORD:-psp_password}
       DOCKER_HOST: unix:///var/run/docker.sock
+      # Browser-facing CORS. Defaults to "*" (any origin) so the site works
+      # immediately from whatever IP/domain you access it at, without needing
+      # to hardcode one — tighten to your real domain(s), comma-separated,
+      # for anything more than a demo (e.g. https://yourdomain.com).
+      CORS_ALLOWED_ORIGIN_PATTERNS: ${CORS_ALLOWED_ORIGIN_PATTERNS:-*}
       # Schema is now applied automatically on every boot by
       # docker-entrypoint.sh (schema.sql + db/migration_v*.sql) — this is a
       # safety-net override only, not required for normal operation anymore.
