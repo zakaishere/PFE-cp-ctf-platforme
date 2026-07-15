@@ -143,6 +143,7 @@ CREATE TABLE IF NOT EXISTS assessments (
     is_published    BOOLEAN      NOT NULL DEFAULT FALSE,
     assessment_type VARCHAR(20)  NOT NULL,   -- Hibernate discriminator: 'LIVE_EXAM' | 'OPEN_TP'
     teacher_id      UUID,                    -- nullable: teacher may be deactivated
+    module_id       UUID,                    -- like most other drift found: never captured in SQL before
 
     CONSTRAINT pk_assessments        PRIMARY KEY (assessment_id),
     CONSTRAINT fk_assessments_teacher FOREIGN KEY (teacher_id)
@@ -229,11 +230,20 @@ CREATE INDEX IF NOT EXISTS idx_problems_is_public  ON problems (is_public);
 -- -----------------------------------------------------------------------------
 -- assessment_problems  (M:N join with extra data — Assessment ↔ Problem)
 -- -----------------------------------------------------------------------------
+-- `id`/`order_index`/`max_points` were, like the CTF tables above, only ever
+-- added by Hibernate ddl-auto:update (migration_v22 adds max_points only —
+-- id/order_index were never captured anywhere in SQL). `problem_order` is a
+-- superseded column the entity no longer maps; kept for column-order fidelity
+-- with the real dump (docs/documents/schema.sql) — Hibernate validate only
+-- checks columns the entity actually maps, so its presence is harmless.
 CREATE TABLE IF NOT EXISTS assessment_problems (
     assessment_id   UUID    NOT NULL,
     problem_id      UUID    NOT NULL,
     problem_order   INTEGER NOT NULL DEFAULT 0,
     points_override INTEGER,             -- null → use problem default scoring
+    id              UUID    NOT NULL,
+    order_index     INTEGER NOT NULL,
+    max_points      INTEGER DEFAULT 25,
 
     CONSTRAINT pk_assessment_problems PRIMARY KEY (assessment_id, problem_id),
     CONSTRAINT fk_ap_assessment       FOREIGN KEY (assessment_id)
@@ -245,6 +255,22 @@ CREATE TABLE IF NOT EXISTS assessment_problems (
         ON UPDATE CASCADE
         ON DELETE RESTRICT            -- prevent deleting a problem used in an exam
 );
+
+DO $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM information_schema.table_constraints
+    WHERE constraint_name = 'uq_ap_assessment_order' AND table_name = 'assessment_problems'
+  ) THEN
+    ALTER TABLE assessment_problems ADD CONSTRAINT uq_ap_assessment_order UNIQUE (assessment_id, order_index);
+  END IF;
+  IF NOT EXISTS (
+    SELECT 1 FROM information_schema.table_constraints
+    WHERE constraint_name = 'uq_ap_assessment_problem' AND table_name = 'assessment_problems'
+  ) THEN
+    ALTER TABLE assessment_problems ADD CONSTRAINT uq_ap_assessment_problem UNIQUE (assessment_id, problem_id);
+  END IF;
+END $$;
 
 -- -----------------------------------------------------------------------------
 -- test_cases  (1:N from problems, Cascade.ALL)
@@ -341,6 +367,295 @@ CREATE TABLE IF NOT EXISTS results (
 
 CREATE INDEX IF NOT EXISTS idx_results_submission_id ON results (submission_id);
 CREATE INDEX IF NOT EXISTS idx_results_status        ON results (status);
+
+-- =============================================================================
+-- CTF BASE TABLES
+-- These 8 tables were, historically, never captured as CREATE TABLE anywhere
+-- in schema.sql or any migration_v*.sql — every migration touching them
+-- (starting at migration_v4_ctf.sql) is an ALTER TABLE / REFERENCES that
+-- assumes they already exist, because in every environment up to now they
+-- were silently materialized by Hibernate's ddl-auto:update from the JPA
+-- entities and that base creation was simply never exported to SQL.
+-- migration_v10_ctf_schema_gaps.sql's own header says as much: "Documents
+-- and fills schema gaps that Hibernate ddl-auto:update was silently
+-- creating" — but it only ever patched columns on tables it assumed
+-- existed, not the base tables themselves.
+--
+-- Column shapes below are taken directly from the current JPA entities
+-- (ctf/entity/*.java), not from migration-file intent, since Hibernate's
+-- ddl-auto=validate checks types/lengths against the entity mapping and a
+-- couple of migration files disagree with the entity on VARCHAR length
+-- (e.g. ctf_instances.network_id: entity says 128, migration_v10 says 255 —
+-- entity wins). Every later `ADD COLUMN IF NOT EXISTS` for a column already
+-- included here becomes a harmless no-op.
+-- =============================================================================
+
+CREATE TABLE IF NOT EXISTS ctf_competitions (
+    id                   UUID         PRIMARY KEY DEFAULT gen_random_uuid(),
+    title                VARCHAR(255) NOT NULL,
+    description          TEXT,
+    start_time           TIMESTAMP,
+    end_time             TIMESTAMP,
+    max_team_size        INT          DEFAULT 4,
+    min_team_size        INT          DEFAULT 1,
+    scoring_mode         VARCHAR(10)  DEFAULT 'DYNAMIC',
+    dynamic_min_points   INT          DEFAULT 50,
+    dynamic_decay_factor DOUBLE PRECISION DEFAULT 0.08,
+    visibility           VARCHAR(20)  DEFAULT 'PUBLIC',
+    access_code          VARCHAR(20),
+    banner_url           VARCHAR(500),
+    created_by           UUID,
+    created_at           TIMESTAMP    DEFAULT NOW(),
+    is_active            BOOLEAN      DEFAULT TRUE,
+    is_paused            BOOLEAN      DEFAULT FALSE,
+    is_frozen            BOOLEAN      DEFAULT FALSE,
+    paused_at            TIMESTAMP,
+    frozen_at            TIMESTAMP,
+    scoring_function      VARCHAR(15) DEFAULT 'LOGARITHMIC',
+    timing_mode          VARCHAR(15)  NOT NULL DEFAULT 'SCHEDULED',
+    duration_hours       INT,
+    registration_open    BOOLEAN      NOT NULL DEFAULT FALSE,
+    is_manually_started  BOOLEAN      NOT NULL DEFAULT FALSE,
+    manually_ended       BOOLEAN      NOT NULL DEFAULT FALSE,
+    cover_image_url      VARCHAR(500)
+);
+
+CREATE TABLE IF NOT EXISTS ctf_teams (
+    id                   UUID         PRIMARY KEY DEFAULT gen_random_uuid(),
+    competition_id       UUID         NOT NULL,
+    name                 VARCHAR(50)  NOT NULL,
+    invite_code          VARCHAR(10)  NOT NULL UNIQUE,
+    avatar_color         VARCHAR(7)   DEFAULT '#6366f1',
+    captain_id           UUID,
+    is_disqualified      BOOLEAN      NOT NULL DEFAULT FALSE,
+    disqualified_at      TIMESTAMP,
+    disqualified_reason  VARCHAR(500),
+    created_at           TIMESTAMP    DEFAULT NOW(),
+    UNIQUE (competition_id, name)
+);
+
+CREATE TABLE IF NOT EXISTS ctf_challenges (
+    id                      UUID         PRIMARY KEY DEFAULT gen_random_uuid(),
+    title                   VARCHAR(255) NOT NULL,
+    description             TEXT         NOT NULL,
+    category                VARCHAR(20)  NOT NULL,
+    difficulty              VARCHAR(10)  NOT NULL,
+    base_points             INT          NOT NULL,
+    flag_hash               VARCHAR(64)  NOT NULL,
+    flag_value              VARCHAR(500),
+    flag_type               VARCHAR(10)  NOT NULL DEFAULT 'STATIC',
+    flag_format             VARCHAR(100) DEFAULT 'FLAG{?}',
+    requires_instance       BOOLEAN      DEFAULT FALSE,
+    docker_image            VARCHAR(255),
+    container_port          INT,
+    container_env_vars      JSONB,
+    docker_flag_env         VARCHAR(64)  DEFAULT 'FLAG',
+    connection_type         VARCHAR(10)  DEFAULT 'HTTP',
+    docker_env_vars         JSONB,
+    docker_memory_mb        INT,
+    docker_cpu_percent      INT,
+    docker_pids_limit       INT,
+    downloadable_file_url   VARCHAR(500),
+    downloadable_file_name  VARCHAR(255),
+    media_url               VARCHAR(500),
+    hints                   JSONB,
+    initial_value           INT,
+    minimum_value           INT,
+    decay_value             INT,
+    max_attempts            INT          DEFAULT 10,
+    is_active               BOOLEAN      DEFAULT TRUE,
+    is_hidden               BOOLEAN      DEFAULT TRUE,
+    author_id               UUID,
+    author_name             VARCHAR(255),
+    ssh_username            VARCHAR(100),
+    ssh_password            VARCHAR(100),
+    competition_id          UUID,
+    is_library              BOOLEAN      NOT NULL DEFAULT FALSE,
+    library_owner_id        UUID,
+    library_source_id       UUID,
+    blood_bonus_enabled     BOOLEAN      NOT NULL DEFAULT FALSE,
+    first_blood_bonus       INT          NOT NULL DEFAULT 0,
+    second_blood_bonus      INT          NOT NULL DEFAULT 0,
+    third_blood_bonus       INT          NOT NULL DEFAULT 0,
+    deleted                 BOOLEAN      NOT NULL DEFAULT FALSE,
+    deleted_at              TIMESTAMP,
+    created_at              TIMESTAMP,
+    updated_at              TIMESTAMP
+);
+
+CREATE TABLE IF NOT EXISTS ctf_instances (
+    id                 UUID         PRIMARY KEY DEFAULT gen_random_uuid(),
+    challenge_id       UUID,
+    user_id            UUID,
+    team_id            UUID,
+    competition_id     UUID,
+    container_id       VARCHAR(255),
+    container_name     VARCHAR(128),
+    network_id         VARCHAR(128),
+    assigned_port      INT,
+    connection_string  VARCHAR(512),
+    flag_value         VARCHAR(255),
+    status             VARCHAR(20)  DEFAULT 'STARTING',
+    error_message      TEXT,
+    started_at         TIMESTAMP    DEFAULT NOW(),
+    expires_at         TIMESTAMP    NOT NULL,
+    stopped_at         TIMESTAMP,
+    renewal_count      INT          DEFAULT 0
+);
+
+CREATE TABLE IF NOT EXISTS ctf_submissions (
+    id               UUID         PRIMARY KEY DEFAULT gen_random_uuid(),
+    competition_id   UUID,
+    challenge_id     UUID,
+    team_id          UUID,
+    user_id          UUID,
+    submitted_value  VARCHAR(500) NOT NULL,
+    is_correct       BOOLEAN      NOT NULL,
+    attempt_number   INT          NOT NULL,
+    submitted_at     TIMESTAMP    DEFAULT NOW(),
+    ip_address       VARCHAR(45),
+    user_agent       VARCHAR(500),
+    is_cheat_flagged BOOLEAN      NOT NULL DEFAULT FALSE
+);
+
+CREATE TABLE IF NOT EXISTS ctf_cheat_events (
+    id                  UUID         PRIMARY KEY DEFAULT gen_random_uuid(),
+    competition_id      UUID,
+    challenge_id        UUID,
+    submitting_team     UUID,
+    submitting_user_id  UUID,
+    source_team         UUID,
+    submitted_value     VARCHAR(500),
+    detected_at         TIMESTAMP    DEFAULT NOW(),
+    dismissed           BOOLEAN      NOT NULL DEFAULT FALSE,
+    dismissed_at        TIMESTAMP,
+    dismissed_by        UUID
+);
+
+CREATE TABLE IF NOT EXISTS ctf_hint_unlocks (
+    id             UUID        PRIMARY KEY DEFAULT gen_random_uuid(),
+    challenge_id   UUID,
+    user_id        UUID,
+    team_id        UUID,
+    hint_id        VARCHAR(50) NOT NULL,
+    points_spent   INT         NOT NULL,
+    unlocked_at    TIMESTAMP   DEFAULT NOW()
+);
+
+-- The 8 tables below were found the same way as the 10 CTF tables above —
+-- referenced/expected by the app but never captured as CREATE TABLE anywhere
+-- (academic ones too: divisions/modules/semesters/exam_violations). Column
+-- definitions are copied verbatim from docs/documents/schema.sql (a real
+-- `pg_dump --schema-only` snapshot of a working instance — authoritative,
+-- not hand-derived from entities like the 10 above), with CREATE TABLE
+-- IF NOT EXISTS substituted for pg_dump's plain CREATE TABLE and PRIMARY
+-- KEY/UNIQUE folded inline instead of pg_dump's separate ALTER TABLE form.
+
+CREATE TABLE IF NOT EXISTS semesters (
+    semester_id  UUID         PRIMARY KEY,
+    name         VARCHAR(50)  NOT NULL UNIQUE
+);
+
+CREATE TABLE IF NOT EXISTS divisions (
+    division_id  UUID         PRIMARY KEY,
+    name         VARCHAR(150) NOT NULL,
+    dept_id      UUID         NOT NULL,
+    type         VARCHAR(20)
+);
+
+CREATE TABLE IF NOT EXISTS modules (
+    module_id    UUID         PRIMARY KEY,
+    name         VARCHAR(150) NOT NULL,
+    division_id  UUID         NOT NULL,
+    semester_id  UUID         NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS exam_violations (
+    violation_id     UUID         PRIMARY KEY,
+    "timestamp"      TIMESTAMP(6) NOT NULL,
+    violation_type   VARCHAR(255) NOT NULL,
+    assessment_id    UUID         NOT NULL,
+    student_id       UUID         NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS competition_teams (
+    team_id         UUID         PRIMARY KEY,
+    captain_id      UUID         NOT NULL,
+    competition_id  UUID         NOT NULL,
+    created_at      TIMESTAMP(6) NOT NULL,
+    invite_code     VARCHAR(10)  NOT NULL,
+    name            VARCHAR(100) NOT NULL,
+    status          VARCHAR(10)  NOT NULL
+        CHECK (status IN ('FORMING', 'LOCKED'))
+);
+
+CREATE TABLE IF NOT EXISTS ctf_notifications (
+    id              UUID         PRIMARY KEY,
+    body            TEXT,
+    competition_id  UUID         NOT NULL,
+    metadata        JSONB,
+    sent_at         TIMESTAMP(6),
+    sent_by         UUID,
+    title           VARCHAR(255) NOT NULL,
+    type            VARCHAR(30)  NOT NULL
+        CHECK (type IN (
+            'COMPETITION_STARTED', 'COMPETITION_PAUSED', 'COMPETITION_RESUMED',
+            'COMPETITION_ENDING_SOON', 'COMPETITION_ENDED', 'NEW_CHALLENGE',
+            'CHALLENGE_UPDATED', 'HINT_ADDED', 'SCOREBOARD_FROZEN',
+            'SCOREBOARD_UNFROZEN', 'TEAM_DISQUALIFIED', 'CUSTOM'
+        ))
+);
+
+CREATE TABLE IF NOT EXISTS ctf_solves (
+    id              UUID         PRIMARY KEY,
+    challenge_id    UUID,
+    points_awarded  INT          NOT NULL,
+    solved_at       TIMESTAMP(6),
+    user_id         UUID
+);
+
+CREATE TABLE IF NOT EXISTS ctf_team_flags (
+    id              UUID         PRIMARY KEY,
+    challenge_id    UUID,
+    competition_id  UUID,
+    flag_hash       VARCHAR(64)  NOT NULL,
+    generated_at    TIMESTAMP(6),
+    team_id         UUID,
+    UNIQUE (competition_id, challenge_id, team_id)
+);
+
+CREATE TABLE IF NOT EXISTS ctf_team_members (
+    team_id     UUID        NOT NULL,
+    user_id     UUID        NOT NULL,
+    joined_at   TIMESTAMP   DEFAULT NOW(),
+    role        VARCHAR(10) DEFAULT 'MEMBER',
+    PRIMARY KEY (team_id, user_id)
+);
+
+CREATE TABLE IF NOT EXISTS ctf_competition_solves (
+    id              UUID      PRIMARY KEY DEFAULT gen_random_uuid(),
+    competition_id  UUID,
+    challenge_id    UUID,
+    team_id         UUID,
+    solved_by       UUID,
+    solved_at       TIMESTAMP DEFAULT NOW(),
+    points_awarded  INT       NOT NULL,
+    UNIQUE (competition_id, challenge_id, team_id)
+);
+
+-- Singleton config row (id is application-assigned, always 1 — see
+-- migration_v10_ctf_schema_gaps.sql's seed INSERT).
+CREATE TABLE IF NOT EXISTS ctf_resource_config (
+    id                             BIGINT  PRIMARY KEY,
+    max_concurrent_instances       INT     DEFAULT 3,
+    max_instances_per_user         INT     DEFAULT 1,
+    max_instance_duration_minutes  INT     DEFAULT 30,
+    container_memory_limit_mb      INT     DEFAULT 128,
+    container_cpu_percent          INT     DEFAULT 50,
+    cleanup_interval_seconds       INT     DEFAULT 60,
+    updated_by                     UUID,
+    updated_at                     TIMESTAMP
+);
 
 -- =============================================================================
 -- ROLLBACK / TEARDOWN  (run this block to wipe everything cleanly)
