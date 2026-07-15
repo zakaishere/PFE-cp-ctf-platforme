@@ -72,6 +72,29 @@ else
   echo "  MAIL_USERNAME already set -> leaving DISABLE_EMAIL_VERIFICATION as-is"
 fi
 
+# CORS: replace the insecure "*" placeholder with this server's actual
+# detected origin so the browser API works without leaving the door open to
+# any website. Only touches it if still at the "*" placeholder.
+cors=$(read_value CORS_ALLOWED_ORIGIN_PATTERNS)
+if [ -z "$cors" ] || [ "$cors" = "*" ]; then
+  detected=""
+  for url in https://ifconfig.me https://icanhazip.com https://ipinfo.io/ip; do
+    detected=$(curl -4 -s --max-time 3 "$url" 2>/dev/null | tr -d '[:space:]') || true
+    [ -n "$detected" ] && break
+  done
+  if [ -n "$detected" ]; then
+    grep -q '^CORS_ALLOWED_ORIGIN_PATTERNS=' "$ENV_FILE" || echo "CORS_ALLOWED_ORIGIN_PATTERNS=" >> "$ENV_FILE"
+    sed -i "s|^CORS_ALLOWED_ORIGIN_PATTERNS=.*|CORS_ALLOWED_ORIGIN_PATTERNS=http://${detected}:3000,http://localhost:3000|" "$ENV_FILE"
+    echo "  detected public IP -> CORS_ALLOWED_ORIGIN_PATTERNS=http://${detected}:3000,http://localhost:3000"
+    echo "    (using a different domain/port to access the site? edit CORS_ALLOWED_ORIGIN_PATTERNS in $ENV_FILE)"
+  else
+    echo "  COULD NOT auto-detect a public IP — CORS_ALLOWED_ORIGIN_PATTERNS left as \"*\" (works, but insecure)."
+    echo "    Set it manually in $ENV_FILE, e.g.: CORS_ALLOWED_ORIGIN_PATTERNS=http://<your-ip>:3000"
+  fi
+else
+  echo "  kept existing CORS_ALLOWED_ORIGIN_PATTERNS (already customized)"
+fi
+
 echo ""
 echo "Done. $ENV_FILE is ready."
 echo ""
