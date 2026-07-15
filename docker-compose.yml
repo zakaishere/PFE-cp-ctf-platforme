@@ -221,6 +221,27 @@ services:
     mem_limit: 250m
     cpus: 0.5
 
+  # ── Nginx (reverse proxy — access the whole site on plain http://<ip>) ─────
+  # Routes / → frontend, /api/ + /ws + /ws-endpoint → backend, all on port 80.
+  # The direct :3000/:8080 ports below still work too (unchanged) — this is
+  # additive, not a replacement. Add a domain + TLS block once you have a
+  # real domain (see CTF-icode/nginx/nginx.conf for that pattern).
+  nginx:
+    build:
+      context: ./nginx
+      dockerfile: Dockerfile
+    container_name: psp-nginx
+    restart: unless-stopped
+    ports:
+      - "80:80"
+    depends_on:
+      backend:
+        condition: service_healthy
+      frontend:
+        condition: service_healthy
+    mem_limit: 96m
+    cpus: 0.5
+
 volumes:
   postgres_data:
   ctf_uploads:

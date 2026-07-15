@@ -6,7 +6,7 @@ import {
 import { Check, X, Clock, Zap, Package, AlertTriangle, CircleX, CheckCircle2, XCircle, Play } from "lucide-react";
 import { Client as StompClient } from "@stomp/stompjs";
 import SockJS from "sockjs-client";
-import { runCode, submitCode, type RunResult, type RunTestCaseResult } from "@/lib/api";
+import { runCode, submitCode, getApiBaseUrl, type RunResult, type RunTestCaseResult } from "@/lib/api";
 import type { Language } from "@/lib/codeTemplates";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
@@ -730,7 +730,7 @@ export const ResultsPanel = forwardRef<ResultsPanelHandle, ResultsPanelProps>(
         const client = await new Promise<StompClient>((resolve, reject) => {
           const c = new StompClient({
             webSocketFactory: () =>
-              new SockJS(`${process.env.NEXT_PUBLIC_API_BASE_URL ?? "http://localhost:8080"}/ws-endpoint`),
+              new SockJS(`${getApiBaseUrl()}/ws-endpoint`),
             onConnect:        () => resolve(c),
             onStompError:     (f) => reject(new Error(f.headers?.message ?? "STOMP error")),
             onWebSocketError: (e) => reject(e),
