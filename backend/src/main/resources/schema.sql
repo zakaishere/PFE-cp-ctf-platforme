@@ -256,6 +256,16 @@ CREATE TABLE IF NOT EXISTS assessment_problems (
         ON DELETE RESTRICT            -- prevent deleting a problem used in an exam
 );
 
+-- If this table already existed (e.g. from an earlier boot before these
+-- columns were added here), CREATE TABLE IF NOT EXISTS above silently did
+-- nothing — it only applies to a table that doesn't exist yet. These
+-- ADD COLUMN IF NOT EXISTS are unconditional so the columns are guaranteed
+-- present before the constraint below tries to reference order_index.
+ALTER TABLE assessment_problems
+  ADD COLUMN IF NOT EXISTS id          UUID,
+  ADD COLUMN IF NOT EXISTS order_index INTEGER,
+  ADD COLUMN IF NOT EXISTS max_points  INTEGER DEFAULT 25;
+
 DO $$
 BEGIN
   IF NOT EXISTS (
