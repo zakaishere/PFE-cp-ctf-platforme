@@ -105,6 +105,15 @@ services:
       WORKER_AGENT_SECRET: ${WORKER_AGENT_SECRET:-}
       # URL the agent uses to call back into this platform (ZIP downloads)
       PLATFORM_INTERNAL_URL: ${PLATFORM_INTERNAL_URL:-http://host.docker.internal:8080}
+      # ── Email (OTP verification, password reset) ────────────────────────
+      # Required whenever app.security.disable-verification=false (the prod
+      # default — see application-prod.yml). Empty credentials mean every
+      # OTP email silently fails to send (EmailStartupCheck warns loudly in
+      # the logs if this happens). Gmail requires an App Password, not the
+      # account password: https://myaccount.google.com/apppasswords
+      MAIL_HOST: ${MAIL_HOST:-smtp.gmail.com}
+      MAIL_USERNAME: ${MAIL_USERNAME:-}
+      MAIL_PASSWORD: ${MAIL_PASSWORD:-}
     extra_hosts:
       - "host.docker.internal:host-gateway"
     volumes:

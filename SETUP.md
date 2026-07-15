@@ -81,6 +81,7 @@ Minimum you must change in `.env` before any real use:
 | `RABBITMQ_PASSWORD` | RabbitMQ password |
 | `JWT_SECRET` | Auth token signing key — **min 32 chars** |
 | `CTF_FLAG_SECRET` | HMAC key for per-team dynamic flags — **min 32 chars** |
+| `MAIL_USERNAME` / `MAIL_PASSWORD` | SMTP credentials for OTP emails (verification, password reset) — **required in prod**, see [§7.1](#71-email--otp-verification) |
 | `GRAFANA_PASSWORD` | Grafana admin password |
 | `NEXT_PUBLIC_API_BASE_URL` | Server-side API origin. Local: `http://localhost:8080`. Prod: `https://api.yourdomain.com` |
 
@@ -263,6 +264,9 @@ cd frontend && npm install && npm run dev
 | `RABBITMQ_PASSWORD` | ✅ | `psp_password` | RabbitMQ password |
 | `JWT_SECRET` | ✅ | — | Auth token signing key (≥32 chars) |
 | `CTF_FLAG_SECRET` | ✅ | — | HMAC key for dynamic per-team flags (≥32 chars) |
+| `MAIL_HOST` | | `smtp.gmail.com` | SMTP host for OTP emails |
+| `MAIL_USERNAME` | ✅ | *(empty)* | SMTP account — required in prod, see [§7.1](#71-email--otp-verification) |
+| `MAIL_PASSWORD` | ✅ | *(empty)* | SMTP password (Gmail: an **App Password**, not the account password) |
 | `GRAFANA_USER` | | `admin` | Grafana admin user |
 | `GRAFANA_PASSWORD` | ✅ | `admin_change_me` | Grafana admin password |
 | `NEXT_PUBLIC_API_BASE_URL` | ✅ | `http://localhost:8080` | Server-side API origin |
@@ -274,6 +278,50 @@ cd frontend && npm install && npm run dev
 
 > Postgres user/db (`psp_user` / `psp_db`) are fixed in `docker-compose.yml`;
 > only the password is a variable.
+
+### 7.1 Email / OTP verification
+
+Registration, email verification, and password reset all send a 6-digit,
+15-minute OTP by email (`AuthService` / `EmailService`). This is controlled by
+`app.security.disable-verification` in `application-*.yml`:
+
+| Profile | Effective value | Behavior |
+|---|---|---|
+| `prod` (containerized stack) | `false` | OTP **required** — `MAIL_USERNAME`/`MAIL_PASSWORD` **must** be set or accounts get stuck unverified |
+| `dev` (native dev) | `true` | Verification bypassed entirely ("Testing Mode") — no email is ever sent |
+
+If `MAIL_USERNAME`/`MAIL_PASSWORD` are missing in `prod`, the backend logs a
+loud warning on boot (`EmailStartupCheck`) but still starts — every OTP send
+then silently fails (logged only; the API still returns success, by design,
+so `forgot-password` never leaks whether an email is registered).
+
+**Setting up Gmail SMTP** (the default `MAIL_HOST`):
+1. Enable 2-Step Verification on the sending Gmail account.
+2. Generate an App Password: <https://myaccount.google.com/apppasswords>
+3. Set `MAIL_USERNAME=<the gmail address>` and `MAIL_PASSWORD=<the 16-char app password>` in `.env` — **not** the account's normal login password, Gmail rejects that for SMTP.
+
+Any other SMTP provider works too — just change `MAIL_HOST`.
+
+**Spam / abuse handling:** `/api/auth/**` (register, resend-verification,
+forgot-password, reset-password) is already covered by the platform's
+per-IP rate limiter (`RateLimitInterceptor`) at the **strict** tier — 10
+requests/minute per IP. This caps both OTP-spam toward a victim's inbox and
+the volume that could get the sending SMTP account flagged/suspended by the
+provider. No separate configuration needed.
+
+**Running without real email** (demo/offline): the `app.security.disable-verification`
+property is not templated as a compose `${VAR}` today, but Spring Boot's
+relaxed env-var binding still reaches it directly (same pattern as
+`ctf.flag-secret` → `CTF_FLAG_SECRET`: dots and hyphens both become
+underscores). Override it via `docker-compose.override.yml`:
+```yaml
+services:
+  backend:
+    environment:
+      APP_SECURITY_DISABLE_VERIFICATION: "true"
+```
+Note this is a demo-only shortcut — no email means no real "forgot password"
+recovery path for users either.
 
 ### Worker Agent — `ctf-worker-agent/.env`
 
@@ -315,11 +363,29 @@ curl http://localhost:8000/api/v1/health    # → healthy
    WORKER_AGENT_KEY_ID=<key id>
    WORKER_AGENT_SECRET=<secret>
    ```
-4. Restart the backend: `docker compose up -d --no-build backend`.
+4. **Wire the reverse direction too** — the agent fetches challenge ZIPs *from*
+   the platform when building a Docker image (`GET /api/internal/zip/{id}`,
+   protected by a short-lived signed token, not open to the internet). The
+   default `PLATFORM_INTERNAL_URL=http://host.docker.internal:8080` only
+   resolves on the **same** Docker host — on a genuinely separate worker
+   server it resolves to nothing useful and image builds will hang or fail.
+   Set it in the platform's `.env` to a URL the worker host can actually
+   reach:
+   ```
+   PLATFORM_INTERNAL_URL=https://platform.yourdomain.com   # or http://<platform-public-ip>:8080
+   ```
+5. Restart the backend: `docker compose up -d --no-build backend`.
 
 > The platform↔agent HMAC key id/secret are **generated at runtime** in the
 > agent UI — they are not set as env vars on the agent side. Requests are HMAC-
 > signed with a 5-minute timestamp tolerance.
+>
+> Live CTF **instances** (the actual challenge containers players connect to)
+> don't have this same-host limitation — the agent stamps every instance with
+> its own `HOST_IP` and the platform relays that directly to the browser, so
+> players connect straight to the worker host regardless of where the
+> platform runs. Only the ZIP-fetch-for-building path depends on
+> `PLATFORM_INTERNAL_URL` being reachable from the worker.
 
 ---
 
@@ -390,6 +456,9 @@ on disk/RAM:
 | Backend OOM under load | `mem_limit: 900m` → ~675 MB heap (via `MaxRAMPercentage`, **not** `JAVA_OPTS` — the Dockerfile ignores `JAVA_OPTS`). Raise `mem_limit` if your load needs more. |
 | Prometheus shows no healthcheck | Intentional — the `prom/prometheus` image is distroless (no shell/curl), so a `CMD` healthcheck can't run. Non-critical. |
 | CTF instances don't spawn | Check `WORKER_AGENT_URL`/key/secret, or (if empty) that the backend can reach `/var/run/docker.sock`. |
+| CTF challenge image build hangs/fails on a remote agent | `PLATFORM_INTERNAL_URL` still points at `host.docker.internal` — that only resolves on the same Docker host. Set it to a URL the worker server can actually reach (§8, step 4). |
+| Verification/reset OTP emails never arrive | `MAIL_USERNAME`/`MAIL_PASSWORD` unset or wrong — check backend logs on boot for the `EmailStartupCheck` warning. Gmail needs an **App Password**, not the account password. See §7.1. |
+| `535 Authentication failed` in backend logs | Wrong Gmail password (using the account password instead of an App Password), or 2-Step Verification isn't enabled on the sending account. |
 | Frontend can't reach API in browser | The browser derives the API host from the current URL; ensure the backend is reachable on `:8080` from the client, and `NEXT_PUBLIC_API_BASE_URL` is set for server-side calls. |
 
 ---

@@ -39,6 +39,7 @@ public class CTFBuildService {
     private final int                        buildTimeoutSeconds;
     private final WorkerAgentConfig          workerAgentConfig;
     private final WorkerAgentClient          workerAgentClient;
+    private final InternalZipTokenService    zipTokenService;
 
     @Value("${ctf.build.max-zip-size-mb:100}")
     private int maxZipSizeMb;
@@ -55,7 +56,8 @@ public class CTFBuildService {
             @Value("${ctf.images.prefix:psp-ctf}") String imagePrefix,
             @Value("${ctf.build.timeout-seconds:300}") int buildTimeoutSeconds,
             WorkerAgentConfig workerAgentConfig,
-            WorkerAgentClient workerAgentClient) {
+            WorkerAgentClient workerAgentClient,
+            InternalZipTokenService zipTokenService) {
         this.dockerClient        = dockerClient;
         this.storageService      = storageService;
         this.buildRepo           = buildRepo;
@@ -65,6 +67,7 @@ public class CTFBuildService {
         this.buildTimeoutSeconds = buildTimeoutSeconds;
         this.workerAgentConfig   = workerAgentConfig;
         this.workerAgentClient   = workerAgentClient;
+        this.zipTokenService     = zipTokenService;
     }
 
     /**
@@ -323,8 +326,9 @@ public class CTFBuildService {
             buildRepo.save(build);
             notifyBuild(build, null);
 
-            String zipUrl  = platformInternalUrl + "/api/internal/zip/" + build.getChallengeId();
-            String buildId = workerAgentClient.buildImage(build.getChallengeId().toString(), zipUrl);
+            String zipUrl   = platformInternalUrl + "/api/internal/zip/" + build.getChallengeId();
+            String zipToken = zipTokenService.issue(build.getChallengeId());
+            String buildId  = workerAgentClient.buildImage(build.getChallengeId().toString(), zipUrl, zipToken);
             log.info("Remote build started for challenge {}: buildId={}", build.getChallengeId(), buildId);
 
             for (int i = 0; i < 200; i++) {

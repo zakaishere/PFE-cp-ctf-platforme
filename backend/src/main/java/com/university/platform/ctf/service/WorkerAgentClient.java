@@ -130,12 +130,20 @@ public class WorkerAgentClient {
 
     // ── Build operations ───────────────────────────────────────────────────────
 
-    public String buildImage(String challengeId, String zipUrl) {
+    public String buildImage(String challengeId, String zipUrl, String zipAuthToken) {
         try {
-            byte[] body = objectMapper.writeValueAsBytes(Map.of(
-                    "challenge_id", challengeId,
-                    "zip_url",      zipUrl
-            ));
+            Map<String, Object> bodyMap = new LinkedHashMap<>();
+            bodyMap.put("challenge_id", challengeId);
+            bodyMap.put("zip_url",      zipUrl);
+            // The agent forwards this as `Authorization: Bearer <token>` when it
+            // fetches zip_url (see image_service.py _download_zip). Without it,
+            // GET /api/internal/zip/{id} — permitAll() since the agent has no
+            // platform JWT — had no auth at all beyond assuming the URL stayed
+            // private, which doesn't hold once the agent is on a public host.
+            if (zipAuthToken != null && !zipAuthToken.isBlank()) {
+                bodyMap.put("zip_auth_token", zipAuthToken);
+            }
+            byte[] body = objectMapper.writeValueAsBytes(bodyMap);
             Map<String, Object> resp = post("/api/v1/images/build", body);
             return (String) resp.get("build_id");
         } catch (WorkerAgentException e) {

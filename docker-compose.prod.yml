@@ -35,6 +35,13 @@ services:
       CTF_FLAG_SECRET: ${CTF_FLAG_SECRET:?set CTF_FLAG_SECRET in .env}
       RABBITMQ_PASSWORD: ${RABBITMQ_PASSWORD:?set RABBITMQ_PASSWORD in .env}
       DDL_AUTO: validate
+      # application-prod.yml requires email verification (disable-verification:
+      # false) — these must be real credentials or registration/password-reset
+      # is silently broken. Skip this requirement only by also setting
+      # app.security.disable-verification=true, which is not recommended
+      # outside a demo deployment.
+      MAIL_USERNAME: ${MAIL_USERNAME:?set MAIL_USERNAME in .env — see .env.example}
+      MAIL_PASSWORD: ${MAIL_PASSWORD:?set MAIL_PASSWORD in .env — see .env.example}
 
   frontend:
     restart: always

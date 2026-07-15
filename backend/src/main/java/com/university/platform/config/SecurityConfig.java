@@ -38,8 +38,11 @@ public class SecurityConfig {
                 session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
             .authorizeHttpRequests(auth -> auth
                 .requestMatchers(AntPathRequestMatcher.antMatcher("/api/auth/**")).permitAll()
-                // Worker-agent callbacks (ZIP download for image builds) — the agent has no
-                // platform JWT; access is gated by network placement. TODO: shared-secret header.
+                // Worker-agent callback (ZIP download for image builds) — the agent has no
+                // platform JWT, so this stays permitAll() at the Spring Security layer.
+                // CTFInternalController itself requires a short-lived, per-challenge
+                // bearer token (InternalZipTokenService) issued only when a build is
+                // dispatched — not "gated by network placement" anymore.
                 .requestMatchers(AntPathRequestMatcher.antMatcher("/api/internal/**")).permitAll()
                 // Container healthchecks need an unauthenticated health probe;
                 // everything else on actuator stays admin-only.
