@@ -2,11 +2,21 @@ import { logger } from "@/lib/logger";
 
 export function getApiBaseUrl(): string {
   if (typeof window === "undefined") {
-    return process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:8080";
+    // Server-side (SSR): "localhost" would resolve to the frontend container
+    // itself, not the backend — inside docker-compose, reach it by service name.
+    return process.env.NEXT_PUBLIC_API_BASE_URL || "http://backend:8080";
   }
-  // Derive from current hostname so LAN access (e.g. http://192.168.x.x:3000) works
-  // without needing to change .env — backend is always on the same machine, port 8080
-  return `${window.location.protocol}//${window.location.hostname}:8080`;
+  const { protocol, hostname, port } = window.location;
+  // Visiting the frontend directly on its own port (e.g. http://<ip>:3000,
+  // including LAN access) → talk to the backend directly on 8080, same as
+  // always. Visiting through the nginx reverse proxy (plain http://<ip>, no
+  // port — nginx listens on 80 and routes /api + /ws to the backend) → use
+  // the current origin with no port so those requests get proxied instead of
+  // trying to hit a port nginx never published.
+  if (port === "3000") {
+    return `${protocol}//${hostname}:8080`;
+  }
+  return `${protocol}//${hostname}`;
 }
 
 function getToken(): string | null {
