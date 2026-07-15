@@ -6,8 +6,11 @@ import { useState } from "react";
 import { z } from "zod";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { Eye, EyeOff, CheckCircle2, RefreshCw, ArrowLeft, Loader2 } from "lucide-react";
+import { Eye, EyeOff, CheckCircle2, RefreshCw, ArrowLeft, Loader2, Trophy, Code2, Shield } from "lucide-react";
 import { useAuth } from "@/features/auth/contexts/AuthContext";
+import { Alert } from "@/components/ui/PSPAlert";
+import { CyberBackground } from "@/components/ui/CyberBackground";
+import { APP_NAME } from "@/lib/brand";
 import {
   registerStudent, registerTeacher, forgotPassword, resetPassword,
   verifyEmail, resendVerification,
@@ -105,17 +108,21 @@ function LoginForm({ onForgot, onRegister }: { onForgot: () => void; onRegister:
 
   return (
     <form onSubmit={handleSubmit(onSubmit)}>
-      {error && <div style={{ background: "var(--red-light)", border: "1px solid #ff8f73", color: "#bf2600", borderRadius: 3, padding: "8px 12px", fontSize: 12, marginBottom: 14 }}>{error}</div>}
+      {error && (
+        <div key={error} className="alert-shake" style={{ marginBottom: 14 }}>
+          <Alert variant="error" message={error} compact onDismiss={() => setError("")} />
+        </div>
+      )}
       <FInput label="Email address" type="email" placeholder="you@university.ma" error={errors.email?.message} {...register("email")} />
       <FInput label="Password" type="password" placeholder="Enter your password" error={errors.password?.message} {...register("password")} />
-      <a onClick={onForgot} style={{ display: "block", textAlign: "right", fontSize: 12, color: "#0052cc", marginBottom: 16, cursor: "pointer" }}>Forgot password?</a>
-      <FBtn loading={loading} type="submit">Sign In</FBtn>
+      <a onClick={onForgot} style={{ display: "block", textAlign: "right", fontSize: 12, color: "var(--brand)", marginBottom: 16, cursor: "pointer" }}>Forgot password?</a>
+      <div className="auth-submit"><FBtn loading={loading} type="submit">Sign In</FBtn></div>
       <div style={{ display: "flex", alignItems: "center", gap: 12, margin: "20px 0", color: "var(--text-muted)", fontSize: 12 }}>
         <div style={{ flex: 1, borderTop: "1px solid var(--border)" }} /> or <div style={{ flex: 1, borderTop: "1px solid var(--border)" }} />
       </div>
       <div style={{ textAlign: "center", fontSize: 13, color: "var(--text-muted)" }}>
         Don&apos;t have an account?{" "}
-        <a onClick={onRegister} style={{ color: "#0052cc", cursor: "pointer", fontWeight: 500 }}>Create one</a>
+        <a onClick={onRegister} style={{ color: "var(--brand)", cursor: "pointer", fontWeight: 500 }}>Create one</a>
       </div>
     </form>
   );
@@ -138,7 +145,7 @@ function EmailVerifyStep({ email, role, onBack }: { email: string; role: "studen
       <div style={{ fontSize: 13, color: "var(--text-muted)", marginBottom: 20 }}>
         {role === "teacher" ? "Your account is pending admin approval. You'll be notified once activated." : "You can now sign in."}
       </div>
-      <button onClick={onBack} style={{ color: "#0052cc", background: "none", border: "none", cursor: "pointer", fontSize: 13, display: "flex", alignItems: "center", gap: 4, margin: "0 auto" }}>
+      <button onClick={onBack} style={{ color: "var(--brand)", background: "none", border: "none", cursor: "pointer", fontSize: 13, display: "flex", alignItems: "center", gap: 4, margin: "0 auto" }}>
         <ArrowLeft size={13} /> Back to Sign In
       </button>
     </div>
@@ -155,7 +162,7 @@ function EmailVerifyStep({ email, role, onBack }: { email: string; role: "studen
         We sent a 6-digit code to <strong style={{ color: "var(--text-primary)" }}>{email}</strong>.
       </div>
       <FInput label="Verification Code" placeholder="000000" maxLength={6} style={{ textAlign: "center", letterSpacing: "0.4em", fontFamily: "monospace", fontSize: 18 }} error={errors.otpCode?.message} {...register("otpCode")} />
-      {error && <div style={{ fontSize: 11, color: "#de350b", marginBottom: 8 }}>{error}</div>}
+      {error && <div style={{ marginBottom: 8 }}><Alert variant="error" message={error} compact onDismiss={() => setError("")} /></div>}
       <FBtn loading={loading} type="submit">Verify Email</FBtn>
       <button type="button" onClick={async () => { setResending(true); try { await resendVerification(email); } finally { setResending(false); } }}
         style={{ width: "100%", background: "none", border: "none", color: "var(--text-muted)", fontSize: 12, cursor: "pointer", marginTop: 12, display: "flex", alignItems: "center", justifyContent: "center", gap: 4 }}>
@@ -183,13 +190,13 @@ function RegisterForm({ onLogin }: { onLogin: () => void }) {
       <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", border: "1px solid var(--border)", borderRadius: 3, marginBottom: 20, overflow: "hidden" }}>
         {(["student", "teacher"] as const).map((r) => (
           <button key={r} type="button" onClick={() => setRoleTab(r)}
-            style={{ padding: 10, textAlign: "center", fontSize: 13, fontWeight: 600, cursor: "pointer", color: roleTab === r ? "white" : "#5e6c84", background: roleTab === r ? "#0052cc" : "var(--bg-primary)", border: "none", display: "flex", alignItems: "center", justifyContent: "center", gap: 6 }}>
+            style={{ padding: 10, textAlign: "center", fontSize: 13, fontWeight: 600, cursor: "pointer", color: roleTab === r ? "white" : "#5e6c84", background: roleTab === r ? "var(--brand)" : "var(--bg-primary)", border: "none", display: "flex", alignItems: "center", justifyContent: "center", gap: 6 }}>
             {r === "student" ? "Student" : "Teacher"}
           </button>
         ))}
       </div>
 
-      {error && <div style={{ background: "var(--red-light)", border: "1px solid #ff8f73", color: "#bf2600", borderRadius: 3, padding: "8px 12px", fontSize: 12, marginBottom: 14 }}>{error}</div>}
+      {error && <div style={{ marginBottom: 14 }}><Alert variant="error" message={error} compact onDismiss={() => setError("")} /></div>}
 
       {roleTab === "student" ? (
         <form onSubmit={studentForm.handleSubmit(async (v) => {
@@ -220,8 +227,12 @@ function RegisterForm({ onLogin }: { onLogin: () => void }) {
           catch (e: any) { setError(e.message || "Registration failed"); }
           finally { setLoading(false); }
         })}>
-          <div style={{ background: "#deebff", border: "1px solid #4c9aff", borderRadius: 3, padding: "10px 12px", fontSize: 12, color: "#0747a6", marginBottom: 14 }}>
-            Teacher accounts require administrator approval before you can log in.
+          <div style={{ marginBottom: 14 }}>
+            <Alert
+              variant="info"
+              title="Pending approval"
+              message="Teacher accounts require administrator approval before you can log in."
+            />
           </div>
           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
             <FInput label="First Name" placeholder="Sara" error={teacherForm.formState.errors.firstName?.message} {...teacherForm.register("firstName")} />
@@ -238,7 +249,7 @@ function RegisterForm({ onLogin }: { onLogin: () => void }) {
       )}
       <div style={{ textAlign: "center", fontSize: 13, color: "var(--text-muted)", marginTop: 16 }}>
         Already have an account?{" "}
-        <a onClick={onLogin} style={{ color: "#0052cc", cursor: "pointer", fontWeight: 500 }}>Sign in</a>
+        <a onClick={onLogin} style={{ color: "var(--brand)", cursor: "pointer", fontWeight: 500 }}>Sign in</a>
       </div>
     </div>
   );
@@ -262,7 +273,7 @@ function ForgotFlow({ onBack }: { onBack: () => void }) {
       </div>
       <div style={{ fontSize: 14, color: "var(--text-primary)", fontWeight: 600, marginBottom: 8 }}>Password reset!</div>
       <div style={{ fontSize: 13, color: "var(--text-muted)", marginBottom: 20 }}>You can now sign in with your new password.</div>
-      <button onClick={onBack} style={{ color: "#0052cc", background: "none", border: "none", cursor: "pointer", fontSize: 13, display: "flex", alignItems: "center", gap: 4, margin: "0 auto" }}>
+      <button onClick={onBack} style={{ color: "var(--brand)", background: "none", border: "none", cursor: "pointer", fontSize: 13, display: "flex", alignItems: "center", gap: 4, margin: "0 auto" }}>
         <ArrowLeft size={13} /> Back to Sign In
       </button>
     </div>
@@ -282,7 +293,7 @@ function ForgotFlow({ onBack }: { onBack: () => void }) {
         })}>
           <div style={{ fontSize: 13, color: "var(--text-muted)", marginBottom: 16 }}>Enter your email to receive a reset code.</div>
           <FInput label="Email" type="email" placeholder="you@university.ma" error={emailForm.formState.errors.email?.message} {...emailForm.register("email")} />
-          {error && <div style={{ fontSize: 11, color: "#de350b", marginBottom: 8 }}>{error}</div>}
+          {error && <div style={{ marginBottom: 8 }}><Alert variant="error" message={error} compact onDismiss={() => setError("")} /></div>}
           <FBtn loading={loading} type="submit">Send Reset Code</FBtn>
         </form>
       )}
@@ -302,7 +313,7 @@ function ForgotFlow({ onBack }: { onBack: () => void }) {
         })}>
           <FInput label="New Password" type="password" placeholder="Min. 6 characters" error={passForm.formState.errors.password?.message} {...passForm.register("password")} />
           <FInput label="Confirm Password" type="password" placeholder="Same as above" error={passForm.formState.errors.confirm?.message} {...passForm.register("confirm")} />
-          {error && <div style={{ fontSize: 11, color: "#de350b", marginBottom: 8 }}>{error}</div>}
+          {error && <div style={{ marginBottom: 8 }}><Alert variant="error" message={error} compact onDismiss={() => setError("")} /></div>}
           <FBtn loading={loading} type="submit">Reset Password</FBtn>
         </form>
       )}
@@ -311,34 +322,66 @@ function ForgotFlow({ onBack }: { onBack: () => void }) {
 }
 
 /* ── PAGE ── */
+const FEATURES = [
+  { icon: <Trophy size={14} />, text: "ICPC-style CP competitions & live exams" },
+  { icon: <Code2 size={14} />,  text: "Real-time judge with 6 languages" },
+  { icon: <Shield size={14} />, text: "CTF challenges & security labs" },
+];
+
 export default function AuthPage() {
   const [mode, setMode] = useState<Mode>("login");
 
+  const heading =
+    mode === "login" ? "Welcome back" : mode === "register" ? "Create your account" : null;
+  const subheading =
+    mode === "login" ? `Sign in to your ${APP_NAME} account` : mode === "register" ? `Join ${APP_NAME}` : null;
+
   return (
-    <div style={{ fontFamily: "-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif", background: "var(--bg-secondary)", color: "var(--text-primary)", minHeight: "100vh", display: "flex", flexDirection: "column" }}>
-      {/* Top bar */}
-      <div style={{ background: "#0052cc", height: 48, display: "flex", alignItems: "center", padding: "0 24px" }}>
-        <Link href="/" style={{ display: "flex", alignItems: "center", gap: 8, color: "white", fontWeight: 700, fontSize: 15, textDecoration: "none" }}>
-          <div style={{ width: 24, height: 24, background: "rgba(255,255,255,0.9)", borderRadius: 4, display: "flex", alignItems: "center", justifyContent: "center", color: "#0052cc", fontWeight: 900, fontSize: 12 }}>P</div>
-          PSP Platform
+    <div className="auth-shell">
+      {/* ── LEFT — Branding panel ── */}
+      <div className="auth-left">
+        <CyberBackground hexCount={10} />
+        <div className="auth-left-grid auth-grid-drift" />
+        <div className="auth-glow auth-glow-1" />
+        <div className="auth-glow auth-glow-2" />
+
+        <Link href="/" className="auth-logo slide-up" style={{ animationDelay: "0ms" }}>
+          <img src="/algora-logo-full.png" alt={APP_NAME} className="auth-logo-img auth-logo-breathe" />
         </Link>
+
+        <div className="auth-pitch">
+          <h1 className="slide-up" style={{ animationDelay: "80ms" }}>
+            Compete, code<br />
+            and <span>level up</span><br />
+            — all in one place.
+          </h1>
+          <p className="slide-up" style={{ animationDelay: "160ms" }}>
+            Sign in to access competitions, exams, CTF challenges,
+            and track your progress in real time.
+          </p>
+          {FEATURES.map(({ icon, text }, i) => (
+            <div key={text} className="auth-feature slide-up" style={{ animationDelay: `${220 + i * 60}ms` }}>
+              <div className="auth-feature-icon">{icon}</div>
+              <span>{text}</span>
+            </div>
+          ))}
+        </div>
+
+        <p className="auth-credit slide-up" style={{ animationDelay: "420ms" }}>Built for iCODE Club · FST Tétouan</p>
       </div>
 
-      {/* Card */}
-      <div style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center", padding: "40px 16px" }}>
-        <div style={{ background: "var(--bg-primary)", border: "1px solid var(--border)", borderRadius: 3, width: "100%", maxWidth: mode === "register" ? 480 : 400, padding: 32 }}>
+      {/* ── RIGHT — Form panel ── */}
+      <div className="auth-right">
+        <div className="auth-form-wrap auth-slide-in-right" style={{ maxWidth: mode === "register" ? 480 : 380 }}>
           {mode === "forgot" ? (
             <ForgotFlow onBack={() => setMode("login")} />
           ) : (
             <>
-              <div style={{ textAlign: "center", marginBottom: 24 }}>
-                <div style={{ width: 48, height: 48, background: "#0052cc", borderRadius: 8, display: "flex", alignItems: "center", justifyContent: "center", margin: "0 auto 12px", color: "white", fontWeight: 900, fontSize: 22 }}>P</div>
-                <div style={{ fontSize: 20, fontWeight: 700, color: "var(--text-primary)" }}>
-                  {mode === "login" ? "Welcome back" : "Create your account"}
+              <div style={{ marginBottom: 28 }}>
+                <div style={{ fontSize: 24, fontWeight: 800, color: "var(--ink)", letterSpacing: "-0.5px", marginBottom: 6 }}>
+                  {heading}
                 </div>
-                <div style={{ fontSize: 13, color: "var(--text-muted)", marginTop: 4 }}>
-                  {mode === "login" ? "Sign in to your PSP account" : "Join the PSP Platform"}
-                </div>
+                <div style={{ fontSize: 14, color: "var(--ink-2)" }}>{subheading}</div>
               </div>
 
               {mode === "login"
@@ -349,6 +392,86 @@ export default function AuthPage() {
           )}
         </div>
       </div>
+
+      <style jsx>{`
+        .auth-shell {
+          min-height: 100vh;
+          display: grid;
+          grid-template-columns: 440px 1fr;
+          background: var(--bg);
+        }
+        .auth-left {
+          position: relative;
+          display: flex;
+          flex-direction: column;
+          justify-content: space-between;
+          padding: 40px 44px;
+          overflow: hidden;
+          background: linear-gradient(135deg, var(--bg-2) 0%, var(--bg) 60%, var(--bg-2) 100%);
+          border-right: 1px solid var(--line);
+        }
+        .auth-left-grid {
+          position: absolute; inset: 0;
+          background-image: radial-gradient(circle, var(--accent-dim) 1px, transparent 1px);
+          background-size: 28px 28px;
+          pointer-events: none;
+        }
+        .auth-glow {
+          position: absolute; border-radius: 50%; pointer-events: none;
+          background: radial-gradient(circle, var(--accent-dim) 0%, transparent 70%);
+        }
+        .auth-glow-1 { width: 380px; height: 380px; top: -100px; left: -100px; }
+        .auth-glow-2 { width: 280px; height: 280px; bottom: 40px; right: -60px; }
+        .auth-logo {
+          position: relative; z-index: 1;
+          display: flex; align-items: center; justify-content: center; gap: 10px;
+          color: var(--ink); font-weight: 700; font-size: 16px; text-decoration: none;
+        }
+        .auth-logo-img {
+          width: 130px; object-fit: contain;
+          filter: drop-shadow(0 0 20px var(--accent-glow));
+        }
+        .auth-pitch { position: relative; z-index: 1; }
+        .auth-pitch h1 {
+          font-size: 32px; font-weight: 800; color: var(--ink);
+          line-height: 1.18; letter-spacing: -0.5px; margin: 0 0 14px;
+        }
+        .auth-pitch h1 span { color: var(--accent); }
+        .auth-pitch p {
+          font-size: 14px; color: var(--ink-2); line-height: 1.6;
+          margin: 0 0 28px; max-width: 320px;
+        }
+        .auth-feature {
+          display: flex; align-items: center; gap: 10px; margin-bottom: 12px;
+          font-size: 13px; color: var(--ink-2);
+        }
+        .auth-feature-icon {
+          width: 24px; height: 24px; border-radius: 6px; flex-shrink: 0;
+          background: var(--accent-dim); border: 1px solid var(--line-2);
+          display: flex; align-items: center; justify-content: center;
+          color: var(--accent);
+        }
+        .auth-credit {
+          position: relative; z-index: 1;
+          font-size: 12px; color: var(--ink-3);
+          font-family: var(--font-mono), monospace;
+          margin: 0;
+        }
+        .auth-right {
+          display: flex; align-items: center; justify-content: center;
+          padding: 40px 32px;
+        }
+        .auth-form-wrap { width: 100%; }
+
+        @media (max-width: 900px) {
+          .auth-shell { grid-template-columns: 1fr; }
+          .auth-left { padding: 28px 28px 24px; }
+          .auth-pitch h1 { font-size: 24px; }
+          .auth-pitch p { margin-bottom: 18px; }
+          .auth-feature { display: none; }
+          .auth-credit { display: none; }
+        }
+      `}</style>
     </div>
   );
 }

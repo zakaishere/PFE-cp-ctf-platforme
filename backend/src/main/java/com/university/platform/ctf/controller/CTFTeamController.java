@@ -29,6 +29,13 @@ public class CTFTeamController {
         return ResponseEntity.ok(teamService.getCompetitionTeams(competitionId));
     }
 
+    @GetMapping("/{teamId}/profile")
+    public ResponseEntity<CTFTeamProfileDTO> getTeamProfile(
+            @PathVariable UUID competitionId,
+            @PathVariable UUID teamId) {
+        return ResponseEntity.ok(teamService.getTeamProfile(competitionId, teamId));
+    }
+
     @GetMapping("/mine")
     public ResponseEntity<CTFTeamResponse> getMyTeam(
             @PathVariable UUID competitionId,

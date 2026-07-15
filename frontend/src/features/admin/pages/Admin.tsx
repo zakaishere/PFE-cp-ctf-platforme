@@ -3,11 +3,11 @@
 import { useState, useEffect } from "react";
 import Link from "next/link";
 import Navbar from "@/components/Navbar";
-import { Users, BookOpen, Clock, ClipboardList, Monitor, AlertTriangle, CheckCircle2, X, Loader2, Server } from "lucide-react";
-import { getPendingTeachers, activateTeacher, rejectTeacher, getLeaderboard, getCTFAdminConfig, updateCTFAdminConfig, type PendingTeacher, type LeaderboardEntry, type CTFResourceConfig } from "@/lib/api";
+import { Users, BookOpen, Clock, ClipboardList, Monitor, AlertTriangle, CheckCircle2, X, Loader2, Server, Medal } from "lucide-react";
+import { getPendingTeachers, activateTeacher, rejectTeacher, getLeaderboard, getCTFAdminConfig, updateCTFAdminConfig, getPlatformStats, getAdminHealthMetrics, type PendingTeacher, type LeaderboardEntry, type CTFResourceConfig, type PlatformStats, type AdminHealthMetrics } from "@/lib/api";
 import { LoadingButton } from "@/components/ui/LoadingButton";
 
-const AVATAR_COLORS = ["#0052cc","#6554c0","#00875a","#ff8b00","#ff5630","#36b37e","#00b8d9","#de350b"];
+const AVATAR_COLORS = ["var(--brand)","#6554c0","var(--success)","var(--warn)","#ff5630","#36b37e","#00b8d9","var(--danger)"];
 
 function initials(t: PendingTeacher) {
   return `${t.firstName.charAt(0)}${t.lastName.charAt(0)}`.toUpperCase();
@@ -20,6 +20,10 @@ export default function AdminDashboard() {
   const [rejectReason, setRejectReason] = useState("");
   const [topStudents, setTopStudents] = useState<LeaderboardEntry[]>([]);
   const [actionLoading, setActionLoading] = useState<string | null>(null);
+
+  // Platform stats
+  const [stats, setStats] = useState<PlatformStats | null>(null);
+  const [health, setHealth] = useState<AdminHealthMetrics | null>(null);
 
   // CTF config state
   const [ctfConfig, setCtfConfig] = useState<CTFResourceConfig | null>(null);
@@ -34,6 +38,8 @@ export default function AdminDashboard() {
       .finally(() => setLoadingPending(false));
     getLeaderboard().then(setTopStudents).catch(console.error);
     getCTFAdminConfig().then((c) => { setCtfConfig(c); setCtfConfigDraft(c); }).catch(console.error);
+    getPlatformStats().then(setStats).catch(console.error);
+    getAdminHealthMetrics().then(setHealth).catch(console.error);
   }, []);
 
   const saveCtfConfig = async () => {
@@ -70,10 +76,6 @@ export default function AdminDashboard() {
   return (
     <>
       <Navbar />
-      <div className="psp-breadcrumb">
-        <Link href="/admin">PSP</Link> › <span style={{ color: "var(--text-primary)" }}>Admin Dashboard</span>
-      </div>
-
       <div className="psp-main">
         {/* Header */}
         <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", marginBottom: 20 }}>
@@ -90,10 +92,10 @@ export default function AdminDashboard() {
         {/* Stats — 4 columns (dynamic) */}
         <div style={{ display: "grid", gridTemplateColumns: "repeat(4,1fr)", gap: 12, marginBottom: 20 }}>
           {[
-            { icon: <Clock size={20} />, val: loadingPending ? "…" : String(pending.length), lbl: "Pending Teachers", cls: "ic-orange" },
-            { icon: <BookOpen size={20} />, val: "—",  lbl: "Active Teachers", cls: "ic-green" },
-            { icon: <Users size={20} />, val: "—", lbl: "Total Students", cls: "ic-blue" },
-            { icon: <Monitor size={20} />, val: "—", lbl: "Submissions",    cls: "ic-red" },
+            { icon: <Clock size={20} />,    val: loadingPending ? "…" : String(pending.length),  lbl: "Pending Teachers", cls: "ic-orange" },
+            { icon: <BookOpen size={20} />, val: stats ? String(stats.activeTeachers) : "…",     lbl: "Active Teachers",  cls: "ic-green"  },
+            { icon: <Users size={20} />,    val: stats ? String(stats.totalStudents)  : "…",     lbl: "Total Students",   cls: "ic-blue"   },
+            { icon: <Monitor size={20} />,  val: stats ? String(stats.totalSubmissions) : "…",   lbl: "Submissions",      cls: "ic-red"    },
           ].map((s, i) => (
             <div key={i} className="psp-stat-card">
               <div className={`psp-stat-icon ${s.cls}`}>{s.icon}</div>
@@ -115,7 +117,7 @@ export default function AdminDashboard() {
             {/* Pending teachers */}
             <div className="psp-card">
               <div className="psp-card-header">
-                <span className="psp-card-title"><Clock size={13} style={{ display: "inline", marginRight: 5, color: "#ff8b00" }} />Pending Teacher Approvals ({pending.length})</span>
+                <span className="psp-card-title"><Clock size={13} style={{ display: "inline", marginRight: 5, color: "var(--warn)" }} />Pending Teacher Approvals ({pending.length})</span>
                 <button className="psp-btn psp-btn-success psp-btn-sm" onClick={() => pending.forEach((t) => approve(t.id))}>Approve All</button>
               </div>
               <div style={{ padding: 14 }}>
@@ -123,7 +125,7 @@ export default function AdminDashboard() {
                   <div className="psp-empty"><Loader2 size={24} style={{ margin: "0 auto 8px", animation: "spin 1s linear infinite" }} /><div>Loading…</div></div>
                 ) : pending.length === 0 ? (
                   <div className="psp-empty">
-                    <CheckCircle2 size={32} color="#00875a" style={{ margin: "0 auto 8px" }} />
+                    <CheckCircle2 size={32} color="var(--success)" style={{ margin: "0 auto 8px" }} />
                     <div className="psp-empty-title">All clear!</div>
                     <div>No pending approvals.</div>
                   </div>
@@ -144,10 +146,10 @@ export default function AdminDashboard() {
                       </div>
                     </div>
                     <div style={{ display: "flex", gap: 6, flexShrink: 0 }}>
-                      <button onClick={() => approve(t.id)} disabled={isActing} style={{ background: "var(--green-light)", color: "#006644", border: "1px solid #57d9a3", borderRadius: 3, height: 30, padding: "0 14px", fontSize: 12, fontWeight: 600, cursor: isActing ? "not-allowed" : "pointer", display: "flex", alignItems: "center", gap: 4 }}>
+                      <button onClick={() => approve(t.id)} disabled={isActing} style={{ background: "var(--green-light)", color: "var(--success-ink)", border: "1px solid var(--success-ink)", borderRadius: 3, height: 30, padding: "0 14px", fontSize: 12, fontWeight: 600, cursor: isActing ? "not-allowed" : "pointer", display: "flex", alignItems: "center", gap: 4 }}>
                         {isActing ? <Loader2 size={12} /> : <CheckCircle2 size={12} />} Approve
                       </button>
-                      <button onClick={() => setRejectTarget(t.id)} disabled={isActing} style={{ background: "var(--red-light)", color: "#de350b", border: "1px solid #ff8f73", borderRadius: 3, height: 30, padding: "0 14px", fontSize: 12, fontWeight: 600, cursor: isActing ? "not-allowed" : "pointer", display: "flex", alignItems: "center", gap: 4 }}>
+                      <button onClick={() => setRejectTarget(t.id)} disabled={isActing} style={{ background: "var(--red-light)", color: "var(--danger)", border: "1px solid var(--danger)", borderRadius: 3, height: 30, padding: "0 14px", fontSize: 12, fontWeight: 600, cursor: isActing ? "not-allowed" : "pointer", display: "flex", alignItems: "center", gap: 4 }}>
                         <X size={12} /> Reject
                       </button>
                     </div>
@@ -183,20 +185,70 @@ export default function AdminDashboard() {
               </div>
             </div>
 
+            {/* System health */}
+            <div className="psp-card" style={{ marginBottom: 14 }}>
+              <div className="psp-card-header">
+                <span className="psp-card-title">System Health</span>
+                {health && (
+                  <span style={{
+                    fontSize: 11, fontWeight: 700, padding: "2px 8px", borderRadius: 4,
+                    background: health.overall === "OK" ? "rgba(0,135,90,0.12)" : health.overall === "WARN" ? "rgba(255,139,0,0.12)" : "rgba(222,53,11,0.12)",
+                    color: health.overall === "OK" ? "var(--success)" : health.overall === "WARN" ? "var(--warn)" : "var(--danger)",
+                  }}>{health.overall}</span>
+                )}
+              </div>
+              <div className="psp-card-body">
+                {!health ? (
+                  <div style={{ fontSize: 12, color: "var(--text-muted)" }}>Loading…</div>
+                ) : ([
+                  {
+                    label: "RabbitMQ Queue",
+                    val: health.rabbitmq.status === "UNKNOWN" ? "Unavailable" : `${health.rabbitmq.queueDepth} msgs`,
+                    status: health.rabbitmq.status,
+                  },
+                  {
+                    label: "DB Connections",
+                    val: health.database.status === "UNKNOWN" ? "Unavailable"
+                      : `${health.database.active ?? "?"} / ${health.database.total ?? "?"} active`,
+                    status: health.database.status,
+                  },
+                  {
+                    label: "JVM Heap",
+                    val: `${health.heap.usedMb} / ${health.heap.totalMb} MB (${health.heap.pct}%)`,
+                    status: health.heap.status,
+                  },
+                ] as Array<{ label: string; val: string; status: string }>).map((row, i) => {
+                  const clr = row.status === "OK" ? "var(--success)" : row.status === "WARN" ? "var(--warn)" : row.status === "CRITICAL" ? "var(--danger)" : "var(--text-muted)";
+                  return (
+                    <div key={i} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 10 }}>
+                      <span style={{ fontSize: 13, color: "var(--text-muted)" }}>{row.label}</span>
+                      <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                        <strong style={{ color: "var(--text-primary)", fontSize: 12 }}>{row.val}</strong>
+                        <span style={{
+                          fontSize: 10, fontWeight: 700, padding: "1px 5px", borderRadius: 3,
+                          background: `${clr}1a`, color: clr,
+                        }}>{row.status}</span>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+
             {/* Platform overview */}
             <div className="psp-card" style={{ marginBottom: 14 }}>
               <div className="psp-card-header"><span className="psp-card-title">Platform Overview</span></div>
               <div className="psp-card-body">
-                {[
-                  { label: "Total Users",          val: "330" },
-                  { label: "Active Exams Today",   val: "2 Live", valColor: "#de350b" },
-                  { label: "Open TPs",             val: "8" },
-                  { label: "Problems in Bank",     val: "124" },
-                  { label: "Docker Containers (Pool)", val: "80 / 80 ready", valColor: "#00875a" },
-                ].map((row, i) => (
+                {([
+                  { label: "Total Users",        val: stats ? String((stats.activeTeachers ?? 0) + (stats.totalStudents ?? 0)) : "…" },
+                  { label: "Active Live Exams",  val: stats ? `${stats.activeLiveExams}${stats.activeLiveExams > 0 ? " ongoing" : ""}` : "…", color: stats && stats.activeLiveExams > 0 ? "var(--danger)" : undefined },
+                  { label: "Open TPs",           val: stats ? String(stats.openTps) : "…" },
+                  { label: "Problems in Bank",   val: stats ? String(stats.totalProblems) : "…" },
+                  { label: "Competitions",       val: stats ? String(stats.totalCompetitions) : "…" },
+                ] as Array<{ label: string; val: string; color?: string }>).map((row, i) => (
                   <div key={i} style={{ display: "flex", justifyContent: "space-between", marginBottom: 10 }}>
                     <span style={{ fontSize: 13, color: "var(--text-muted)" }}>{row.label}</span>
-                    <strong style={{ color: row.valColor || "#172b4d" }}>{row.val}</strong>
+                    <strong style={{ color: row.color || "var(--text-primary)" }}>{row.val}</strong>
                   </div>
                 ))}
               </div>
@@ -264,18 +316,18 @@ export default function AdminDashboard() {
             <div className="psp-card">
               <div className="psp-card-header">
                 <span className="psp-card-title">Top Students</span>
-                <Link href="/leaderboard" style={{ fontSize: 11, color: "#0052cc" }}>Full Leaderboard</Link>
+                <Link href="/leaderboard" style={{ fontSize: 11, color: "var(--brand)" }}>Full Leaderboard</Link>
               </div>
               {topStudents.slice(0, 5).map((s, i) => {
-                const medals = ["🥇","🥈","🥉"];
+                const MEDAL_COLORS = ["#f5c451", "#c7cdd9", "#cd8a52"];
                 const color = AVATAR_COLORS[i % AVATAR_COLORS.length];
                 const ini = `${s.firstName.charAt(0)}${s.lastName.charAt(0)}`.toUpperCase();
                 return (
-                  <div key={s.studentId} style={{ display: "flex", alignItems: "center", gap: 10, padding: "9px 14px", borderBottom: i < 4 ? "1px solid #f4f5f7" : "none", fontSize: 12 }}>
-                    <span style={{ fontSize: 16, width: 20, textAlign: "center" }}>{medals[i] || String(i + 1)}</span>
+                  <div key={s.studentId} style={{ display: "flex", alignItems: "center", gap: 10, padding: "9px 14px", borderBottom: i < 4 ? "1px solid var(--bg-2)" : "none", fontSize: 12 }}>
+                    <span style={{ width: 20, textAlign: "center", display: "inline-flex", justifyContent: "center" }}>{i < 3 ? <Medal size={15} color={MEDAL_COLORS[i]} /> : i + 1}</span>
                     <div style={{ width: 26, height: 26, borderRadius: "50%", background: color, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 9, fontWeight: 700, color: "white" }}>{ini}</div>
                     <span style={{ flex: 1, fontWeight: 500 }}>{s.firstName} {s.lastName}</span>
-                    <span style={{ fontWeight: 700, color: "#0052cc" }}>{s.totalPoints} pts</span>
+                    <span style={{ fontWeight: 700, color: "var(--brand)" }}>{s.totalPoints} pts</span>
                   </div>
                 );
               })}

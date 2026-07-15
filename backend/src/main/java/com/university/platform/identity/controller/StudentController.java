@@ -10,6 +10,7 @@ import com.university.platform.identity.model.Student;
 import com.university.platform.identity.repository.StudentRepository;
 import com.university.platform.identity.service.JwtService;
 import com.university.platform.execution.service.ScoringService;
+import com.university.platform.assessment.service.ExamScoringService;
 import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
@@ -30,6 +31,7 @@ public class StudentController {
     private final SemesterRepository semesterRepository;
     private final JwtService jwtService;
     private final ScoringService scoringService;
+    private final ExamScoringService examScoringService;
 
     @Transactional
     @GetMapping("/me/profile")
@@ -117,11 +119,18 @@ public class StudentController {
             return ResponseEntity.status(403).build();
         }
 
+        // Legacy grade (out of 20) — kept for back-compat.
         double finalGrade = scoringService.calculateFinalExamGrade(studentId, examId);
+
+        // New partial-credit summary (sum of best scores, percentage).
+        ExamScoringService.ExamGrade grade = examScoringService.computeGrade(examId, studentId);
 
         return ResponseEntity.ok(Map.of(
             "examId", examId.toString(),
-            "finalGrade", finalGrade
+            "finalGrade", finalGrade,
+            "score", grade.earned(),
+            "maxScore", grade.totalMax(),
+            "percentage", grade.percentage()
         ));
     }
 }

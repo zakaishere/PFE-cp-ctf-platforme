@@ -8,6 +8,7 @@ import SockJS from "sockjs-client";
 import {
   getCtfCompetition, getCtfMyTeam, getCtfScoreboard, getApiBaseUrl,
   type CTFCompetitionDTO, type CTFCompetitionStatus, type CTFTeamResponse,
+  type CTFScoreboardEntryDTO,
 } from "@/lib/api";
 import { useCompetitionStatus } from "@/features/ctf/hooks/useCompetitionStatus";
 import { useCTFNotifications } from "@/features/ctf/hooks/useCTFNotifications";
@@ -24,6 +25,8 @@ interface CTFContextValue {
   loading:     boolean;
   refetchStatus: () => void;
   refetchTeam:   () => Promise<void>;
+  /** Increments each time the scoreboard WebSocket fires — pages can watch this to reload data. */
+  scoreboardVersion: number;
 
   // Notifications surface — sourced from useCTFNotifications. Exposed here so
   // both the shell (bell/mute toggle) and individual pages (history list,
@@ -59,6 +62,7 @@ export function CTFCompetitionProvider({
   const [myTeam, setMyTeam]           = useState<CTFTeamResponse | null>(null);
   const [loading, setLoading]         = useState(true);
   const [selectedChallengeId, setSelected] = useState<string | null>(null);
+  const [scoreboardVersion, setScoreboardVersion] = useState(0);
 
   const mountedRef = useRef(true);
   useEffect(() => () => { mountedRef.current = false; }, []);
@@ -96,10 +100,20 @@ export function CTFCompetitionProvider({
     Promise.all([
       getCtfCompetition(competitionId),
       getCtfMyTeam(competitionId).catch(() => null),
-    ]).then(([c, t]) => {
+    ]).then(async ([c, t]) => {
       if (cancelled) return;
+      let resolvedTeam: CTFTeamResponse | null = t && t.id ? t : null;
+      // When the competition is frozen, show the team's frozen score in the navbar
+      // so players cannot infer score movement while the freeze is active.
+      if (c?.isFrozen && resolvedTeam) {
+        const entries = await getCtfScoreboard(competitionId).catch((): CTFScoreboardEntryDTO[] => []);
+        const entry = entries.find(e => e.teamId === resolvedTeam!.id);
+        if (entry) {
+          resolvedTeam = { ...resolvedTeam, totalPoints: entry.totalPoints, solveCount: entry.solveCount };
+        }
+      }
       setCompetition(c);
-      setMyTeam(t && t.id ? t : null);
+      setMyTeam(resolvedTeam);
     }).catch(() => { /* surfaced by apiClient */ })
       .finally(() => { if (!cancelled) setLoading(false); });
     return () => { cancelled = true; };
@@ -126,6 +140,7 @@ export function CTFCompetitionProvider({
       reconnectDelay: 5_000,
       onConnect: () => {
         client.subscribe(`/topic/ctf/competitions/${competitionId}/scoreboard`, () => {
+          if (mountedRef.current) setScoreboardVersion(v => v + 1);
           const teamId = myTeamIdRef.current;
           if (!teamId) return;
           getCtfScoreboard(competitionId).then(entries => {
@@ -149,7 +164,10 @@ export function CTFCompetitionProvider({
   const status = statusHook.status ?? competition?.status ?? null;
   const isPaused = statusHook.isPaused || competition?.isPaused || false;
   const isFrozen = statusHook.isFrozen || competition?.isFrozen || false;
-  const canSolve = status === "ACTIVE" && !isPaused;
+  // FROZEN is a display-only feature: solving must remain open.
+  // computeStatus() returns "FROZEN" (not "ACTIVE") when frozen, so we must
+  // explicitly include it here, otherwise canSolve=false blocks all submissions.
+  const canSolve = (status === "ACTIVE" || status === "FROZEN") && !isPaused;
 
   const openChallenge  = useCallback((id: string) => setSelected(id), []);
   const closeChallenge = useCallback(() => setSelected(null), []);
@@ -157,7 +175,7 @@ export function CTFCompetitionProvider({
   const value: CTFContextValue = useMemo(() => ({
     competition, myTeam, status,
     isPaused, isFrozen, canSolve,
-    loading,
+    loading, scoreboardVersion,
     refetchStatus, refetchTeam,
     notifications: notif.notifications,
     unreadCount:   notif.unreadCount,
@@ -168,7 +186,7 @@ export function CTFCompetitionProvider({
     dismissToast:  notif.dismissToast,
     selectedChallengeId, openChallenge, closeChallenge,
   }), [
-    competition, myTeam, status, isPaused, isFrozen, canSolve, loading,
+    competition, myTeam, status, isPaused, isFrozen, canSolve, loading, scoreboardVersion,
     refetchStatus, refetchTeam,
     notif.notifications, notif.unreadCount, notif.markAllRead,
     notif.isMuted, notif.toggleMute, notif.pendingToasts, notif.dismissToast,

@@ -43,12 +43,6 @@ export default function TeacherCTFCompetitionsPage() {
   return (
     <>
       <Navbar />
-      <div className="psp-breadcrumb">
-        <Link href="/teacher">PSP</Link> ›{" "}
-        <Link href="/teacher/ctf">CTF</Link> ›{" "}
-        <span style={{ color: "var(--text-primary)" }}>Competitions</span>
-      </div>
-
       <div className="psp-main">
         <div style={{
           display: "flex", alignItems: "flex-start", justifyContent: "space-between", marginBottom: 22,

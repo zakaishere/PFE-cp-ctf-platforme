@@ -24,7 +24,9 @@ export const CAT_CONFIG: Record<string, CategoryDef> = {
 export const ALL_CAT: CategoryDef = {
   label:  "All",
   icon:   <LayoutGrid size={14} />,
-  accent: "#6366f1",
+  // Platform brand accent — the per-category accents below stay distinct on
+  // purpose (they encode the category, like a chart palette).
+  accent: "var(--brand)",
 };
 
 export const DIFF_COLORS: Record<string, string> = {

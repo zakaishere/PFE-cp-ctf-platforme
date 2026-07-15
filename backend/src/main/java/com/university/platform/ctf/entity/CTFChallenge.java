@@ -51,6 +51,11 @@ public class CTFChallenge {
     @Column(name = "flag_hash", nullable = false, length = 64)
     private String flagHash;
 
+    /** Plaintext flag stored only for STATIC challenges — used to inject the correct value into Docker containers.
+     *  Never exposed to students via any API. Null for DYNAMIC challenges. */
+    @Column(name = "flag_value", length = 500)
+    private String flagValue;
+
     @Builder.Default
     @Enumerated(EnumType.STRING)
     @Column(name = "flag_type", nullable = false, length = 10)
@@ -104,6 +109,10 @@ public class CTFChallenge {
     @Column(name = "downloadable_file_name", length = 255)
     private String downloadableFileName;
 
+    /** Optional image or GIF URL shown inside the challenge modal. */
+    @Column(name = "media_url", length = 500)
+    private String mediaUrl;
+
     @Builder.Default
     @JdbcTypeCode(SqlTypes.JSON)
     @Column(name = "hints", columnDefinition = "jsonb")
@@ -136,6 +145,15 @@ public class CTFChallenge {
     @Column(name = "author_id")
     private UUID authorId;
 
+    @Column(name = "author_name", length = 255)
+    private String authorName;
+
+    @Column(name = "ssh_username", length = 100)
+    private String sshUsername;
+
+    @Column(name = "ssh_password", length = 100)
+    private String sshPassword;
+
     @Column(name = "competition_id", columnDefinition = "uuid")
     private UUID competitionId;
 
@@ -152,6 +170,24 @@ public class CTFChallenge {
     @Column(name = "library_source_id")
     private UUID librarySourceId;
 
+    // Blood bonus — optional per-solve reward for 1st/2nd/3rd solvers.
+    // disabled by default; bonus does NOT change the displayed challenge point value.
+    @Builder.Default
+    @Column(name = "blood_bonus_enabled", nullable = false)
+    private Boolean bloodBonusEnabled = false;
+
+    @Builder.Default
+    @Column(name = "first_blood_bonus", nullable = false)
+    private Integer firstBloodBonus = 0;
+
+    @Builder.Default
+    @Column(name = "second_blood_bonus", nullable = false)
+    private Integer secondBloodBonus = 0;
+
+    @Builder.Default
+    @Column(name = "third_blood_bonus", nullable = false)
+    private Integer thirdBloodBonus = 0;
+
     @Builder.Default
     @Column(name = "deleted", nullable = false)
     private Boolean deleted = false;
@@ -167,7 +203,7 @@ public class CTFChallenge {
     @Column(name = "updated_at")
     private LocalDateTime updatedAt;
 
-    public enum CTFCategory { CRYPTO, FORENSICS, REVERSE, WEB, MISC, OSINT, PWN }
+    public enum CTFCategory { CRYPTO, FORENSICS, REVERSE, WEB, MISC, OSINT, PWN, LINUX }
     public enum CTFDifficulty { EASY, MEDIUM, HARD }
     public enum FlagType { STATIC, DYNAMIC }
 }

@@ -101,14 +101,14 @@ export function TagsInput({ value, onChange }: TagsInputProps) {
               }}
               onMouseEnter={e => {
                 const el = e.currentTarget as HTMLElement;
-                el.style.background  = "#deebff";
-                el.style.color       = "#0052cc";
-                el.style.borderColor = "#0052cc";
+                el.style.background  = "var(--accent-soft)";
+                el.style.color       = "var(--brand)";
+                el.style.borderColor = "var(--brand)";
               }}
               onMouseLeave={e => {
                 const el = e.currentTarget as HTMLElement;
                 el.style.background  = "#f4f5f7";
-                el.style.color       = "#5e6c84";
+                el.style.color       = "var(--ink-3)";
                 el.style.borderColor = "var(--border)";
               }}
             >

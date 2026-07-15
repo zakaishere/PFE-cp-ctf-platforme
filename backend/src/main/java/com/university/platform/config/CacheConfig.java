@@ -13,9 +13,9 @@ import java.util.concurrent.TimeUnit;
 /**
  * Caffeine-backed cache manager with per-cache TTLs.
  *
- * <p>The caches are wired and ready, but no service is annotated with
- * {@code @Cacheable}/{@code @CacheEvict} yet — those annotations live on read
- * methods in the service layer and must be added there to take effect.
+ * <p>Active caches:
+ * - scoreboard: @Cacheable on CTFCompetitionService.getScoreboard(), evicted on submitFlag()
+ * - challenges: @Cacheable on CTFCompetitionService.getCompetitionChallenges(), evicted on submitFlag()
  */
 @Configuration
 @EnableCaching
@@ -26,33 +26,25 @@ public class CacheConfig {
         CaffeineCacheManager manager = new CaffeineCacheManager();
 
         // Different TTLs per cache
-        Map<String, Caffeine<Object, Object>> caches = Map.of(
-
-            // Scoreboard: recompute every 30 seconds
-            "scoreboard", Caffeine.newBuilder()
+        Map<String, Caffeine<Object, Object>> caches = new java.util.HashMap<>();
+        caches.put("scoreboard", Caffeine.newBuilder()
                 .maximumSize(100)
-                .expireAfterWrite(30, TimeUnit.SECONDS),
-
-            // Challenge list: 60 seconds
-            "challenges", Caffeine.newBuilder()
+                .expireAfterWrite(30, TimeUnit.SECONDS));
+        caches.put("challenges", Caffeine.newBuilder()
                 .maximumSize(500)
-                .expireAfterWrite(60, TimeUnit.SECONDS),
-
-            // Competition status: 10 seconds (near real-time)
-            "competition-status", Caffeine.newBuilder()
+                .expireAfterWrite(60, TimeUnit.SECONDS));
+        caches.put("competition-status", Caffeine.newBuilder()
                 .maximumSize(100)
-                .expireAfterWrite(10, TimeUnit.SECONDS),
-
-            // User profile: 5 minutes (rarely changes)
-            "user-profile", Caffeine.newBuilder()
+                .expireAfterWrite(10, TimeUnit.SECONDS));
+        caches.put("user-profile", Caffeine.newBuilder()
                 .maximumSize(1000)
-                .expireAfterWrite(5, TimeUnit.MINUTES),
-
-            // Leaderboard: 2 minutes
-            "leaderboard", Caffeine.newBuilder()
+                .expireAfterWrite(5, TimeUnit.MINUTES));
+        caches.put("leaderboard", Caffeine.newBuilder()
                 .maximumSize(50)
-                .expireAfterWrite(2, TimeUnit.MINUTES)
-        );
+                .expireAfterWrite(2, TimeUnit.MINUTES));
+        caches.put("hint-unlocks", Caffeine.newBuilder()
+                .maximumSize(1000)
+                .expireAfterWrite(5, TimeUnit.MINUTES));
 
         // Apply custom specs
         caches.forEach((name, caffeine) ->

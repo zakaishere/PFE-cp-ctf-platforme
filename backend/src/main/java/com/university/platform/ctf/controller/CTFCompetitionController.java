@@ -1,6 +1,7 @@
 package com.university.platform.ctf.controller;
 
 import com.university.platform.ctf.dto.*;
+import com.university.platform.ctf.dto.CTFAttemptDTO;
 import com.university.platform.ctf.dto.CTFScoreTimelineDTO;
 import com.university.platform.ctf.service.CTFCompetitionService;
 import com.university.platform.ctf.service.CTFNotificationService;
@@ -117,6 +118,22 @@ public class CTFCompetitionController {
     public ResponseEntity<List<CTFFeedEventDTO>> getFeed(
             @PathVariable UUID competitionId) {
         return ResponseEntity.ok(competitionService.getFeed(competitionId));
+    }
+
+    @GetMapping("/{competitionId}/challenges/{challengeId}/solvers")
+    public ResponseEntity<List<CTFChallengeSolverDTO>> getChallengeSolvers(
+            @PathVariable UUID competitionId,
+            @PathVariable UUID challengeId) {
+        return ResponseEntity.ok(competitionService.getChallengeSolvers(competitionId, challengeId));
+    }
+
+    @GetMapping("/{competitionId}/challenges/{challengeId}/my-attempts")
+    public ResponseEntity<List<CTFAttemptDTO>> getMyAttempts(
+            @PathVariable UUID competitionId,
+            @PathVariable UUID challengeId,
+            @RequestHeader("Authorization") String authHeader) {
+        UUID userId = parseUserId(authHeader);
+        return ResponseEntity.ok(competitionService.getMyAttempts(competitionId, challengeId, userId));
     }
 
     @PostMapping("/{competitionId}/challenges/{challengeId}/submit")

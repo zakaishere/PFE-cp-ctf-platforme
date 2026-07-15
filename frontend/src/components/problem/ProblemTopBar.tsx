@@ -3,7 +3,6 @@
 import Link from "next/link";
 import { CheckCircle2 } from "lucide-react";
 import type { ProblemDetailDTO } from "@/lib/api";
-import { useTheme } from "@/contexts/ThemeContext";
 
 interface ProblemTopBarProps {
   problem:  ProblemDetailDTO | null;
@@ -12,13 +11,11 @@ interface ProblemTopBarProps {
 }
 
 export function ProblemTopBar({ problem, loading, initials = "U" }: ProblemTopBarProps) {
-  const { isDark, toggleTheme } = useTheme();
-
   return (
     <div style={{
       height: 44,
-      background: "#1a2332",
-      borderBottom: "1px solid #253348",
+      background: "var(--bg-2)",
+      borderBottom: "1px solid var(--line)",
       display: "flex",
       alignItems: "center",
       padding: "0 16px",
@@ -27,15 +24,7 @@ export function ProblemTopBar({ problem, loading, initials = "U" }: ProblemTopBa
     }}>
       {/* Logo */}
       <Link href="/" style={{ display: "flex", alignItems: "center", gap: 6, textDecoration: "none", flexShrink: 0 }}>
-        <div style={{
-          width: 26, height: 26,
-          background: "#0052cc",
-          borderRadius: 5,
-          display: "flex", alignItems: "center", justifyContent: "center",
-          color: "white", fontWeight: 900, fontSize: 12, flexShrink: 0, letterSpacing: "-0.5px",
-        }}>
-          P
-        </div>
+        <img src="/algora-logo-icon.png" alt="" width={26} height={26} style={{ objectFit: "contain" }} />
       </Link>
 
       <span style={{ color: "rgba(255,255,255,0.2)", fontSize: 16 }}>|</span>
@@ -78,7 +67,7 @@ export function ProblemTopBar({ problem, loading, initials = "U" }: ProblemTopBa
           background: "rgba(87,217,163,0.12)",
           border: "1px solid rgba(87,217,163,0.25)",
           borderRadius: 20,
-          fontSize: 12, fontWeight: 700, color: "#57d9a3", flexShrink: 0,
+          fontSize: 12, fontWeight: 700, color: "var(--success-ink)", flexShrink: 0,
         }}>
           <CheckCircle2 size={12} />
           Solved
@@ -101,41 +90,10 @@ export function ProblemTopBar({ problem, loading, initials = "U" }: ProblemTopBa
         </div>
       )}
 
-      {/* Dark mode toggle */}
-      <button
-        onClick={toggleTheme}
-        title={isDark ? "Switch to light mode" : "Switch to dark mode"}
-        style={{
-          width: 28, height: 28,
-          borderRadius: "50%",
-          background: "rgba(255,255,255,0.1)",
-          border: "none",
-          cursor: "pointer",
-          display: "flex", alignItems: "center", justifyContent: "center",
-          fontSize: 14,
-          color: "white",
-          flexShrink: 0,
-          transition: "background 0.15s",
-        }}
-        onMouseEnter={e => (e.currentTarget.style.background = "rgba(255,255,255,0.2)")}
-        onMouseLeave={e => (e.currentTarget.style.background = "rgba(255,255,255,0.1)")}
-      >
-        {isDark ? (
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-            <circle cx="12" cy="12" r="4"/>
-            <path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M4.93 19.07l1.41-1.41M17.66 6.34l1.41-1.41"/>
-          </svg>
-        ) : (
-          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-            <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/>
-          </svg>
-        )}
-      </button>
-
       {/* User avatar */}
       <div style={{
         width: 28, height: 28,
-        background: "#0052cc",
+        background: "var(--brand)",
         borderRadius: "50%",
         display: "flex", alignItems: "center", justifyContent: "center",
         color: "white", fontSize: 10, fontWeight: 700,
@@ -149,11 +107,11 @@ export function ProblemTopBar({ problem, loading, initials = "U" }: ProblemTopBa
 
 export function DifficultyBadge({ difficulty }: { difficulty: string }) {
   const config: Record<string, { bg: string; color: string; text: string }> = {
-    EASY:   { bg: "rgba(0,135,90,0.15)",  color: "#57d9a3", text: "Easy"   },
-    MEDIUM: { bg: "rgba(255,139,0,0.15)", color: "#ffc107", text: "Medium" },
-    HARD:   { bg: "rgba(222,53,11,0.15)", color: "#ff6b4a", text: "Hard"   },
+    EASY:   { bg: "var(--success-soft)", color: "var(--success-ink)", text: "Easy"   },
+    MEDIUM: { bg: "var(--warn-soft)",    color: "var(--warn-ink)",    text: "Medium" },
+    HARD:   { bg: "var(--danger-soft)",  color: "var(--danger-ink)",  text: "Hard"   },
   };
-  const c = config[difficulty] ?? { bg: "rgba(255,255,255,0.1)", color: "var(--text-subtle)", text: difficulty };
+  const c = config[difficulty] ?? { bg: "var(--surface-2)", color: "var(--text-subtle)", text: difficulty };
   return (
     <span style={{
       padding: "2px 9px", borderRadius: 4,

@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
+import { Puzzle } from "lucide-react";
 import { getProblemDetail, getSubmissionCode, type ProblemDetailDTO, type MySubmissionDTO } from "@/lib/api";
 import { useAuth } from "@/features/auth/contexts/AuthContext";
 import { useResizablePanels } from "@/hooks/useResizablePanels";
@@ -105,11 +106,11 @@ export default function PracticeArena({ problemId }: { problemId: string }) {
                 justifyContent: "center",
               }}
             >
-              <div style={{ fontSize: 40, marginBottom: 16 }}>🧩</div>
+              <Puzzle size={36} color="var(--ink-3)" style={{ margin: "0 auto 16px" }} />
               <div style={{ fontWeight: 600, color: "var(--text-primary)", fontSize: 16, marginBottom: 6 }}>
                 Problem not found
               </div>
-              <a href="/problems" style={{ color: "#0052cc", fontSize: 13 }}>
+              <a href="/problems" style={{ color: "var(--brand)", fontSize: 13 }}>
                 ← Back to problems
               </a>
             </div>

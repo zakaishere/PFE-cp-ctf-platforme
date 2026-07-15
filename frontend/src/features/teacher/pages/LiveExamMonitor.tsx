@@ -8,7 +8,7 @@ import {
   CheckCircle2, XCircle, Clock, Loader2, ChevronRight,
 } from "lucide-react";
 import { getAssessments, getExamSubmissions, closeLiveExam } from "@/lib/api";
-import { useToast } from "@/hooks/use-toast";
+import { toast } from "@/components/ui/PSPToast";
 
 // ── helpers ───────────────────────────────────────────────────────────────────
 
@@ -85,7 +85,6 @@ function submissionStats(subs: any[]) {
 // ── Main ──────────────────────────────────────────────────────────────────────
 
 export default function LiveExamMonitor() {
-  const { toast } = useToast();
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   const [exams, setExams] = useState<any[]>([]);
@@ -109,7 +108,7 @@ export default function LiveExamMonitor() {
           setSelected(first);
         }
       })
-      .catch(() => toast({ title: "Failed to load exams", variant: "destructive" }))
+      .catch(() => toast.error("Failed to load exams"))
       .finally(() => setLoading(false));
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -151,11 +150,11 @@ export default function LiveExamMonitor() {
     setClosing(true);
     try {
       await closeLiveExam(id);
-      toast({ title: "Exam closed" });
+      toast.success("Exam closed");
       setExams(prev => prev.map(e => (e.id || e.assessmentId) === id ? { ...e, isClosed: true } : e));
       setSelected((s: any) => s ? { ...s, isClosed: true } : s);
-    } catch (e: any) {
-      toast({ title: "Failed to close", description: e.message, variant: "destructive" });
+    } catch (e) {
+      toast.error("Failed to close", e instanceof Error ? e.message : undefined);
     }
     setClosing(false);
   };
@@ -174,10 +173,6 @@ export default function LiveExamMonitor() {
   return (
     <>
       <Navbar />
-      <div className="psp-breadcrumb">
-        <Link href="/teacher">PSP</Link> › <span style={{ color: "var(--text-primary)" }}>Live Exam Monitor</span>
-      </div>
-
       <div className="mgr-shell">
         {/* ── LEFT: exam list ── */}
         <div className="mgr-left">
@@ -288,7 +283,7 @@ export default function LiveExamMonitor() {
               {/* Stats row */}
               <div style={{ background: "var(--bg-primary)", borderBottom: "1px solid var(--border)", display: "flex", flexShrink: 0 }}>
                 {[
-                  { icon: <Users size={13} />, label: "Students", val: stats.uniqueStudents, color: "#0052cc" },
+                  { icon: <Users size={13} />, label: "Students", val: stats.uniqueStudents, color: "var(--brand)" },
                   { icon: <FileText size={13} />, label: "Total Subs", val: stats.total, color: "var(--text-primary)" },
                   { icon: <CheckCircle2 size={13} />, label: "Passed", val: stats.passed, color: "#00875a" },
                   { icon: <XCircle size={13} />, label: "Failed", val: stats.failed, color: "#de350b" },
@@ -350,7 +345,7 @@ export default function LiveExamMonitor() {
               <div className="mgr-center-body" style={{ paddingTop: 14 }}>
                 {subLoading && submissions.length === 0 ? (
                   <div style={{ display: "flex", justifyContent: "center", padding: 60 }}>
-                    <Loader2 size={22} style={{ animation: "spin 1s linear infinite", color: "#0052cc" }} />
+                    <Loader2 size={22} style={{ animation: "spin 1s linear infinite", color: "var(--brand)" }} />
                   </div>
                 ) : submissions.length === 0 ? (
                   <div className="psp-empty" style={{ border: "1px solid var(--border)", borderRadius: 3, background: "var(--bg-primary)" }}>
@@ -403,7 +398,7 @@ export default function LiveExamMonitor() {
                                     </span>
                                   </td>
                                   <td style={{ fontSize: 11, color: "var(--text-subtle)" }}>{s.language || "—"}</td>
-                                  <td style={{ textAlign: "right", fontWeight: 600, fontSize: 12, color: "#0052cc" }}>
+                                  <td style={{ textAlign: "right", fontWeight: 600, fontSize: 12, color: "var(--brand)" }}>
                                     {s.pointsAwarded != null ? Number(s.pointsAwarded).toFixed(1) : "—"}
                                   </td>
                                 </tr>
@@ -437,7 +432,7 @@ export default function LiveExamMonitor() {
                     </div>
                   )}
                   {phase === "upcoming" && (
-                    <div style={{ padding: "8px 12px", background: "#deebff", borderRadius: 3, border: "1px solid #4c9aff", fontSize: 12, color: "#0747a6", fontWeight: 600 }}>
+                    <div style={{ padding: "8px 12px", background: "var(--accent-soft)", borderRadius: 3, border: "1px solid #4c9aff", fontSize: 12, color: "#0747a6", fontWeight: 600 }}>
                       Scheduled — Not started
                     </div>
                   )}
@@ -492,7 +487,7 @@ export default function LiveExamMonitor() {
                 <div style={{ borderTop: "1px solid var(--border)", paddingTop: 12, marginTop: 4 }}>
                   <Link
                     href="/teacher/exams"
-                    style={{ display: "flex", alignItems: "center", gap: 4, fontSize: 12, color: "#0052cc", textDecoration: "none" }}
+                    style={{ display: "flex", alignItems: "center", gap: 4, fontSize: 12, color: "var(--brand)", textDecoration: "none" }}
                   >
                     <ChevronRight size={12} /> Manage this exam
                   </Link>

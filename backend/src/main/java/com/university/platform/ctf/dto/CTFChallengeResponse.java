@@ -34,6 +34,13 @@ public class CTFChallengeResponse {
     private List<CTFHint>   hints;
     private Integer         maxAttempts;
     private Boolean         isActive;
+
+    /** Null → standalone practice challenge (public). Set → belongs to a competition (private). */
+    private UUID            competitionId;
+
+    /** True → reusable library template, not a live practice challenge. */
+    private Boolean         isLibrary;
+
     private UUID            authorId;
     private LocalDateTime   createdAt;
     private LocalDateTime   updatedAt;

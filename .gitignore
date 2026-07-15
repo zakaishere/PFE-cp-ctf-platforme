@@ -5,6 +5,8 @@
 .env.local
 .env.*.local
 .env.*
+!.env.example
+docker-compose.override.yml
 
 # ============================================================================
 # NODE.JS / NEXT.JS FRONTEND
@@ -164,4 +166,37 @@ Thumbs.db
 *.pem
 *.key
 *.crt
-.env.*.local   
+.env.*.local
+
+# ============================================================================
+# REFERENCE / SCRATCH DIRECTORIES — this repo tracks only backend/ + frontend/
+# (plus monitoring/, needed by docker-compose.yml's Prometheus/Grafana mounts).
+# Everything below is either a standalone project with its own git remote, or
+# design/reference/scratch material with no runtime dependency from the app.
+# ============================================================================
+
+# CTF-icode and ctf-worker-agent are independent GitHub repos (their own
+# remotes: zakaishere/CTF-icode, zakaishere/ctf-worker-agent) that happen to
+# be checked out inside this working tree. Never track a nested .git as a
+# gitlink here — clone them separately wherever they're deployed.
+CTF-icode/
+icode-ctf/
+ctf-worker-agent/
+
+# Design/UX reference material already ported into the real app.
+admin-mockup/
+algora-student-dashboard-html-css/
+algora-student-dashboard-html-css (2)/
+algora-student-dashboard-html-css.zip
+misc/
+
+# Personal / unrelated scratch content.
+Teams's-card/
+files (3)/
+test-pwn-challenge/
+
+# Project docs and the PFE report — versioned independently via
+# report/versions/*.zip snapshots, not via git.
+docs/
+report/
+report_v30*.pdf

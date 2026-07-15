@@ -16,4 +16,6 @@ public interface TeacherRepository extends JpaRepository<Teacher, UUID> {
     List<Teacher> findByStatusAndIsEmailVerifiedTrue(TeacherStatus status);
 
     java.util.Optional<Teacher> findByEmail(String email);
+
+    long countByStatus(TeacherStatus status);
 }

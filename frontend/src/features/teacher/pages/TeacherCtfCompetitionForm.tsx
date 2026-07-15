@@ -750,14 +750,6 @@ export default function TeacherCtfCompetitionFormPage({ editId, embedded }: { ed
   return (
     <>
       <Navbar />
-      <div className="psp-breadcrumb">
-        <Link href="/teacher">PSP</Link> ›{" "}
-        <Link href="/teacher/ctf">CTF</Link> ›{" "}
-        {isEdit && editId
-          ? <><Link href={`/teacher/ctf/${editId}/manage`}>Manage</Link> › <span style={{ color: "var(--text-primary)" }}>Edit</span></>
-          : <span style={{ color: "var(--text-primary)" }}>New</span>
-        }
-      </div>
       <div className="psp-main" style={{ maxWidth: 820 }}>
         {formContent}
       </div>
@@ -769,7 +761,7 @@ export default function TeacherCtfCompetitionFormPage({ editId, embedded }: { ed
 
 function Section({ title, children }: { title: string; children: React.ReactNode }) {
   return (
-    <div className="psp-card" style={{ padding: 18, marginBottom: 14 }}>
+    <div className="psp-card" style={{ padding: 18, marginBottom: 14, border: "1px solid rgba(255,255,255,.08)" }}>
       <div style={{ fontWeight: 700, marginBottom: 12, fontSize: 13, color: "var(--text-primary)" }}>
         {title}
       </div>

@@ -1,7 +1,6 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import Link from "next/link";
 import Navbar from "@/components/Navbar";
 import {
   Trophy, Plus, Calendar, Timer, Users, Lock, Unlock,
@@ -158,16 +157,12 @@ export default function CompetitionManagement() {
   return (
     <>
       <Navbar />
-      <div className="psp-breadcrumb">
-        <Link href="/teacher">PSP</Link> ›{" "}
-        <span style={{ color: "var(--text-primary)" }}>Competitions</span>
-      </div>
       <div className="psp-main">
         {/* Header */}
         <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", marginBottom: 20 }}>
           <div>
             <div style={{ fontSize: 20, fontWeight: 600, color: "var(--text-primary)", display: "flex", alignItems: "center", gap: 8 }}>
-              <Trophy size={18} color="#ff8b00" /> Competitions
+              <Trophy size={18} color="var(--warn)" /> Competitions
             </div>
             <div style={{ fontSize: 12, color: "var(--text-muted)", marginTop: 3 }}>Create and manage competitions</div>
           </div>
@@ -178,7 +173,7 @@ export default function CompetitionManagement() {
 
         {loading ? (
           <div style={{ display: "flex", justifyContent: "center", padding: 60 }}>
-            <Loader2 size={28} style={{ animation: "spin 1s linear infinite", color: "#0052cc" }} />
+            <Loader2 size={28} style={{ animation: "spin 1s linear infinite", color: "var(--brand)" }} />
           </div>
         ) : (
           <div style={{ display: "grid", gridTemplateColumns: "300px 1fr", gap: 16 }}>
@@ -258,7 +253,7 @@ export default function CompetitionManagement() {
                       <span className="psp-card-title">Attach Problems</span>
                     </div>
                     {poolLoading ? (
-                      <div style={{ padding: 30, textAlign: "center" }}><Loader2 size={20} style={{ animation: "spin 1s linear infinite", color: "#0052cc" }} /></div>
+                      <div style={{ padding: 30, textAlign: "center" }}><Loader2 size={20} style={{ animation: "spin 1s linear infinite", color: "var(--brand)" }} /></div>
                     ) : problemPool.length === 0 ? (
                       <div className="psp-empty"><div>No problems in bank yet.</div></div>
                     ) : (
@@ -304,7 +299,7 @@ export default function CompetitionManagement() {
                       )}
                     </div>
                     {jrLoading ? (
-                      <div style={{ padding: 30, textAlign: "center" }}><Loader2 size={20} style={{ animation: "spin 1s linear infinite", color: "#0052cc" }} /></div>
+                      <div style={{ padding: 30, textAlign: "center" }}><Loader2 size={20} style={{ animation: "spin 1s linear infinite", color: "var(--brand)" }} /></div>
                     ) : joinRequests.length === 0 ? (
                       <div className="psp-empty">
                         <CheckCircle2 size={28} color="#00875a" style={{ margin: "0 auto 8px" }} />

@@ -2,7 +2,8 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { useParams } from "next/navigation";
-import { Trophy, Snowflake, Loader2, ChevronDown } from "lucide-react";
+import Link from "next/link";
+import { Trophy, Snowflake, Loader2, ChevronDown, TrendingUp } from "lucide-react";
 import {
   LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip,
   Legend, ReferenceLine, ResponsiveContainer,
@@ -30,6 +31,11 @@ export default function ScoreboardPage() {
   };
 
   useEffect(() => { reload(); }, [id]);
+
+  // Reload whenever any team scores (WebSocket scoreboard event).
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  useEffect(() => { if (ctx.scoreboardVersion > 0) reload(); }, [ctx.scoreboardVersion]);
+
   useEffect(() => {
     const latest = ctx.notifications[0];
     if (!latest) return;
@@ -40,7 +46,7 @@ export default function ScoreboardPage() {
 
   if (loading || !ctx.competition) {
     return <div style={{ display: "flex", justifyContent: "center", padding: 60 }}>
-      <Loader2 size={28} style={{ animation: "spin 1s linear infinite", color: "#6366f1" }} />
+      <Loader2 size={28} style={{ animation: "spin 1s linear infinite", color: "var(--brand)" }} />
     </div>;
   }
 
@@ -93,34 +99,34 @@ function PreStartScoreboard({ startTime, teams }: {
       maxWidth: 720, margin: "40px auto", textAlign: "center",
       display: "flex", flexDirection: "column", alignItems: "center", gap: 16,
     }}>
-      <Trophy size={56} color="#475569" />
-      <div style={{ fontSize: 22, fontWeight: 800, color: "#f8fafc" }}>Scoreboard</div>
-      <div style={{ fontSize: 13, color: "#64748b" }}>
+      <Trophy size={56} color="var(--ink-3)" />
+      <div style={{ fontSize: 22, fontWeight: 800, color: "var(--ink)" }}>Scoreboard</div>
+      <div style={{ fontSize: 13, color: "var(--ink-2)" }}>
         Rankings will appear once teams start solving challenges.
       </div>
       {startTime && (
-        <div style={{ fontSize: 12, color: "#94a3b8" }}>
+        <div style={{ fontSize: 12, color: "var(--ink-2)" }}>
           Competition starts {new Date(startTime).toLocaleString("en-GB", { dateStyle: "medium", timeStyle: "short" })}
         </div>
       )}
 
       <div style={{ marginTop: 24, width: "100%" }}>
         <div style={{
-          fontSize: 11, color: "#64748b", marginBottom: 10, fontWeight: 700,
+          fontSize: 11, color: "var(--ink-2)", marginBottom: 10, fontWeight: 700,
           letterSpacing: "0.06em", textTransform: "uppercase",
         }}>
           {teams.length} team{teams.length !== 1 ? "s" : ""} registered
         </div>
         {teams.length === 0 ? (
-          <div style={{ fontSize: 12, color: "#475569" }}>No teams yet — be the first to register.</div>
+          <div style={{ fontSize: 12, color: "var(--ink-3)" }}>No teams yet — be the first to register.</div>
         ) : (
           <div style={{ display: "flex", gap: 8, flexWrap: "wrap", justifyContent: "center" }}>
             {teams.map(t => (
               <span key={t.teamId} style={{
                 display: "inline-flex", alignItems: "center", gap: 6,
                 padding: "5px 12px",
-                background: "#0f172a", border: "1px solid #1e293b", borderRadius: 999,
-                fontSize: 12, color: "#cbd5e1",
+                background: "var(--bg-2)", border: "1px solid var(--line)", borderRadius: 999,
+                fontSize: 12, color: "var(--ink)",
               }}>
                 <span style={{ width: 8, height: 8, borderRadius: "50%", background: t.avatarColor }} />
                 {t.teamName}
@@ -162,7 +168,7 @@ function LiveScoreboard({ visible, myTeamId, isFrozen, frozenAt }: {
               </span>
             )}
           </div>
-          <div style={{ fontSize: 11, color: "#64748b", marginTop: 4 }}>
+          <div style={{ fontSize: 11, color: "var(--ink-2)", marginTop: 4 }}>
             {isFrozen && frozenAt
               ? `Showing scoreboard as of ${new Date(frozenAt).toLocaleString("en-GB", { dateStyle: "medium", timeStyle: "short" })}`
               : `Updates in real-time · ${visible.length} team${visible.length !== 1 ? "s" : ""} · ${solveTotal} solve${solveTotal !== 1 ? "s" : ""}`}
@@ -202,12 +208,12 @@ function FinalResults({ visible, myTeamId }: {
         <div style={{
           display: "grid", gridTemplateColumns: "1fr 1.2fr 1fr", gap: 16, alignItems: "end",
           padding: "20px 20px 30px",
-          background: "#0f172a", border: "1px solid #1e293b", borderRadius: 12,
+          background: "var(--bg-2)", border: "1px solid var(--line)", borderRadius: 12,
           marginBottom: 18,
         }}>
-          {top3[1] && <PodiumStep entry={top3[1]} rank={2} height={120} medal="🥈" />}
-          {top3[0] && <PodiumStep entry={top3[0]} rank={1} height={160} medal="🥇" />}
-          {top3[2] && <PodiumStep entry={top3[2]} rank={3} height={90}  medal="🥉" />}
+          {top3[1] && <PodiumStep entry={top3[1]} rank={2} height={120} medal="2nd" competitionId={ctx.competition!.id} />}
+          {top3[0] && <PodiumStep entry={top3[0]} rank={1} height={160} medal="1st" competitionId={ctx.competition!.id} />}
+          {top3[2] && <PodiumStep entry={top3[2]} rank={3} height={90}  medal="3rd" competitionId={ctx.competition!.id} />}
         </div>
       )}
 
@@ -220,20 +226,25 @@ function FinalResults({ visible, myTeamId }: {
   );
 }
 
-function PodiumStep({ entry, rank, height, medal }: {
-  entry: CTFScoreboardEntryDTO; rank: number; height: number; medal: string;
+function PodiumStep({ entry, rank, height, medal, competitionId }: {
+  entry: CTFScoreboardEntryDTO; rank: number; height: number; medal: string; competitionId: string;
 }) {
-  const accent = rank === 1 ? "#fbbf24" : rank === 2 ? "#94a3b8" : "#fb923c";
+  const accent = rank === 1 ? "#fbbf24" : rank === 2 ? "var(--ink-2)" : "#fb923c";
   return (
     <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 8 }}>
       <div style={{ fontSize: 36 }}>{medal}</div>
-      <div style={{ fontSize: 14, fontWeight: 700, color: "#f8fafc", textAlign: "center" }}>
+      <Link
+        href={`/ctf/competitions/${competitionId}/teams/${entry.teamId}`}
+        style={{ fontSize: 14, fontWeight: 700, color: "var(--ink)", textAlign: "center", textDecoration: "none" }}
+        onMouseEnter={e => { (e.target as HTMLElement).style.textDecoration = "underline"; }}
+        onMouseLeave={e => { (e.target as HTMLElement).style.textDecoration = "none"; }}
+      >
         {entry.teamName}
-      </div>
+      </Link>
       <div style={{ fontSize: 18, fontWeight: 800, color: accent, fontFamily: "ui-monospace, monospace" }}>
         {entry.totalPoints} pts
       </div>
-      <div style={{ fontSize: 11, color: "#64748b" }}>{entry.solveCount} solves</div>
+      <div style={{ fontSize: 11, color: "var(--ink-2)" }}>{entry.solveCount} solves</div>
       <div style={{
         width: "100%", height,
         background: `linear-gradient(180deg, ${accent}33, ${accent}11)`,
@@ -252,11 +263,11 @@ function EmptyScoreboard() {
       display: "flex", flexDirection: "column", alignItems: "center",
       justifyContent: "center", padding: "96px 24px", gap: 16,
     }}>
-      <Trophy size={64} color="#475569" />
-      <h3 style={{ fontSize: 18, fontWeight: 600, color: "#f8fafc", margin: 0 }}>
+      <Trophy size={64} color="var(--ink-3)" />
+      <h3 style={{ fontSize: 18, fontWeight: 600, color: "var(--ink)", margin: 0 }}>
         No scores yet
       </h3>
-      <p style={{ fontSize: 13, color: "#64748b", textAlign: "center", maxWidth: 360, margin: 0 }}>
+      <p style={{ fontSize: 13, color: "var(--ink-2)", textAlign: "center", maxWidth: 360, margin: 0 }}>
         Be the first team to solve a challenge and claim the top spot.
       </p>
     </div>
@@ -274,15 +285,15 @@ function ScoreboardTable({ rows, myTeamId, competitionId }: {
   const myEntry = useMemo(() => rows.find(r => r.teamId === myTeamId), [rows, myTeamId]);
 
   return (
-    <div style={{ overflow: "hidden", border: "1px solid #1e293b", borderRadius: 8, background: "#0f172a" }}>
+    <div style={{ overflow: "hidden", border: "1px solid var(--line)", borderRadius: 8, background: "var(--bg-2)" }}>
       <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13 }}>
         <thead>
-          <tr style={{ background: "#0a0f1e" }}>
+          <tr style={{ background: "var(--bg)" }}>
             {["Rank", "Team", "Score", "Solves", "Last solve"].map(h => (
               <th key={h} style={{
                 padding: "10px 14px", textAlign: h === "Score" || h === "Solves" ? "right" : "left",
-                fontSize: 10, color: "#475569", textTransform: "uppercase", letterSpacing: "0.06em",
-                fontWeight: 700, borderBottom: "1px solid #1e293b",
+                fontSize: 10, color: "var(--ink-3)", textTransform: "uppercase", letterSpacing: "0.06em",
+                fontWeight: 700, borderBottom: "1px solid var(--line)",
               }}>
                 {h}
               </th>
@@ -293,13 +304,13 @@ function ScoreboardTable({ rows, myTeamId, competitionId }: {
           {rows.map(r => {
             const mine = r.teamId === myTeamId;
             const podium = r.rank <= 3;
-            const podiumColor = r.rank === 1 ? "#fbbf24" : r.rank === 2 ? "#94a3b8" : r.rank === 3 ? "#fb923c" : null;
+            const podiumColor = r.rank === 1 ? "#fbbf24" : r.rank === 2 ? "var(--ink-2)" : r.rank === 3 ? "#fb923c" : null;
             return (
               <tr key={r.teamId} style={{
-                borderBottom: "1px solid #1a2234",
+                borderBottom: "1px solid var(--surface-2)",
                 background: mine ? "rgba(99,102,241,0.1)" : "transparent",
               }}>
-                <td style={{ padding: "10px 14px", fontWeight: 700, color: podiumColor ?? "#64748b", fontSize: podium ? 15 : 13 }}>
+                <td style={{ padding: "10px 14px", fontWeight: 700, color: podiumColor ?? "var(--ink-2)", fontSize: podium ? 15 : 13 }}>
                   {r.rank}
                 </td>
                 <td style={{ padding: "10px 14px" }}>
@@ -307,25 +318,33 @@ function ScoreboardTable({ rows, myTeamId, competitionId }: {
                     <span style={{
                       width: 20, height: 20, borderRadius: "50%", background: r.avatarColor,
                       display: "inline-flex", alignItems: "center", justifyContent: "center",
-                      color: "#fff", fontSize: 10, fontWeight: 700,
+                      color: "#fff", fontSize: 10, fontWeight: 700, flexShrink: 0,
                     }}>{r.teamName.charAt(0).toUpperCase()}</span>
-                    <span style={{ fontWeight: 600, color: mine ? "#a78bfa" : "#f8fafc", fontSize: podium ? 14 : 13 }}>
+                    <Link
+                      href={`/ctf/competitions/${competitionId}/teams/${r.teamId}`}
+                      style={{
+                        fontWeight: 600, color: mine ? "#a78bfa" : "var(--ink)",
+                        fontSize: podium ? 14 : 13, textDecoration: "none",
+                      }}
+                      onMouseEnter={e => { (e.target as HTMLElement).style.textDecoration = "underline"; }}
+                      onMouseLeave={e => { (e.target as HTMLElement).style.textDecoration = "none"; }}
+                    >
                       {r.teamName}
-                      {mine && <span style={{ fontSize: 9, color: "#6366f1", marginLeft: 6, fontWeight: 700 }}>(YOU)</span>}
-                    </span>
+                    </Link>
+                    {mine && <span style={{ fontSize: 9, color: "var(--brand)", fontWeight: 700 }}>(YOU)</span>}
                   </div>
                 </td>
                 <td style={{
                   padding: "10px 14px", textAlign: "right", fontWeight: 700,
-                  fontFamily: "ui-monospace, monospace", color: podiumColor ?? "#f8fafc",
+                  fontFamily: "ui-monospace, monospace", color: podiumColor ?? "var(--ink)",
                   fontSize: podium ? 15 : 13,
                 }}>
                   {r.totalPoints}
                 </td>
-                <td style={{ padding: "10px 14px", textAlign: "right", color: "#64748b" }}>
+                <td style={{ padding: "10px 14px", textAlign: "right", color: "var(--ink-2)" }}>
                   {r.solveCount}
                 </td>
-                <td style={{ padding: "10px 14px", color: "#64748b", fontSize: 12 }}>
+                <td style={{ padding: "10px 14px", color: "var(--ink-2)", fontSize: 12 }}>
                   {r.lastSolveAt
                     ? new Date(r.lastSolveAt).toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit" })
                     : "—"}
@@ -338,9 +357,9 @@ function ScoreboardTable({ rows, myTeamId, competitionId }: {
       {myEntry && rows.length > 8 && (
         <div style={{
           position: "sticky", bottom: 0,
-          background: "rgba(99,102,241,0.18)", borderTop: "1px solid #6366f1",
+          background: "rgba(99,102,241,0.18)", borderTop: "1px solid var(--brand)",
           padding: "8px 14px", display: "flex", alignItems: "center", gap: 10,
-          fontSize: 12, color: "#f8fafc",
+          fontSize: 12, color: "var(--ink)",
         }}>
           <span style={{ color: "#a78bfa", fontWeight: 700 }}>#{myEntry.rank}</span>
           <span style={{ width: 16, height: 16, borderRadius: "50%", background: myEntry.avatarColor }} />
@@ -438,48 +457,48 @@ function ScoreTimeline({ competitionId, status, frozenAt }: {
   };
 
   return (
-    <div style={{ marginTop: 20, border: "1px solid #1e293b", borderRadius: 8, overflow: "hidden" }}>
+    <div style={{ marginTop: 20, border: "1px solid var(--line)", borderRadius: 8, overflow: "hidden" }}>
       <button
         type="button"
         onClick={() => setExpanded(e => !e)}
         style={{
           width: "100%", display: "flex", alignItems: "center", justifyContent: "space-between",
-          padding: "12px 16px", background: "#0f172a", border: "none", cursor: "pointer",
-          color: "#f8fafc",
+          padding: "12px 16px", background: "var(--bg-2)", border: "none", cursor: "pointer",
+          color: "var(--ink)",
         }}
       >
         <span style={{ display: "flex", alignItems: "center", gap: 8, fontWeight: 700, fontSize: 14 }}>
-          📈 Score Timeline — Top {graphData?.teams.length ?? 10} Teams
+          <TrendingUp size={14} style={{verticalAlign:"-2px",marginRight:6}} />Score Timeline — Top {graphData?.teams.length ?? 10} Teams
         </span>
         <ChevronDown size={16} style={{
-          color: "#64748b",
+          color: "var(--ink-2)",
           transform: expanded ? "rotate(180deg)" : "rotate(0deg)",
           transition: "transform 150ms",
         }} />
       </button>
 
       {expanded && (
-        <div style={{ padding: "16px 4px 12px", background: "#060a16" }}>
+        <div style={{ padding: "16px 4px 12px", background: "var(--bg)" }}>
           {loading ? (
             <div style={{ height: 220, display: "flex", alignItems: "center", justifyContent: "center" }}>
-              <Loader2 size={24} style={{ animation: "spin 1s linear infinite", color: "#6366f1" }} />
+              <Loader2 size={24} style={{ animation: "spin 1s linear infinite", color: "var(--brand)" }} />
             </div>
           ) : (
             <ResponsiveContainer width="100%" height={260}>
               <LineChart data={chartData} margin={{ top: 5, right: 20, bottom: 5, left: 0 }}>
-                <CartesianGrid stroke="#1e293b" strokeDasharray="3 3" vertical={false} />
+                <CartesianGrid stroke="var(--line)" strokeDasharray="3 3" vertical={false} />
                 <XAxis
                   dataKey="minutes"
                   type="number"
                   domain={["dataMin", "dataMax"]}
                   tickFormatter={fmtMinutes}
-                  tick={{ fill: "#64748b", fontSize: 11 }}
-                  axisLine={{ stroke: "#1e293b" }}
+                  tick={{ fill: "var(--ink-2)", fontSize: 11 }}
+                  axisLine={{ stroke: "var(--line)" }}
                   tickLine={false}
                 />
                 <YAxis
                   domain={[0, maxScore]}
-                  tick={{ fill: "#64748b", fontSize: 11 }}
+                  tick={{ fill: "var(--ink-2)", fontSize: 11 }}
                   axisLine={false}
                   tickLine={false}
                   width={44}
@@ -496,7 +515,7 @@ function ScoreTimeline({ competitionId, status, frozenAt }: {
                   wrapperStyle={{ fontSize: 11, paddingTop: 8 }}
                   formatter={(value) => {
                     const team = graphData?.teams.find(t => t.teamId === value);
-                    return <span style={{ color: "#94a3b8" }}>{team?.teamName ?? value}</span>;
+                    return <span style={{ color: "var(--ink-2)" }}>{team?.teamName ?? value}</span>;
                   }}
                 />
                 {freezeMinutes !== null && (
@@ -551,10 +570,10 @@ function ChartTooltip({ active, payload, label, teams, fmtMinutes }: {
 
   return (
     <div style={{
-      background: "#0f172a", border: "1px solid #1e293b", borderRadius: 8,
+      background: "var(--bg-2)", border: "1px solid var(--line)", borderRadius: 8,
       padding: "8px 12px", fontSize: 12, maxWidth: 210,
     }}>
-      <div style={{ color: "#64748b", marginBottom: 6, fontSize: 11 }}>
+      <div style={{ color: "var(--ink-2)", marginBottom: 6, fontSize: 11 }}>
         T+{fmtMinutes(label ?? 0)}
       </div>
       {sorted.map(e => {
@@ -563,16 +582,16 @@ function ChartTooltip({ active, payload, label, teams, fmtMinutes }: {
           <div key={e.dataKey} style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 3 }}>
             <span style={{
               width: 8, height: 8, borderRadius: "50%",
-              background: e.stroke ?? team?.accentColor ?? "#6366f1",
+              background: e.stroke ?? team?.accentColor ?? "var(--brand)",
               flexShrink: 0,
             }} />
             <span style={{
-              color: "#f8fafc", flex: 1, fontSize: 11,
+              color: "var(--ink)", flex: 1, fontSize: 11,
               overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
             }}>
               {team?.teamName ?? e.dataKey}
             </span>
-            <span style={{ fontFamily: "ui-monospace, monospace", color: "#f8fafc", fontWeight: 700 }}>
+            <span style={{ fontFamily: "ui-monospace, monospace", color: "var(--ink)", fontWeight: 700 }}>
               {e.value}
             </span>
           </div>

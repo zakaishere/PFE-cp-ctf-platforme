@@ -30,7 +30,9 @@ export default function TeamPage() {
   if (!ctx.competition) return null;
 
   if (!ctx.myTeam) {
-    return <NoTeamPanels competitionId={id} onTeamCreated={ctx.refetchTeam} canRegister={ctx.status === "UPCOMING"} />;
+    const regOpen = Boolean(ctx.competition?.registrationOpen);
+    const notEnded = ctx.status !== "ENDED";
+    return <NoTeamPanels competitionId={id} onTeamCreated={ctx.refetchTeam} canRegister={notEnded && (ctx.status === "UPCOMING" || regOpen)} />;
   }
 
   return <InTeamView competitionId={id} userId={userId} />;
@@ -84,8 +86,8 @@ function NoTeamPanels({ competitionId, onTeamCreated, canRegister }: {
   return (
     <div style={{ maxWidth: 880, margin: "20px auto" }}>
       <div style={{ marginBottom: 18 }}>
-        <div style={{ fontSize: 22, fontWeight: 800, color: "#f8fafc" }}>Join the competition</div>
-        <div style={{ fontSize: 13, color: "#64748b", marginTop: 4 }}>
+        <div style={{ fontSize: 22, fontWeight: 800, color: "var(--ink)" }}>Join the competition</div>
+        <div style={{ fontSize: 13, color: "var(--ink-2)", marginTop: 4 }}>
           Create a new team or join an existing one with an invite code.
         </div>
       </div>
@@ -96,7 +98,9 @@ function NoTeamPanels({ competitionId, onTeamCreated, canRegister }: {
           borderRadius: 8, padding: "12px 14px", marginBottom: 18,
           fontSize: 13, color: "#fecaca",
         }}>
-          Team registration is closed — the competition has already started.
+          {ctx.status === "ENDED"
+            ? "This competition has ended — team registration is closed."
+            : "Team registration is closed — the teacher has not enabled late registration."}
         </div>
       )}
 
@@ -115,7 +119,7 @@ function NoTeamPanels({ competitionId, onTeamCreated, canRegister }: {
             maxLength={30}
             disabled={!canRegister}
           />
-          <div style={{ fontSize: 11, color: "#475569", marginTop: 4 }}>3–30 characters</div>
+          <div style={{ fontSize: 11, color: "var(--ink-3)", marginTop: 4 }}>3–30 characters</div>
           <button
             type="button"
             className="psp-btn psp-btn-primary"
@@ -142,7 +146,7 @@ function NoTeamPanels({ competitionId, onTeamCreated, canRegister }: {
             style={{ fontFamily: "ui-monospace, monospace", letterSpacing: "0.06em" }}
             onKeyDown={(e) => { if (e.key === "Enter" && canRegister) handleJoin(); }}
           />
-          <div style={{ fontSize: 11, color: "#475569", marginTop: 4 }}>auto-formats: dash after 4 chars</div>
+          <div style={{ fontSize: 11, color: "var(--ink-3)", marginTop: 4 }}>auto-formats: dash after 4 chars</div>
           <button
             type="button"
             className="psp-btn psp-btn-primary"
@@ -157,8 +161,8 @@ function NoTeamPanels({ competitionId, onTeamCreated, canRegister }: {
 
       <div style={{
         marginTop: 18, padding: "10px 14px",
-        background: "#0f172a", border: "1px solid #1e293b", borderRadius: 8,
-        fontSize: 12, color: "#94a3b8",
+        background: "var(--bg-2)", border: "1px solid var(--line)", borderRadius: 8,
+        fontSize: 12, color: "var(--ink-2)",
       }}>
         Max team size: {ctx.competition?.maxTeamSize} · You can only be in one team.
       </div>
@@ -178,7 +182,8 @@ function InTeamView({ competitionId, userId }: { competitionId: string; userId: 
   const isCaptain = team.captainId === userId;
   const status = ctx.status ?? ctx.competition?.status ?? "UPCOMING";
   const competitionEnded = status === "ENDED";
-  const canManage = status === "UPCOMING";
+  const regOpen = Boolean(ctx.competition?.registrationOpen);
+  const canManage = status === "UPCOMING" || (regOpen && status !== "ENDED");
 
   useEffect(() => {
     getCtfScoreboard(competitionId).then(setScoreboard).catch(() => {});
@@ -237,7 +242,7 @@ function InTeamView({ competitionId, userId }: { competitionId: string; userId: 
       <div style={{ marginBottom: 18 }}>
         <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
           <span style={{ width: 14, height: 14, borderRadius: "50%", background: team.avatarColor }} />
-          <span style={{ fontSize: 22, fontWeight: 800, color: "#f8fafc" }}>{team.name}</span>
+          <span style={{ fontSize: 22, fontWeight: 800, color: "var(--ink)" }}>{team.name}</span>
           {competitionEnded && myEntry && (
             <span style={{
               marginLeft: 8, fontSize: 11, fontWeight: 700,
@@ -249,7 +254,7 @@ function InTeamView({ competitionId, userId }: { competitionId: string; userId: 
             </span>
           )}
         </div>
-        <div style={{ fontSize: 13, color: "#64748b", marginTop: 4 }}>
+        <div style={{ fontSize: 13, color: "var(--ink-2)", marginTop: 4 }}>
           {myEntry
             ? `Rank #${myEntry.rank} · ${myEntry.totalPoints} pts · ${myEntry.solveCount} solves`
             : "0 pts · 0 solves"}
@@ -280,7 +285,7 @@ function InTeamView({ competitionId, userId }: { competitionId: string; userId: 
               <Label>Invite Code</Label>
               <div style={{ display: "flex", gap: 6, alignItems: "center", marginBottom: 14 }}>
                 <div style={{
-                  flex: 1, background: "#020617", border: "1px solid #1e293b", borderRadius: 6,
+                  flex: 1, background: "var(--bg)", border: "1px solid var(--line)", borderRadius: 6,
                   padding: "8px 12px",
                   fontFamily: "ui-monospace, monospace", fontSize: 15, fontWeight: 700,
                   color: "#a78bfa", letterSpacing: "0.08em",
@@ -288,26 +293,26 @@ function InTeamView({ competitionId, userId }: { competitionId: string; userId: 
                   {team.inviteCode}
                 </div>
                 <button type="button" className="psp-btn psp-btn-secondary"
-                  style={{ gap: 4, color: copied ? "#22c55e" : undefined }}
+                  style={{ gap: 4, color: copied ? "var(--success)" : undefined }}
                   onClick={copyInvite}
                 >
                   {copied ? <Check size={11} /> : <Copy size={11} />}
                   {copied ? "Copied" : "Copy"}
                 </button>
               </div>
-              <div style={{ fontSize: 11, color: "#64748b", marginTop: -4, marginBottom: 14 }}>
+              <div style={{ fontSize: 11, color: "var(--ink-2)", marginTop: -4, marginBottom: 14 }}>
                 Share with teammates
               </div>
             </>
           )}
 
           <Label>Members ({team.members.length}/{ctx.competition?.maxTeamSize ?? 4})</Label>
-          <div style={{ border: "1px solid #1e293b", borderRadius: 6 }}>
+          <div style={{ border: "1px solid var(--line)", borderRadius: 6 }}>
             {team.members.map((m, i) => (
               <div key={m.userId} style={{
                 display: "flex", alignItems: "center", gap: 8,
                 padding: "8px 12px",
-                borderBottom: i < team.members.length - 1 ? "1px solid #0f172a" : "none",
+                borderBottom: i < team.members.length - 1 ? "1px solid var(--bg-2)" : "none",
               }}>
                 <span style={{
                   width: 22, height: 22, borderRadius: "50%", background: team.avatarColor,
@@ -318,10 +323,10 @@ function InTeamView({ competitionId, userId }: { competitionId: string; userId: 
                   <div style={{ fontSize: 13 }}>
                     {m.displayName}
                     {m.userId === userId && (
-                      <span style={{ fontSize: 10, color: "#64748b", marginLeft: 6 }}>(you)</span>
+                      <span style={{ fontSize: 10, color: "var(--ink-2)", marginLeft: 6 }}>(you)</span>
                     )}
                   </div>
-                  <div style={{ fontSize: 11, color: "#475569" }}>
+                  <div style={{ fontSize: 11, color: "var(--ink-3)" }}>
                     {m.solveCount ?? 0} solve{(m.solveCount ?? 0) !== 1 ? "s" : ""} · {m.pointsContributed ?? 0} pts
                   </div>
                 </div>
@@ -378,11 +383,11 @@ function InTeamView({ competitionId, userId }: { competitionId: string; userId: 
                   alignItems: "center", gap: 8, marginBottom: 8, fontSize: 12,
                 }}>
                   <span style={{ color: conf.accent, display: "inline-flex" }}>{conf.icon}</span>
-                  <span style={{ color: "#cbd5e1" }}>{conf.label}</span>
-                  <div style={{ width: 80, height: 4, background: "#1e293b", borderRadius: 2 }}>
+                  <span style={{ color: "var(--ink)" }}>{conf.label}</span>
+                  <div style={{ width: 80, height: 4, background: "var(--line)", borderRadius: 2 }}>
                     <div style={{ width: `${pct}%`, height: "100%", background: conf.accent, borderRadius: 2 }} />
                   </div>
-                  <span style={{ fontFamily: "ui-monospace, monospace", color: done ? "#22c55e" : "#64748b" }}>
+                  <span style={{ fontFamily: "ui-monospace, monospace", color: done ? "var(--success)" : "var(--ink-2)" }}>
                     {s.solved}/{s.total} {done && <Check size={10} style={{ display: "inline" }} />}
                   </span>
                 </div>
@@ -399,7 +404,7 @@ function InTeamView({ competitionId, userId }: { competitionId: string; userId: 
 
 function Label({ children }: { children: React.ReactNode }) {
   return (
-    <div style={{ fontSize: 11, color: "#64748b", marginBottom: 5, textTransform: "uppercase", letterSpacing: "0.05em", fontWeight: 700 }}>
+    <div style={{ fontSize: 11, color: "var(--ink-2)", marginBottom: 5, textTransform: "uppercase", letterSpacing: "0.05em", fontWeight: 700 }}>
       {children}
     </div>
   );
@@ -409,18 +414,18 @@ function Stat({ label, value, last }: { label: string; value: string; last?: boo
   return (
     <div style={{
       display: "flex", justifyContent: "space-between",
-      padding: "6px 0", borderBottom: last ? "none" : "1px solid #1a2234",
+      padding: "6px 0", borderBottom: last ? "none" : "1px solid var(--surface-2)",
       fontSize: 13,
     }}>
-      <span style={{ color: "#64748b" }}>{label}</span>
-      <span style={{ color: "#f8fafc", fontWeight: 700, fontFamily: "ui-monospace, monospace" }}>{value}</span>
+      <span style={{ color: "var(--ink-2)" }}>{label}</span>
+      <span style={{ color: "var(--ink)", fontWeight: 700, fontFamily: "ui-monospace, monospace" }}>{value}</span>
     </div>
   );
 }
 
 function iconBtnStyle(color: string): React.CSSProperties {
   return {
-    background: "transparent", border: "1px solid #334155",
+    background: "transparent", border: "1px solid var(--line-2)",
     borderRadius: 4, padding: "4px 6px",
     color, cursor: "pointer",
     display: "inline-flex", alignItems: "center",
@@ -430,7 +435,7 @@ function iconBtnStyle(color: string): React.CSSProperties {
 function PageSpinner() {
   return (
     <div style={{ display: "flex", justifyContent: "center", padding: 60 }}>
-      <Loader2 size={28} style={{ animation: "spin 1s linear infinite", color: "#6366f1" }} />
+      <Loader2 size={28} style={{ animation: "spin 1s linear infinite", color: "var(--brand)" }} />
     </div>
   );
 }

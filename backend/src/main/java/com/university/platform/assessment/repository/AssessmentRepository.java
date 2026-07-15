@@ -33,14 +33,59 @@ public interface AssessmentRepository extends JpaRepository<Assessment, UUID> {
             @Param("pendingStatus") JoinRequestStatus pendingStatus);
 
     @Query("""
-        SELECT a FROM Assessment a WHERE
-          (a.visibilityMode = com.university.platform.assessment.VisibilityMode.MODULE_ONLY
-            AND a.module IS NOT NULL
-            AND a.module.division.divisionId = :divisionId
-            AND a.module.semester.semesterId = :semesterId)
-          OR a.visibilityMode = com.university.platform.assessment.VisibilityMode.ACCESS_CODE
-          OR a.visibilityMode = com.university.platform.assessment.VisibilityMode.REQUEST_BASED
+        SELECT a FROM Assessment a
+          LEFT JOIN a.module m
+          LEFT JOIN m.division d
+          LEFT JOIN m.semester s
+        WHERE a.isPublished = true
+          AND (
+            (a.visibilityMode = com.university.platform.assessment.VisibilityMode.MODULE_ONLY
+              AND m IS NOT NULL
+              AND d.divisionId = :divisionId
+              AND s.semesterId = :semesterId)
+            OR a.visibilityMode = com.university.platform.assessment.VisibilityMode.ACCESS_CODE
+            OR a.visibilityMode = com.university.platform.assessment.VisibilityMode.REQUEST_BASED
+          )
         """)
     List<Assessment> findVisibleToStudent(@Param("divisionId") UUID divisionId,
                                           @Param("semesterId") UUID semesterId);
+
+    // ── platform-stats counts ───────────────────────────────────────────────
+
+    /** Exams whose scheduled start time has passed and the timer hasn't expired. */
+    @Query("""
+        SELECT a FROM com.university.platform.assessment.model.LiveExam a
+        WHERE a.scheduledStartTime <= :now
+        """)
+    List<com.university.platform.assessment.model.LiveExam> findStartedLiveExams(@Param("now") LocalDateTime now);
+
+    @Query("""
+        SELECT COUNT(a) FROM com.university.platform.assessment.model.OpenTP a
+        WHERE a.deadline > :now
+        """)
+    long countOpenTPs(@Param("now") LocalDateTime now);
+
+    // Teacher-scoped queries for dashboard
+    @Query("SELECT a FROM Assessment a WHERE a.createdBy.id = :teacherId ORDER BY a.assessmentId DESC")
+    List<Assessment> findByTeacherIdOrderByIdDesc(@Param("teacherId") UUID teacherId);
+
+    @Query("""
+        SELECT a FROM com.university.platform.assessment.model.LiveExam a
+        WHERE a.createdBy.id = :teacherId
+          AND a.scheduledStartTime <= :now
+        ORDER BY a.scheduledStartTime DESC
+        """)
+    List<com.university.platform.assessment.model.LiveExam> findActiveExamsByTeacher(
+            @Param("teacherId") UUID teacherId,
+            @Param("now") LocalDateTime now);
+
+    @Query("""
+        SELECT a FROM com.university.platform.assessment.model.OpenTP a
+        WHERE a.createdBy.id = :teacherId
+          AND a.deadline > :now
+        ORDER BY a.deadline ASC
+        """)
+    List<com.university.platform.assessment.model.OpenTP> findOpenTPsByTeacher(
+            @Param("teacherId") UUID teacherId,
+            @Param("now") LocalDateTime now);
 }

@@ -35,6 +35,14 @@ public class CTFChallengeService {
     public CTFChallengeDTO getChallengeDetail(UUID id, UUID userId) {
         CTFChallenge challenge = challengeRepository.findByIdAndDeletedFalse(id)
                 .orElseThrow(() -> new EntityNotFoundException("Challenge not found: " + id));
+        if (!Boolean.TRUE.equals(challenge.getIsActive())
+                || challenge.getCompetitionId() != null
+                || Boolean.TRUE.equals(challenge.getIsLibrary())) {
+            // Hidden drafts, competition copies and library templates are not
+            // visible in practice — mirrors findPracticeChallenges() and the
+            // submit guard, so a known id can't bypass the practice list.
+            throw new EntityNotFoundException("Challenge not found: " + id);
+        }
         return toDTO(challenge, userId, true);
     }
 
@@ -69,10 +77,9 @@ public class CTFChallengeService {
         CTFChallenge.CTFCategory cat = parseCategory(category);
         CTFChallenge.CTFDifficulty diff = parseDifficulty(difficulty);
 
-        if (cat != null && diff != null) return challengeRepository.findByCategoryAndDifficultyAndIsActiveTrueAndDeletedFalse(cat, diff);
-        if (cat != null)                 return challengeRepository.findByCategoryAndIsActiveTrueAndDeletedFalse(cat);
-        if (diff != null)                return challengeRepository.findByDifficultyAndIsActiveTrueAndDeletedFalse(diff);
-        return challengeRepository.findByIsActiveTrueAndDeletedFalse();
+        // Practice list — competition-attached copies and library templates are
+        // private to their competition / owner and must never appear here.
+        return challengeRepository.findPracticeChallenges(cat, diff);
     }
 
     private CTFChallengeDTO toDTO(CTFChallenge c, UUID userId, boolean includeDescription) {
@@ -138,7 +145,10 @@ public class CTFChallengeService {
         if (dto.getDownloadableFileUrl() != null)  c.setDownloadableFileUrl(dto.getDownloadableFileUrl());
         if (dto.getDownloadableFileName() != null) c.setDownloadableFileName(dto.getDownloadableFileName());
         if (dto.getHints() != null)                c.setHints(dto.getHints());
-        if (dto.getMaxAttempts() != null)          c.setMaxAttempts(dto.getMaxAttempts());
+        // 0 or negative = unlimited (stored as null); positive = hard limit
+        if (dto.getMaxAttempts() != null) {
+            c.setMaxAttempts(dto.getMaxAttempts() <= 0 ? null : dto.getMaxAttempts());
+        }
         if (dto.getIsActive() != null)             c.setIsActive(dto.getIsActive());
     }
 

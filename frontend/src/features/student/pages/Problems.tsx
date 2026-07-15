@@ -1,23 +1,27 @@
 "use client";
 
 import { useState, useRef } from "react";
+import { Check, Search } from "lucide-react";
 import Link from "next/link";
 import Navbar from "@/components/Navbar";
 import { useInfiniteProblems } from "@/hooks/useInfiniteProblems";
-import { ProblemRowSkeleton } from "@/components/problems/ProblemRowSkeleton";
 
 const DIFFICULTIES = ["", "EASY", "MEDIUM", "HARD"] as const;
+type Difficulty = typeof DIFFICULTIES[number];
 
-const difficultyColor = (d: string) =>
-  ({ EASY: "b-easy", MEDIUM: "b-med", HARD: "b-hard" }[d] ?? "b-easy");
-
-const difficultyLabel = (d: string) =>
+const diffLabel = (d: string) =>
   ({ EASY: "Easy", MEDIUM: "Medium", HARD: "Hard" }[d] ?? d);
 
+const diffColor = (d: string) =>
+  ({ EASY: "var(--accent)", MEDIUM: "var(--warn)", HARD: "var(--danger)" }[d] ?? "var(--ink-2)");
+
+type SolvedFilter = "all" | "solved" | "unsolved";
+
 export default function ProblemsPage() {
-  const [search, setSearch]         = useState("");
-  const [difficulty, setDifficulty] = useState("");
-  const [liveSearch, setLiveSearch] = useState("");
+  const [search, setSearch]           = useState("");
+  const [difficulty, setDifficulty]   = useState<Difficulty>("");
+  const [solvedFilter, setSolvedFilter] = useState<SolvedFilter>("all");
+  const [liveSearch, setLiveSearch]   = useState("");
   const debounceTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   function handleSearchChange(e: React.ChangeEvent<HTMLInputElement>) {
@@ -27,116 +31,150 @@ export default function ProblemsPage() {
     debounceTimer.current = setTimeout(() => setSearch(val), 350);
   }
 
-  const { problems, loading, initialLoad, error, hasMore, totalElements, sentinelRef } =
+  const { problems, loading, initialLoad, error, hasMore, sentinelRef } =
     useInfiniteProblems({ search, difficulty });
+
+  const visible = problems.filter(p => {
+    if (solvedFilter === "solved"   && !p.solvedByCurrentUser) return false;
+    if (solvedFilter === "unsolved" &&  p.solvedByCurrentUser) return false;
+    return true;
+  });
+
+  const COL = "32px 1fr 100px 160px 70px";
 
   return (
     <>
       <Navbar />
-      <div className="psp-breadcrumb">
-        <Link href="/dashboard">PSP</Link> › <span style={{ color: "var(--text-primary)" }}>Problems</span>
-      </div>
       <div className="psp-main">
         <div style={{ marginBottom: 20 }}>
-          <div style={{ fontSize: 20, fontWeight: 600, color: "var(--text-primary)" }}>Problem Set</div>
-          <div style={{ fontSize: 12, color: "var(--text-muted)", marginTop: 3 }}>
-            {totalElements > 0 ? `${totalElements} problems` : "Practice on public problems and earn points"}
+          <div style={{ fontSize: 20, fontWeight: 700, color: "var(--ink)" }}>Problem Set</div>
+          <div style={{ fontSize: 13, color: "var(--ink-2)", marginTop: 3 }}>
+            Practice on public problems and earn points
           </div>
         </div>
 
-        <div className="psp-card">
-          {/* Filter bar */}
-          <div className="psp-card-header" style={{ flexWrap: "wrap", gap: 8 }}>
-            <input
-              className="psp-search"
-              placeholder="Search problems…"
-              value={liveSearch}
-              onChange={handleSearchChange}
-            />
-            <div className="psp-filter-bar" style={{ margin: 0 }}>
+        <div style={{ background: "var(--surface)", border: "1px solid var(--line)", borderRadius: "var(--r)", overflow: "hidden" }}>
+
+          {/* Toolbar */}
+          <div style={{ padding: "10px 16px", display: "flex", alignItems: "center", gap: 10, borderBottom: "1px solid var(--line)", flexWrap: "wrap" }}>
+            <div style={{ position: "relative", flex: "0 0 200px" }}>
+              <Search size={12} style={{ position: "absolute", left: 8, top: "50%", transform: "translateY(-50%)", color: "var(--ink-3)", pointerEvents: "none" }} />
+              <input className="psp-search" style={{ paddingLeft: 26, width: "100%" }} placeholder="Search problems…" value={liveSearch} onChange={handleSearchChange} />
+            </div>
+            {/* Difficulty segmented group */}
+            <div style={{ display: "inline-flex", background: "var(--bg-2)", border: "1px solid var(--line)", borderRadius: 9, padding: 3, gap: 2 }}>
               {DIFFICULTIES.map(d => (
-                <button
-                  key={d}
-                  className={`psp-ftab${difficulty === d ? " on" : ""}`}
-                  onClick={() => setDifficulty(d)}
-                >
-                  {d ? difficultyLabel(d) : "All"}
+                <button key={d} onClick={() => setDifficulty(d)} style={{ padding: "4px 10px", borderRadius: 6, border: "none", cursor: "pointer", fontSize: 12, fontWeight: difficulty === d ? 600 : 400, background: difficulty === d ? "var(--surface-3)" : "transparent", color: difficulty === d ? "var(--ink)" : "var(--ink-3)", transition: "all 0.1s" }}>
+                  {d ? diffLabel(d) : "All Difficulties"}
+                </button>
+              ))}
+            </div>
+            {/* Solved segmented group */}
+            <div style={{ display: "inline-flex", background: "var(--bg-2)", border: "1px solid var(--line)", borderRadius: 9, padding: 3, gap: 2 }}>
+              {(["all", "solved", "unsolved"] as const).map(s => (
+                <button key={s} onClick={() => setSolvedFilter(s)} style={{ padding: "4px 10px", borderRadius: 6, border: "none", cursor: "pointer", fontSize: 12, fontWeight: solvedFilter === s ? 600 : 400, background: solvedFilter === s ? "var(--surface-3)" : "transparent", color: solvedFilter === s ? "var(--ink)" : "var(--ink-3)", transition: "all 0.1s" }}>
+                  {s === "all" ? "All" : s.charAt(0).toUpperCase() + s.slice(1)}
                 </button>
               ))}
             </div>
           </div>
 
-          {/* Table */}
-          <table className="psp-table">
-            <thead>
-              <tr>
-                <th>#</th>
-                <th>Status</th>
-                <th>Title</th>
-                <th>Difficulty</th>
-                <th>Pass Rate</th>
-                <th>Submissions</th>
-                <th>Points</th>
-              </tr>
-            </thead>
-            <tbody>
-              {initialLoad && Array.from({ length: 15 }).map((_, i) => (
-                <ProblemRowSkeleton key={i} />
-              ))}
+          {/* Column headers */}
+          <div style={{ display: "grid", gridTemplateColumns: COL, padding: "7px 16px", background: "var(--bg-2)", borderBottom: "1px solid var(--line)" }}>
+            {(["", "Problem", "Difficulty", "Pass Rate", "Points"] as const).map((h, i) => (
+              <div key={i} style={{ fontSize: 11, fontWeight: 600, color: "var(--ink-3)", textTransform: "uppercase", letterSpacing: "0.06em" }}>
+                {h}
+              </div>
+            ))}
+          </div>
 
-              {!initialLoad && problems.map((p, idx) => (
-                <tr key={p.problemId}>
-                  <td className="td-muted">{idx + 1}</td>
-                  <td>
-                    {p.solvedByCurrentUser
-                      ? <span style={{ color: "#00875a", fontWeight: 700 }}>✓</span>
-                      : <span style={{ color: "var(--border)" }}>○</span>}
-                  </td>
-                  <td>
-                    <Link href={`/problems/${p.problemId}`} className="td-link">
-                      {p.title}
-                    </Link>
-                    <div style={{ fontSize: 11, color: "var(--text-muted)", marginTop: 2 }}>
-                      By {p.authorName}
+          {/* Loading skeletons */}
+          {initialLoad && Array.from({ length: 15 }).map((_, i) => (
+            <div key={i} style={{ display: "grid", gridTemplateColumns: COL, padding: "12px 16px", borderBottom: "1px solid var(--line)", alignItems: "center", gap: 8 }}>
+              <div style={{ display: "flex", justifyContent: "center" }}><div className="skel" style={{ width: 18, height: 18, borderRadius: "50%" }} /></div>
+              <div><div className="skel" style={{ width: "50%", height: 13, borderRadius: 3, marginBottom: 5 }} /><div className="skel" style={{ width: "28%", height: 10, borderRadius: 3 }} /></div>
+              <div className="skel" style={{ width: 52, height: 13, borderRadius: 3 }} />
+              <div className="skel" style={{ width: 80, height: 8, borderRadius: 4 }} />
+              <div className="skel" style={{ width: 36, height: 12, borderRadius: 3 }} />
+            </div>
+          ))}
+
+          {/* Rows */}
+          {!initialLoad && visible.map(p => {
+            const dc = diffColor(p.difficulty);
+            return (
+              <Link
+                key={p.problemId}
+                href={`/problems/${p.problemId}`}
+                style={{ display: "grid", gridTemplateColumns: COL, padding: "11px 16px", borderBottom: "1px solid var(--line)", alignItems: "center", textDecoration: "none", transition: "background 0.1s" }}
+                onMouseOver={e => (e.currentTarget.style.background = "var(--surface-2)")}
+                onMouseOut={e => (e.currentTarget.style.background = "")}
+              >
+                {/* Col 1: solved dot */}
+                <div style={{ display: "flex", justifyContent: "center" }}>
+                  {p.solvedByCurrentUser ? (
+                    <div style={{ width: 18, height: 18, borderRadius: "50%", background: "var(--success-soft)", border: "1.5px solid var(--success)", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                      <Check size={9} color="var(--success)" />
                     </div>
-                  </td>
-                  <td>
-                    <span className={`psp-badge ${difficultyColor(p.difficulty)}`}>
-                      {difficultyLabel(p.difficulty)}
-                    </span>
-                  </td>
-                  <td>
-                    <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-                      <div style={{ width: 56, height: 4, background: "var(--border)", borderRadius: 2 }}>
-                        <div style={{ width: `${p.passRate}%`, height: "100%", background: "#0052cc", borderRadius: 2 }} />
-                      </div>
-                      <span style={{ fontSize: 11, color: "var(--text-muted)" }}>{p.passRate.toFixed(0)}%</span>
-                    </div>
-                  </td>
-                  <td className="td-muted">{p.submissionCount.toLocaleString()}</td>
-                  <td className="td-muted">{p.points} pts</td>
-                </tr>
-              ))}
+                  ) : (
+                    <div style={{ width: 18, height: 18, borderRadius: "50%", border: "1.5px solid var(--line-strong)" }} />
+                  )}
+                </div>
 
-              {!initialLoad && loading && Array.from({ length: 5 }).map((_, i) => (
-                <ProblemRowSkeleton key={`skel-${i}`} />
-              ))}
-            </tbody>
-          </table>
+                {/* Col 2: title */}
+                <div style={{ minWidth: 0 }}>
+                  <div style={{ fontSize: 14, fontWeight: 600, color: "var(--ink)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", marginBottom: 2 }}>
+                    {p.title}
+                  </div>
+                  {p.authorName && (
+                    <div style={{ fontSize: 11, color: "var(--ink-3)" }}>by {p.authorName}</div>
+                  )}
+                </div>
 
-          {/* Empty state */}
-          {!initialLoad && !loading && problems.length === 0 && (
-            <div className="psp-empty">
-              <div className="psp-empty-title">No problems found</div>
-              <div>Try adjusting your search or filters.</div>
+                {/* Col 3: difficulty */}
+                <div style={{ fontSize: 13, fontFamily: "ui-monospace, monospace", fontWeight: 600, color: dc }}>
+                  {diffLabel(p.difficulty)}
+                </div>
+
+                {/* Col 4: pass rate bar */}
+                <div style={{ display: "flex", alignItems: "center", gap: 7 }}>
+                  <div style={{ flex: 1, height: 4, background: "var(--line)", borderRadius: 2, maxWidth: 80 }}>
+                    <div style={{ width: `${Math.min(p.passRate ?? 0, 100)}%`, height: "100%", background: "var(--brand)", borderRadius: 2 }} />
+                  </div>
+                  <span style={{ fontSize: 11, color: "var(--ink-3)", flexShrink: 0 }}>{(p.passRate ?? 0).toFixed(0)}%</span>
+                </div>
+
+                {/* Col 5: points */}
+                <div style={{ fontSize: 13, color: "var(--ink-3)" }}>{p.points} pts</div>
+              </Link>
+            );
+          })}
+
+          {/* More loading */}
+          {!initialLoad && loading && Array.from({ length: 5 }).map((_, i) => (
+            <div key={`more-${i}`} style={{ display: "grid", gridTemplateColumns: COL, padding: "12px 16px", borderBottom: "1px solid var(--line)", alignItems: "center", gap: 8 }}>
+              <div style={{ display: "flex", justifyContent: "center" }}><div className="skel" style={{ width: 18, height: 18, borderRadius: "50%" }} /></div>
+              <div className="skel" style={{ width: "40%", height: 13, borderRadius: 3 }} />
+              <div className="skel" style={{ width: 52, height: 13, borderRadius: 3 }} />
+              <div className="skel" style={{ width: 80, height: 8, borderRadius: 4 }} />
+              <div className="skel" style={{ width: 36, height: 12, borderRadius: 3 }} />
+            </div>
+          ))}
+
+          {/* Empty */}
+          {!initialLoad && !loading && visible.length === 0 && (
+            <div className="psp-empty" style={{ padding: "32px 24px" }}>
+              <Search size={28} color="var(--ink-3)" style={{ margin: "0 auto 12px" }} />
+              <div className="psp-empty-title">No problems match your filters</div>
+              <div>Try adjusting the difficulty or status.</div>
             </div>
           )}
 
-          {/* Error state */}
+          {/* Error */}
           {error && (
-            <div style={{ textAlign: "center", padding: "24px 16px", color: "#de350b", fontSize: 13 }}>
+            <div style={{ textAlign: "center", padding: "24px 16px", color: "var(--danger)", fontSize: 13 }}>
               {error} —{" "}
-              <button onClick={() => window.location.reload()} style={{ background: "none", border: "none", color: "#0052cc", cursor: "pointer", textDecoration: "underline" }}>
+              <button onClick={() => window.location.reload()} style={{ background: "none", border: "none", color: "var(--brand)", cursor: "pointer", textDecoration: "underline" }}>
                 Retry
               </button>
             </div>
@@ -144,13 +182,13 @@ export default function ProblemsPage() {
 
           {/* End of list */}
           {!hasMore && problems.length > 0 && (
-            <div style={{ textAlign: "center", padding: "12px 0", fontSize: 12, color: "var(--text-muted)" }}>
-              All {totalElements} problems loaded
+            <div style={{ textAlign: "center", padding: "12px 0", fontSize: 12, color: "var(--ink-3)" }}>
+              All problems loaded
             </div>
           )}
         </div>
 
-        {/* Invisible sentinel — triggers next page load */}
+        {/* Sentinel for infinite scroll */}
         <div ref={sentinelRef} style={{ height: 1 }} />
       </div>
     </>

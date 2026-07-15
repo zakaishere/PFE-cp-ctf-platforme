@@ -47,8 +47,8 @@ export default function MiniCountdown({ targetDate, label = "Starts in" }: Props
         gap: 4,
         fontSize: 11,
         fontWeight: 600,
-        color: ms <= 0 ? "#00875a" : ms < 3_600_000 ? "#de350b" : "#0052cc",
-        background: ms <= 0 ? "#e3fcef" : ms < 3_600_000 ? "#ffebe6" : "#deebff",
+        color: ms <= 0 ? "#00875a" : ms < 3_600_000 ? "#de350b" : "var(--brand)",
+        background: ms <= 0 ? "#e3fcef" : ms < 3_600_000 ? "#ffebe6" : "var(--accent-soft)",
         borderRadius: 3,
         padding: "2px 7px",
       }}

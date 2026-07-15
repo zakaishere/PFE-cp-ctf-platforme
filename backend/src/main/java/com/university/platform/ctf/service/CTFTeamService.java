@@ -33,6 +33,7 @@ public class CTFTeamService {
     private final CTFFlagGenerator              flagGenerator;
     private final CTFAwardRepository            awardRepo;
     private final CTFCompetitionSolveRepository solveRepo;
+    private final CTFScoringEngine              scoringEngine;
 
     public CTFTeamService(CTFCompetitionRepository competitionRepo,
                           CTFTeamRepository teamRepo,
@@ -42,7 +43,8 @@ public class CTFTeamService {
                           UserRepository userRepo,
                           CTFFlagGenerator flagGenerator,
                           CTFAwardRepository awardRepo,
-                          CTFCompetitionSolveRepository solveRepo) {
+                          CTFCompetitionSolveRepository solveRepo,
+                          CTFScoringEngine scoringEngine) {
         this.competitionRepo = competitionRepo;
         this.teamRepo        = teamRepo;
         this.memberRepo      = memberRepo;
@@ -52,6 +54,7 @@ public class CTFTeamService {
         this.flagGenerator   = flagGenerator;
         this.awardRepo       = awardRepo;
         this.solveRepo       = solveRepo;
+        this.scoringEngine   = scoringEngine;
     }
 
     // ── Create team ────────────────────────────────────────────────────────────
@@ -267,6 +270,8 @@ public class CTFTeamService {
                 .findByCompetitionIdAndIsActiveTrueAndDeletedFalse(comp.getId());
 
         for (CTFChallenge challenge : challenges) {
+            // STATIC challenges share one flag for all teams — no per-team row needed.
+            if (challenge.getFlagType() != CTFChallenge.FlagType.DYNAMIC) continue;
             String flagHash = computeTeamFlagHash(comp.getId(), challenge.getId(), team.getId());
             CTFTeamFlag flag = CTFTeamFlag.builder()
                     .competitionId(comp.getId())
@@ -288,6 +293,115 @@ public class CTFTeamService {
                 .map(CTFChallenge::getFlagFormat)
                 .orElse(null);
         return flagGenerator.hash(flagFormat, competitionId, challengeId, teamId);
+    }
+
+    // ── Team profile (public) ──────────────────────────────────────────────────
+
+    public CTFTeamProfileDTO getTeamProfile(UUID competitionId, UUID teamId) {
+        CTFCompetition comp = requireCompetition(competitionId);
+        CTFTeam team = teamRepo.findById(teamId)
+                .orElseThrow(() -> new EntityNotFoundException("Team not found"));
+
+        // Load all competition solves to compute per-challenge solve counts and ranks
+        List<CTFCompetitionSolve> allSolves = solveRepo.findByCompetitionIdOrderBySolvedAtAsc(competitionId);
+
+        Map<UUID, Integer> challengeSolveCounts = new HashMap<>();
+        Map<UUID, Set<UUID>> teamSolvedMap = new HashMap<>();
+        for (CTFCompetitionSolve s : allSolves) {
+            challengeSolveCounts.merge(s.getChallengeId(), 1, Integer::sum);
+            teamSolvedMap.computeIfAbsent(s.getTeamId(), k -> new HashSet<>()).add(s.getChallengeId());
+        }
+
+        // Current dynamic value per challenge
+        List<CTFChallenge> challenges = challengeRepo.findByCompetitionIdAndDeletedFalse(competitionId);
+        Map<UUID, CTFChallenge> challengeMap = challenges.stream()
+                .collect(Collectors.toMap(CTFChallenge::getId, c -> c));
+        Map<UUID, Integer> challengeCurrentValue = scoringEngine.challengeValues(comp, challenges, challengeSolveCounts);
+
+        // Hint deductions
+        List<CTFAward> hintAwards = awardRepo.findByCompetitionIdAndReasonStartingWith(competitionId, "hint:");
+        Map<UUID, Integer> hintDeductionMap = new HashMap<>();
+        for (CTFAward a : hintAwards) {
+            hintDeductionMap.merge(a.getTeamId(), a.getValue(), Integer::sum);
+        }
+
+        // This team's score
+        Set<UUID> solvedByTeam = teamSolvedMap.getOrDefault(teamId, Set.of());
+        int totalScore = solvedByTeam.stream()
+                .mapToInt(cid -> challengeCurrentValue.getOrDefault(cid, 0))
+                .sum() + hintDeductionMap.getOrDefault(teamId, 0);
+
+        // Rank: 1 + number of teams with higher score
+        List<CTFTeam> allTeams = teamRepo.findByCompetitionId(competitionId);
+        int rank = 1;
+        for (CTFTeam t : allTeams) {
+            if (t.getId().equals(teamId)) continue;
+            Set<UUID> tSolved = teamSolvedMap.getOrDefault(t.getId(), Set.of());
+            int tScore = tSolved.stream()
+                    .mapToInt(cid -> challengeCurrentValue.getOrDefault(cid, 0))
+                    .sum() + hintDeductionMap.getOrDefault(t.getId(), 0);
+            if (tScore > totalScore) rank++;
+        }
+
+        // Members
+        List<CTFTeamMember> members = memberRepo.findByIdTeamId(teamId);
+        Set<UUID> userIds = members.stream().map(m -> m.getId().getUserId()).collect(Collectors.toSet());
+        Map<UUID, User> userMap = userRepo.findAllById(userIds).stream()
+                .collect(Collectors.toMap(User::getId, u -> u));
+
+        List<CTFCompetitionSolve> teamSolves = allSolves.stream()
+                .filter(s -> s.getTeamId().equals(teamId))
+                .collect(Collectors.toList());
+
+        List<CTFTeamMemberDTO> memberDTOs = members.stream().map(m -> {
+            UUID memberId = m.getId().getUserId();
+            User u = userMap.get(memberId);
+            String name = u != null ? u.getFirstName() + " " + u.getLastName() : "Unknown";
+            int memberSolves = (int) teamSolves.stream()
+                    .filter(s -> s.getSolvedBy().equals(memberId)).count();
+            int memberPoints = teamSolves.stream()
+                    .filter(s -> s.getSolvedBy().equals(memberId))
+                    .mapToInt(s -> challengeCurrentValue.getOrDefault(s.getChallengeId(), 0))
+                    .sum();
+            return CTFTeamMemberDTO.builder()
+                    .userId(memberId)
+                    .displayName(name)
+                    .role(m.getRole().name())
+                    .joinedAt(m.getJoinedAt())
+                    .solveCount(memberSolves)
+                    .pointsContributed(memberPoints)
+                    .build();
+        }).collect(Collectors.toList());
+
+        // Solve history
+        List<CTFTeamSolveEntryDTO> solveEntries = teamSolves.stream()
+                .sorted(Comparator.comparing(CTFCompetitionSolve::getSolvedAt))
+                .map(s -> {
+                    CTFChallenge ch = challengeMap.get(s.getChallengeId());
+                    if (ch == null) return null;
+                    return CTFTeamSolveEntryDTO.builder()
+                            .challengeId(s.getChallengeId())
+                            .challengeTitle(ch.getTitle())
+                            .category(ch.getCategory().name())
+                            .currentPoints(challengeCurrentValue.getOrDefault(s.getChallengeId(), 0))
+                            .solvedAt(s.getSolvedAt())
+                            .build();
+                })
+                .filter(Objects::nonNull)
+                .collect(Collectors.toList());
+
+        return CTFTeamProfileDTO.builder()
+                .id(teamId)
+                .competitionId(competitionId)
+                .name(team.getName())
+                .avatarColor(team.getAvatarColor())
+                .captainId(team.getCaptainId())
+                .rank(rank)
+                .totalPoints(totalScore)
+                .solveCount(teamSolves.size())
+                .members(memberDTOs)
+                .solves(solveEntries)
+                .build();
     }
 
     private CTFTeamResponse buildTeamResponse(CTFTeam team, List<CTFTeamMember> members) {
@@ -317,8 +431,22 @@ public class CTFTeamService {
                     .build();
         }).collect(Collectors.toList());
 
-        int totalPoints = awardRepo.sumValueByCompetitionIdAndTeamId(compId, teamId);
-        int solveCount  = solveRepo.countByCompetitionIdAndTeamId(compId, teamId);
+        // Compute score the same way the scoreboard does (direct engine computation).
+        CTFCompetition comp = competitionRepo.findById(compId).orElseThrow();
+        List<CTFCompetitionSolve> allSolves = solveRepo.findByCompetitionIdOrderBySolvedAtAsc(compId);
+        Map<UUID, Integer> solveCounts = new HashMap<>();
+        for (CTFCompetitionSolve s : allSolves) {
+            solveCounts.merge(s.getChallengeId(), 1, Integer::sum);
+        }
+        List<CTFChallenge> challenges = challengeRepo.findByCompetitionIdAndDeletedFalse(compId);
+        Map<UUID, Integer> currentValues = scoringEngine.challengeValues(comp, challenges, solveCounts);
+        Set<UUID> solvedIds = solveRepo.findByCompetitionIdAndTeamId(compId, teamId)
+                .stream().map(CTFCompetitionSolve::getChallengeId).collect(Collectors.toSet());
+        int totalPoints = solvedIds.stream().mapToInt(cid -> currentValues.getOrDefault(cid, 0)).sum();
+        List<CTFAward> hints = awardRepo.findByCompetitionIdAndReasonStartingWith(compId, "hint:");
+        totalPoints += hints.stream().filter(a -> a.getTeamId().equals(teamId))
+                .mapToInt(CTFAward::getValue).sum();
+        int solveCount = solvedIds.size();
 
         return CTFTeamResponse.builder()
                 .id(teamId)

@@ -24,6 +24,7 @@ import TeacherCtfCheatsTab     from "@/features/teacher/components/TeacherCtfChe
 import TeacherCtfTeamsTab      from "@/features/teacher/components/TeacherCtfTeamsTab";
 import TeacherCtfExportTab     from "@/features/teacher/components/TeacherCtfExportTab";
 import TeacherCtfCompetitionFormPage from "@/features/teacher/pages/TeacherCtfCompetitionForm";
+import AuditLogButton from "@/features/audit/AuditLogButton";
 
 // ── Tab definition ──────────────────────────────────────────────────────────
 
@@ -280,6 +281,9 @@ export default function TeacherCtfManagePage() {
               )}
               {ss.label}
             </span>
+            <div style={{ marginTop: 10 }}>
+              <AuditLogButton domain="CTF" contextId={id} />
+            </div>
           </div>
 
           {/* Quick actions */}
@@ -535,7 +539,7 @@ function SidebarEndConfirm({
       borderRadius: 6, padding: 10, marginBottom: 6,
     }}>
       <p style={{ fontSize: 12, color: "#fca5a5", margin: "0 0 6px", lineHeight: 1.4 }}>
-        ⚠ This ends the competition immediately. Type the competition name to confirm.
+        This ends the competition immediately. Type the competition name to confirm.
       </p>
       <input
         className="input"

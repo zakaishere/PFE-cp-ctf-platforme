@@ -1,6 +1,6 @@
 "use client";
 
-import { Lock, Lightbulb, ChevronDown } from "lucide-react";
+import { Lock, Lightbulb, ChevronDown, Clock, HardDrive, Inbox } from "lucide-react";
 import { useState } from "react";
 import type { ProblemDetailDTO, VisibleTestCaseDTO, MySubmissionDTO } from "@/lib/api";
 import { getMySubmissions } from "@/lib/api";
@@ -146,7 +146,7 @@ function DescriptionTab({ problem }: { problem: ProblemDetailDTO }) {
               background: "rgba(76,154,255,0.08)",
               border: "1px solid rgba(76,154,255,0.2)",
               borderRadius: 5,
-              fontSize: 11, color: "#4c9aff", fontWeight: 600,
+              fontSize: 11, color: "var(--brand-2)", fontWeight: 600,
             }}>
               {problem.category}
             </span>
@@ -161,8 +161,8 @@ function DescriptionTab({ problem }: { problem: ProblemDetailDTO }) {
 
       {/* Constraint chips */}
       <div style={{ display: "flex", gap: 6, marginBottom: 20, flexWrap: "wrap" }}>
-        <ConstraintChip icon="⏱" label={`${problem.timeLimitMs} ms`} />
-        <ConstraintChip icon="💾" label={`${problem.memoryLimitMb} MB`} />
+        <ConstraintChip icon={<Clock size={13} />} label={`${problem.timeLimitMs} ms`} />
+        <ConstraintChip icon={<HardDrive size={13} />} label={`${problem.memoryLimitMb} MB`} />
       </div>
 
       <div style={{ height: 1, background: "var(--border-subtle)", marginBottom: 20 }} />
@@ -284,7 +284,7 @@ function TopicTags({ tags }: { tags: string[] }) {
   );
 }
 
-function ConstraintChip({ icon, label }: { icon: string; label: string }) {
+function ConstraintChip({ icon, label }: { icon: React.ReactNode; label: string }) {
   return (
     <span style={{
       display: "inline-flex", alignItems: "center", gap: 5,
@@ -302,9 +302,9 @@ function ConstraintChip({ icon, label }: { icon: string; label: string }) {
 
 function DifficultyBadgeLight({ difficulty }: { difficulty: string }) {
   const config: Record<string, { color: string; bg: string; text: string }> = {
-    EASY:   { color: "#57d9a3", bg: "rgba(87,217,163,0.1)",  text: "Easy"   },
+    EASY:   { color: "var(--success-ink)", bg: "rgba(87,217,163,0.1)",  text: "Easy"   },
     MEDIUM: { color: "#ffc107", bg: "rgba(255,193,7,0.1)",   text: "Medium" },
-    HARD:   { color: "#ff6b4a", bg: "rgba(255,107,74,0.1)",  text: "Hard"   },
+    HARD:   { color: "var(--danger-ink)", bg: "rgba(255,107,74,0.1)",  text: "Hard"   },
   };
   const c = config[difficulty] ?? { color: "#888", bg: "rgba(136,136,136,0.1)", text: difficulty };
   return (
@@ -357,7 +357,7 @@ function SubmissionsTab({
   if (!submissions || submissions.length === 0) {
     return (
       <div style={{ padding: 48, textAlign: "center", color: "var(--text-muted)" }}>
-        <div style={{ fontSize: 36, marginBottom: 12 }}>📭</div>
+        <Inbox size={32} color="var(--ink-3)" style={{ marginBottom: 12 }} />
         <div style={{ fontSize: 15, fontWeight: 600, color: "var(--text-secondary)", marginBottom: 6 }}>
           No submissions yet
         </div>
@@ -381,7 +381,7 @@ function SubmissionsTab({
         alignItems: "center",
         gap: 6,
       }}>
-        <span style={{ color: "#4c9aff" }}>💡</span>
+        <Lightbulb size={14} color="var(--brand-2)" />
         Click any submission to load its code into the editor
       </div>
 
@@ -416,7 +416,7 @@ function SubmissionsTab({
                   borderBottom: "1px solid var(--border-subtle)",
                   cursor: isLoading ? "wait" : "pointer",
                   background: isLoaded ? "rgba(76,154,255,0.07)" : "transparent",
-                  borderLeft: isLoaded ? "3px solid #4c9aff" : "3px solid transparent",
+                  borderLeft: isLoaded ? "3px solid var(--brand-2)" : "3px solid transparent",
                   transition: "background 0.1s, border-color 0.1s",
                 }}
                 onMouseEnter={e => {
@@ -432,14 +432,14 @@ function SubmissionsTab({
                     {isLoading && (
                       <svg width="12" height="12" viewBox="0 0 24 24" fill="none"
                         style={{ animation: "spin 0.8s linear infinite", flexShrink: 0 }}>
-                        <circle cx="12" cy="12" r="10" stroke="#4c9aff"
+                        <circle cx="12" cy="12" r="10" stroke="var(--brand-2)"
                           strokeWidth="3" strokeDasharray="30 70" />
                       </svg>
                     )}
                     {isLoaded && !isLoading && (
                       <span style={{
                         fontSize: 10, fontWeight: 700,
-                        color: "#4c9aff",
+                        color: "var(--brand-2)",
                         background: "rgba(76,154,255,0.12)",
                         padding: "1px 6px",
                         borderRadius: 3,
@@ -471,13 +471,15 @@ function SubmissionsTab({
 }
 
 function StatusBadge({ status }: { status: string }) {
+  // Plain practice (no assessmentId/competitionId) uses the results.status
+  // vocabulary — PASS/FAIL/TIME_OUT/ERROR/MEMORY_OUT — matching
+  // ProblemController.getMySubmissions's unscoped branch.
   const config: Record<string, { color: string; bg: string; label: string }> = {
-    ACCEPTED:              { color: "#57d9a3", bg: "rgba(87,217,163,0.1)",  label: "Accepted"      },
-    WRONG_ANSWER:          { color: "#ff6b4a", bg: "rgba(255,107,74,0.1)",  label: "Wrong Answer"  },
-    TIME_LIMIT_EXCEEDED:   { color: "#ffc107", bg: "rgba(255,193,7,0.1)",   label: "Time Limit"    },
-    RUNTIME_ERROR:         { color: "#c678dd", bg: "rgba(198,120,221,0.1)", label: "Runtime Error" },
-    COMPILATION_ERROR:     { color: "#888",    bg: "rgba(136,136,136,0.1)", label: "Compile Error" },
-    MEMORY_LIMIT_EXCEEDED: { color: "#56b6c2", bg: "rgba(86,182,194,0.1)",  label: "Memory Limit"  },
+    PASS:       { color: "var(--success-ink)", bg: "rgba(87,217,163,0.1)",  label: "Pass"        },
+    FAIL:       { color: "var(--danger-ink)", bg: "rgba(255,107,74,0.1)",  label: "Fail"        },
+    TIME_OUT:   { color: "#ffc107", bg: "rgba(255,193,7,0.1)",   label: "Time Out"   },
+    ERROR:      { color: "#c678dd", bg: "rgba(198,120,221,0.1)", label: "Error"      },
+    MEMORY_OUT: { color: "#56b6c2", bg: "rgba(86,182,194,0.1)",  label: "Memory Out" },
   };
   const c = config[status] ?? { color: "#888", bg: "rgba(136,136,136,0.1)", label: status };
   return (

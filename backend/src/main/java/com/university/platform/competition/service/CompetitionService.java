@@ -3,6 +3,9 @@ package com.university.platform.competition.service;
 import com.university.platform.assessment.JoinRequest;
 import com.university.platform.assessment.JoinRequestStatus;
 import com.university.platform.assessment.VisibilityMode;
+import com.university.platform.audit.AuditDomain;
+import com.university.platform.audit.AuditEventService;
+import com.university.platform.audit.Severity;
 import com.university.platform.assessment.model.Problem;
 import com.university.platform.assessment.model.Problem.DifficultyLevel;
 import com.university.platform.assessment.repository.JoinRequestRepository;
@@ -32,6 +35,8 @@ import org.springframework.amqp.rabbit.core.RabbitTemplate;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.support.TransactionSynchronization;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
 import org.springframework.web.server.ResponseStatusException;
 
 import java.security.SecureRandom;
@@ -63,6 +68,7 @@ public class CompetitionService {
     private final TestCaseRepository testCaseRepository;
     private final CompetitionViolationRepository competitionViolationRepository;
     private final RabbitTemplate rabbitTemplate;
+    private final AuditEventService auditEventService;
 
     // -------------------------------------------------------------------------
     // Create competition
@@ -98,6 +104,20 @@ public class CompetitionService {
                     "Competitions cannot be restricted to a single module.");
         }
 
+        Competition.ScoringMode scoringMode = req.getScoringMode() != null
+                ? req.getScoringMode()
+                : Competition.ScoringMode.ICPC;
+
+        // Freeze applies only to time-ranked modes (ICPC / RATED).
+        LocalDateTime freezeAt = null;
+        int freezeMinutes = req.getFreezeMinutesBeforeEnd() != null ? req.getFreezeMinutesBeforeEnd() : 60;
+        if (Boolean.TRUE.equals(req.getFreezeEnabled())
+                && scoringMode != Competition.ScoringMode.PARTIAL
+                && freezeMinutes > 0
+                && freezeMinutes < req.getDurationMinutes()) {
+            freezeAt = req.getStartTime().plusMinutes(req.getDurationMinutes() - freezeMinutes);
+        }
+
         Competition competition = Competition.builder()
                 .title(req.getTitle())
                 .description(req.getDescription())
@@ -109,6 +129,9 @@ public class CompetitionService {
                 .status(CompetitionStatus.REGISTRATION)
                 .isPublic(req.getIsPublic() != null ? req.getIsPublic() : true)
                 .visibilityMode(visibility)
+                .scoringMode(scoringMode)
+                .freezeAt(freezeAt)
+                .freezeDurationMinutes(freezeMinutes)
                 .build();
 
         competitionRepository.save(competition);
@@ -172,11 +195,22 @@ public class CompetitionService {
 
         int orderIndex = competitionProblemRepository.countByCompetitionId(competitionId);
 
+        // Per-problem scoring config — maxPoints defaults to the assigned points.
+        int maxPoints     = (req != null && req.getMaxPoints() != null) ? req.getMaxPoints() : points;
+        int minPoints     = (req != null && req.getMinPoints() != null) ? req.getMinPoints() : 0;
+        int wrongPenalty  = (req != null && req.getWrongPenalty() != null) ? req.getWrongPenalty() : 20;
+        java.math.BigDecimal decayPerMin = (req != null && req.getDecayPerMin() != null)
+                ? req.getDecayPerMin() : new java.math.BigDecimal("1.0");
+
         CompetitionProblem cp = CompetitionProblem.builder()
                 .competitionId(competitionId)
                 .problem(problem)
                 .orderIndex(orderIndex)
                 .points(points)
+                .maxPoints(maxPoints)
+                .minPoints(minPoints)
+                .decayPerMin(decayPerMin)
+                .wrongPenalty(wrongPenalty)
                 .build();
 
         competitionProblemRepository.save(cp);
@@ -217,10 +251,20 @@ public class CompetitionService {
     @Transactional(readOnly = true)
     public List<CompetitionSummaryDTO> listCompetitions(CompetitionStatus statusFilter,
                                                          UUID studentId,
-                                                         boolean includeTeacherData) {
+                                                         boolean includeTeacherData,
+                                                         UUID teacherId) {
         List<Competition> competitions = statusFilter != null
                 ? competitionRepository.findByStatus(statusFilter)
                 : competitionRepository.findAll();
+
+        // Teacher's own manage list — same scoping AssessmentController already
+        // applies for exams/TPs. Without this, every teacher sees every other
+        // teacher's competitions with no way to tell which one they just created.
+        if (teacherId != null) {
+            competitions = competitions.stream()
+                    .filter(c -> teacherId.equals(c.getCreatedBy()))
+                    .toList();
+        }
 
         // Batch pending count — single query
         Map<UUID, Long> pendingCountMap = Collections.emptyMap();
@@ -659,9 +703,27 @@ public class CompetitionService {
                 .runOnly(false)
                 .build();
 
-        rabbitTemplate.convertAndSend(RabbitMQConfig.EXCHANGE_NAME, RabbitMQConfig.ROUTING_KEY, message);
-        log.info("[COMPETITION] Submission {} queued for competition {} student {} problem {}",
-                submission.getSubmissionId(), competitionId, studentId, req.getProblemId());
+        // Publish only after this transaction commits — RabbitMQ can deliver to the
+        // worker faster than Postgres commits the row on another connection, and the
+        // worker's findById(submissionId) would then race ahead of the commit and
+        // silently drop the job ("not found in DB"), leaving the submission stuck
+        // PENDING forever. Same race already fixed in SubmissionService.submit();
+        // this path never got the same treatment.
+        UUID submissionId = submission.getSubmissionId();
+        if (TransactionSynchronizationManager.isSynchronizationActive()) {
+            TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
+                @Override
+                public void afterCommit() {
+                    rabbitTemplate.convertAndSend(RabbitMQConfig.EXCHANGE_NAME, RabbitMQConfig.ROUTING_KEY, message);
+                    log.info("[COMPETITION] Submission {} queued for competition {} student {} problem {} (after commit)",
+                            submissionId, competitionId, studentId, req.getProblemId());
+                }
+            });
+        } else {
+            rabbitTemplate.convertAndSend(RabbitMQConfig.EXCHANGE_NAME, RabbitMQConfig.ROUTING_KEY, message);
+            log.info("[COMPETITION] Submission {} queued for competition {} student {} problem {} (no active tx)",
+                    submissionId, competitionId, studentId, req.getProblemId());
+        }
 
         return submission.getSubmissionId();
     }
@@ -834,6 +896,19 @@ public class CompetitionService {
                 .details(req.details())
                 .build();
         competitionViolationRepository.save(violation);
+
+        Map<String, Object> detail = new HashMap<>();
+        if (req.details() != null) detail.put("details", req.details());
+        auditEventService.record(
+                AuditDomain.CP,
+                req.type(),
+                competitionId,
+                null,
+                studentId,
+                null,
+                null,
+                detail,
+                Severity.WARN);
     }
 
     // -------------------------------------------------------------------------

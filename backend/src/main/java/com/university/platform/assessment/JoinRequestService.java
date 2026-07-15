@@ -11,6 +11,8 @@ import com.university.platform.assessment.repository.AssessmentRepository;
 import com.university.platform.assessment.repository.JoinRequestRepository;
 import com.university.platform.competition.model.Competition;
 import com.university.platform.competition.model.Competition.CompetitionStatus;
+import com.university.platform.competition.model.CompetitionRegistration;
+import com.university.platform.competition.repository.CompetitionRegistrationRepository;
 import com.university.platform.competition.repository.CompetitionRepository;
 import com.university.platform.identity.model.Student;
 import com.university.platform.identity.repository.StudentRepository;
@@ -41,6 +43,7 @@ public class JoinRequestService {
     private final JoinRequestRepository joinRequestRepository;
     private final AssessmentRepository assessmentRepository;
     private final CompetitionRepository competitionRepository;
+    private final CompetitionRegistrationRepository competitionRegistrationRepository;
     private final StudentRepository studentRepository;
     private final SimpMessagingTemplate messagingTemplate;
     private final EmailService emailService;
@@ -185,6 +188,23 @@ public class JoinRequestService {
         jr.setRejectionReason(null);
         jr.setDecidedAt(LocalDateTime.now());
         joinRequestRepository.save(jr);
+
+        // Option A: approval marks the student as registered for the competition.
+        // The student joins/creates a team later in the lobby (teamId stays null
+        // until then). Registration is what gates lobby/arena access for SOLO
+        // REQUEST_BASED competitions and drives the registered count. Idempotent.
+        if (isComp) {
+            UUID compId = jr.getCompetitionId();
+            if (!competitionRegistrationRepository.existsByCompetitionIdAndStudentId(compId, jr.getStudentId())) {
+                competitionRegistrationRepository.save(
+                        CompetitionRegistration.builder()
+                                .competitionId(compId)
+                                .studentId(jr.getStudentId())
+                                .build());
+                log.info("[JOIN_REQUEST] Created competition registration for student {} in competition {}",
+                        jr.getStudentId(), compId);
+            }
+        }
 
         String targetTitle = loadTitle(jr);
         UUID targetId = isComp ? jr.getCompetitionId() : jr.getAssessmentId();

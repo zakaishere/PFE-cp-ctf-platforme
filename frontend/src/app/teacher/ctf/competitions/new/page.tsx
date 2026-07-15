@@ -4,7 +4,7 @@ import { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import Navbar from "@/components/Navbar";
-import { Trophy, KeyRound, AlertCircle, Save, Calendar, Timer, Gamepad2, UserPlus } from "lucide-react";
+import { Trophy, KeyRound, AlertCircle, Save, Calendar, Timer, Gamepad2, UserPlus, Check } from "lucide-react";
 import { LoadingButton } from "@/components/ui/LoadingButton";
 import { toast } from "@/components/ui/PSPToast";
 import {
@@ -162,13 +162,6 @@ export default function NewTeacherCTFCompetitionPage() {
   return (
     <>
       <Navbar />
-      <div className="psp-breadcrumb">
-        <Link href="/teacher">PSP</Link> ›{" "}
-        <Link href="/teacher/ctf">CTF</Link> ›{" "}
-        <Link href="/teacher/ctf/competitions">Competitions</Link> ›{" "}
-        <span style={{ color: "var(--text-primary)" }}>New</span>
-      </div>
-
       <div className="psp-main" style={{ maxWidth: 780 }}>
         <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 6 }}>
           <Trophy size={20} color="#a78bfa" />
@@ -334,7 +327,7 @@ export default function NewTeacherCTFCompetitionPage() {
                 background: "var(--bg-secondary)", border: "1px solid var(--border)",
               }}>
                 <p style={{ fontSize: 13, color: "var(--text-secondary)", margin: "0 0 4px" }}>
-                  ✓ No schedule needed
+                  <span style={{display:"inline-flex",alignItems:"center",gap:4}}><Check size={13} /> No schedule needed</span>
                 </p>
                 <p style={{ fontSize: 12, color: "var(--text-muted)", margin: 0, lineHeight: 1.5 }}>
                   After saving, go to the Control panel and press{" "}

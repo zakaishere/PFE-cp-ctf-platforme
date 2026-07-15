@@ -23,9 +23,15 @@ public interface CTFCompetitionSolveRepository extends JpaRepository<CTFCompetit
 
     List<CTFCompetitionSolve> findByCompetitionIdOrderBySolvedAtAsc(UUID competitionId);
 
+    List<CTFCompetitionSolve> findByCompetitionIdAndChallengeIdOrderBySolvedAtAsc(UUID competitionId, UUID challengeId);
+
     /** Solves up to a cutoff — used to compute frozen scoreboards. */
     List<CTFCompetitionSolve> findByCompetitionIdAndSolvedAtLessThanEqualOrderBySolvedAtAsc(
             UUID competitionId, LocalDateTime cutoff);
+
+    /** Per-challenge solve count up to a cutoff — used to freeze displayed challenge values. */
+    int countByCompetitionIdAndChallengeIdAndSolvedAtLessThanEqual(
+            UUID competitionId, UUID challengeId, LocalDateTime cutoff);
 
     int countByCompetitionIdAndTeamId(UUID competitionId, UUID teamId);
 

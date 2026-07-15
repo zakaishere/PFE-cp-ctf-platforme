@@ -131,7 +131,7 @@ function showErrorToast(err: ApiErrorBody) {
         break;
       case 401:
         toast.error("Session expired", "Please sign in again to continue.");
-        setTimeout(() => { if (typeof window !== "undefined") window.location.href = "/login"; }, 2000);
+        setTimeout(() => { if (typeof window !== "undefined") window.location.href = "/auth"; }, 2000);
         break;
       case 403:
         toast.error("Access denied", err.message || "You don't have permission to do that.");
@@ -189,7 +189,7 @@ export const registerTeacher = (data: RegisterTeacherRequest) =>
   apiClient<{ message: string }>("/api/auth/register/teacher", { method: "POST", body: JSON.stringify(data) });
 
 export const login = (data: LoginRequest) =>
-  apiClient<LoginResponse>("/api/auth/login", { method: "POST", body: JSON.stringify(data) });
+  apiClient<LoginResponse>("/api/auth/login", { method: "POST", body: JSON.stringify(data) }, { silentErrors: true });
 
 // --- Email Verification ---
 
@@ -227,6 +227,95 @@ export const activateTeacher = (id: string) =>
 export const rejectTeacher = (id: string) =>
   apiClient<{ message: string }>(`/api/admin/teachers/${id}/reject`, { method: "DELETE" });
 
+export interface PlatformStats {
+  totalTeachers:     number;
+  activeTeachers:    number;
+  pendingTeachers:   number;
+  totalStudents:     number;
+  totalProblems:     number;
+  totalSubmissions:  number;
+  activeLiveExams:   number;
+  openTps:           number;
+  totalCompetitions: number;
+}
+
+export const getPlatformStats = () =>
+  apiClient<PlatformStats>("/api/admin/stats", { method: "GET" });
+
+// ── Admin dashboard ──────────────────────────────────────────────────────────
+
+export interface AdminDashboardOverview {
+  stats: PlatformStats & { activeCompetitions: number };
+}
+
+export const getAdminDashboardOverview = () =>
+  apiClient<AdminDashboardOverview>("/api/admin/dashboard/overview", { method: "GET" });
+
+export interface AdminHealthMetrics {
+  overall: "OK" | "WARN" | "CRITICAL";
+  rabbitmq: { queueDepth: number; status: "OK" | "WARN" | "CRITICAL" | "UNKNOWN" };
+  database: { active?: number; total?: number; status: "OK" | "WARN" | "CRITICAL" | "UNKNOWN" };
+  heap:     { usedMb: number; totalMb: number; pct: number; status: "OK" | "WARN" | "CRITICAL" };
+}
+
+export const getAdminHealthMetrics = () =>
+  apiClient<AdminHealthMetrics>("/api/admin/health/metrics", { method: "GET" });
+
+// ── Admin: users list (read-only) ─────────────────────────────────────────────
+
+export type UserRole = "STUDENT" | "TEACHER" | "ADMIN";
+
+export interface AdminUser {
+  id:            string;
+  firstName:     string;
+  lastName:      string;
+  email:         string;
+  username:      string | null;
+  role:          UserRole;
+  emailVerified: boolean | null;
+  status:        string | null; // teachers: PENDING/ACTIVE; students: null
+  createdAt:     string | null;
+}
+
+export interface AdminUsersPage {
+  content:       AdminUser[];
+  totalElements: number;
+  totalPages:    number;
+  number:        number;
+  size:          number;
+}
+
+export const getAdminUsers = (opts: { role?: string; search?: string; page?: number; size?: number } = {}) => {
+  const params = new URLSearchParams();
+  if (opts.role)   params.set("role", opts.role);
+  if (opts.search) params.set("search", opts.search);
+  params.set("page", String(opts.page ?? 0));
+  params.set("size", String(opts.size ?? 20));
+  return apiClient<AdminUsersPage>(`/api/admin/users?${params}`, { method: "GET" });
+};
+
+export const getSubmissionsToday = () =>
+  apiClient<{ count: number }>("/api/admin/stats/submissions-today", { method: "GET" });
+
+// ── Teacher dashboard ────────────────────────────────────────────────────────
+
+export interface TeacherDashboardOverview {
+  stats: {
+    competitions: { active: number; upcoming: number; total: number };
+    exams:        { active: number; upcoming: number; total: number };
+    tps:          { open: number; total: number };
+    ctfs:         { active: number; upcoming: number; total: number };
+  };
+  activeCompetitions: Array<{ id: string; title: string; status: string; startTime: string | null; durationMinutes: number; mode: string; manageUrl: string }>;
+  activeExams:        Array<{ id: string; title: string; status: string; scheduledStartTime: string | null; durationMinutes: number; manageUrl: string }>;
+  openTPs:            Array<{ id: string; title: string; status: string; deadline: string | null; manageUrl: string }>;
+  activeCtfs:         Array<{ id: string; title: string; status: string; startTime: string | null; manageUrl: string }>;
+  upcomingEvents:     Array<{ type: string; id: string; title: string; startTime: string | null; manageUrl: string }>;
+}
+
+export const getTeacherDashboardOverview = () =>
+  apiClient<TeacherDashboardOverview>("/api/teacher/dashboard/overview", { method: "GET" });
+
 // --- Submissions ---
 
 export interface SubmissionRequest {
@@ -258,6 +347,77 @@ export interface CheatLogRequest {
 
 export const logCheatEvent = (data: CheatLogRequest) =>
   apiClient<{ message: string }>("/api/exams/cheat-logs", { method: "POST", body: JSON.stringify(data) });
+
+// --- Audit dashboard (anti-cheat) ---
+
+export type AuditDomain = "EXAM" | "TP" | "CP" | "CTF" | "ADMIN";
+export type AuditSeverity = "INFO" | "WARN" | "CHEAT";
+
+export interface AuditEventDTO {
+  id:           string;
+  domain:       AuditDomain;
+  eventType:    string;
+  contextId:    string;
+  challengeId:  string | null;
+  actorUserId:  string;
+  actorTeamId:  string | null;
+  sourceTeamId: string | null;
+  detail:       Record<string, unknown> | null;
+  severity:     AuditSeverity;
+  dismissed:    boolean | null;
+  dismissedBy:  string | null;
+  dismissedAt:  string | null;
+  createdAt:    string;
+}
+
+export interface UserAuditSummary {
+  userId:          string;
+  userName:        string;
+  distinctIpCount: number;
+  ips:             string[];
+  multiIp:         boolean;
+  tabSwitches:     number;
+  focusLosses:     number;
+  copyPastes:      number;
+  totalEvents:     number;
+  flagged:         boolean;
+  status:          "MULTI-IP FLAG" | "REVIEW" | "CLEAN";
+}
+
+// Fire-and-forget session heartbeat — captures the caller's IP on arena entry.
+export const pingAuditSession = (domain: AuditDomain, contextId: string) =>
+  apiClient<void>(`/api/audit/session/${domain}/${contextId}`, { method: "POST" });
+
+// Generic per-event anti-cheat reporter (domains without a dedicated violation
+// table, e.g. CTF competitions). Records a WARN audit event + the caller's IP.
+export const logAuditViolation = (
+  domain: AuditDomain,
+  contextId: string,
+  type: string,
+  details?: string,
+) =>
+  apiClient<void>(`/api/audit/session/${domain}/${contextId}/violation`, {
+    method: "POST",
+    body: JSON.stringify({ type, details }),
+  }, { silentErrors: true });
+
+export const getAuditSummary = (domain: AuditDomain, contextId: string) =>
+  apiClient<UserAuditSummary[]>(`/api/teacher/${domain}/${contextId}/audit/summary`, { method: "GET" });
+
+export const getAuditUserLog = (domain: AuditDomain, contextId: string, userId: string) =>
+  apiClient<AuditEventDTO[]>(`/api/teacher/${domain}/${contextId}/audit/user/${userId}`, { method: "GET" });
+
+export interface AuditGlobalPage {
+  content:       AuditEventDTO[];
+  totalElements: number;
+  totalPages:    number;
+  number:        number;
+}
+
+export const getGlobalAudit = (page = 0, size = 50, flaggedOnly = false) =>
+  apiClient<AuditGlobalPage>(
+    `/api/admin/audit/global?page=${page}&size=${size}&flaggedOnly=${flaggedOnly}`,
+    { method: "GET" });
 
 // --- Leaderboard ---
 
@@ -314,6 +474,8 @@ export interface CreateProblemRequest {
   description: string;
   difficultyLevel: string;
   isPublic: boolean;
+  /** Optional explicit scope (GLOBAL/TP_ONLY/EXAM_ONLY/PRIVATE). Omit to derive from isPublic. */
+  visibility?: string;
   timeLimitMs?: number;
   memoryLimitMb?: number;
   testCases: TestCaseRequest[];
@@ -405,8 +567,10 @@ export interface MySubmissionDTO {
 export const getProblemDetail = (problemId: string) =>
   apiClient<ProblemDetailDTO>(`/api/problems/${problemId}`, { method: "GET" });
 
-export const getMySubmissions = (problemId: string) =>
-  apiClient<MySubmissionDTO[]>(`/api/problems/${problemId}/my-submissions`, { method: "GET" });
+export const getMySubmissions = (problemId: string, assessmentId?: string, competitionId?: string) => {
+  const q = assessmentId ? `?assessmentId=${assessmentId}` : competitionId ? `?competitionId=${competitionId}` : "";
+  return apiClient<MySubmissionDTO[]>(`/api/problems/${problemId}/my-submissions${q}`, { method: "GET" });
+};
 
 export const getSubmissionCode = (submissionId: string) =>
   apiClient<{ code: string; language: string }>(`/api/submissions/${submissionId}/code`, { method: "GET" });
@@ -429,7 +593,7 @@ export interface RunResponse { results: RunCaseResult[]; }
 export interface RunTestCaseResult {
   index:           number;
   passed:          boolean;
-  verdict:         string; // ACCEPTED | WRONG_ANSWER | TIME_LIMIT_EXCEEDED | RUNTIME_ERROR | MEMORY_LIMIT_EXCEEDED
+  verdict:         string; // PASS | FAIL | TIME_OUT | ERROR | MEMORY_OUT (results.status vocabulary)
   input?:          string;
   expectedOutput?: string;
   actualOutput?:   string;
@@ -549,6 +713,8 @@ export const getStudentExamResults = (examId: string) =>
 
 // --- Competitions ---
 
+export type ScoringMode = "ICPC" | "RATED" | "PARTIAL";
+
 export interface CreateCompetitionRequest {
   title: string;
   description: string;
@@ -558,7 +724,54 @@ export interface CreateCompetitionRequest {
   accessType: "REQUEST_BASED" | "OPEN";
   scheduledStartTime: string;
   durationMinutes: number;
+  scoringMode?: ScoringMode;
+  freezeEnabled?: boolean;
+  freezeMinutesBeforeEnd?: number;
 }
+
+// ── Full mode-aware scoreboard ───────────────────────────────────────────────
+
+export interface ScoreboardProblemColumn {
+  problemId: string;
+  label: string;
+  title: string;
+  maxPoints: number;
+  firstBloodParticipantId: string | null;
+}
+
+export interface ScoreboardProblemCell {
+  solved: boolean;
+  attempted: boolean;
+  wrongAttempts: number;
+  score: number;
+  penaltyMinutes: number;
+  firstBlood: boolean;
+  solvedAtMinute: number | null;
+}
+
+export interface ScoreboardRow {
+  rank: number;
+  participantId: string;
+  name: string;
+  members: { studentId: string; firstName: string; lastName: string }[] | null;
+  score: number;
+  penaltyMinutes: number;
+  solvedCount: number;
+  cells: Record<string, ScoreboardProblemCell>;
+}
+
+export interface FullScoreboard {
+  competitionId: string;
+  scoringMode: ScoringMode;
+  mode: "SOLO" | "TEAM";
+  frozen: boolean;
+  freezeAt: string | null;
+  problems: ScoreboardProblemColumn[];
+  rows: ScoreboardRow[];
+}
+
+export const getFullScoreboard = (id: string) =>
+  apiClient<FullScoreboard>(`/api/competitions/${id}/scoreboard/full`, { method: "GET" });
 
 export const getCompetitions = (status?: string) =>
   apiClient<any[]>(`/api/competitions${status ? `?status=${status}` : ""}`, { method: "GET" });
@@ -617,6 +830,18 @@ export const patchCompetitionPenalty = (id: string, data: { penaltyEnabled: bool
 export const patchCompetitionSettings = (id: string, data: { title?: string; description?: string; durationMinutes?: number }) =>
   apiClient<{ message: string }>(`/api/competitions/${id}/settings`, { method: "PATCH", body: JSON.stringify(data) });
 
+export const startCompetition = (id: string) =>
+  apiClient<{ message: string; status: string }>(`/api/competitions/${id}/start`, { method: "POST" });
+
+export const endCompetition = (id: string) =>
+  apiClient<{ message: string; status: string }>(`/api/competitions/${id}/end`, { method: "POST" });
+
+export const getCompetitionOverview = (id: string) =>
+  apiClient<{ competitionId: string; title: string; status: string; mode: string; scoringMode: string; teamCount: number; submissionCount: number; acCount: number }>(`/api/competitions/${id}/overview`, { method: "GET" });
+
+export const getCompetitionViolations = (id: string) =>
+  apiClient<any[]>(`/api/competitions/${id}/violations/list`, { method: "GET" }, { silentErrors: true });
+
 export const reorderAssessmentProblems = (id: string, problemIds: string[]) =>
   apiClient<{ message: string }>(`/api/assessments/${id}/problems/reorder`, { method: "PUT", body: JSON.stringify({ problemIds }) });
 
@@ -629,11 +854,33 @@ export const removeAssessmentProblem = (id: string, problemId: string) =>
 export const patchAssessmentSettings = (id: string, data: {
   title?: string; description?: string;
   durationMinutes?: number; isPenaltyEnabled?: boolean; scheduledStartTime?: string;
-  deadline?: string; maxAttemptsAllowed?: number;
+  deadline?: string; maxAttemptsAllowed?: number; strictAccessCode?: string;
+  scoringMode?: string; penaltyPercent?: number; passingScore?: number;
 }) => apiClient<{ message: string }>(`/api/assessments/${id}/settings`, { method: "PATCH", body: JSON.stringify(data) });
 
 export const getAssessmentDetail = (id: string) =>
   apiClient<any>(`/api/assessments/${id}/student-view`, { method: "GET" });
+
+// --- Scoreboard (Exam/TP) ---
+
+export interface ScoreboardProblem { problemId: string; title: string; maxPoints: number; }
+export interface ScoreboardCell {
+  problemId: string; earnedPoints: number; maxPoints: number;
+  attemptsUsed: number; verdict: "AC" | "PARTIAL" | "WA" | null;
+}
+export interface ScoreboardStudentRow {
+  studentId: string; fullName: string; email: string;
+  totalScore: number; totalPossible: number; percentage: number;
+  status: "PASS" | "FAIL" | null; scores: ScoreboardCell[];
+}
+export interface ScoreboardDTO {
+  assessmentTitle: string; type: "OPEN_TP" | "LIVE_EXAM";
+  scoringMode: string; penaltyPercent: number | null; passingScore: number | null;
+  problems: ScoreboardProblem[]; students: ScoreboardStudentRow[];
+}
+
+export const getScoreboard = (assessmentId: string) =>
+  apiClient<ScoreboardDTO>(`/api/teacher/exams/${assessmentId}/scores`, { method: "GET" });
 
 // --- Join Requests ---
 
@@ -678,6 +925,10 @@ export interface ExamProblemDTO {
   visibleTestCases: ExamRoomVisibleTestCase[];
   hiddenTestCaseCount: number;
   solvedByCurrentUser: boolean;
+  /** Attempts spent on this problem (TPs only; null for exams). */
+  attemptsUsed?: number | null;
+  /** Points earned on this problem after scoring mode/penalty (TPs only). */
+  earnedScore?: number | null;
 }
 
 export interface ExamRoomDTO {
@@ -686,10 +937,70 @@ export interface ExamRoomDTO {
   remainingSeconds: number;
   isEnded: boolean;
   problems: ExamProblemDTO[];
+  /** ISO deadline (TPs only; null for exams). */
+  deadline?: string | null;
+  /** Max attempts per problem (TPs only; null = unlimited / not a TP). */
+  maxAttempts?: number | null;
+  /** Whether final grades have been released (live exams). */
+  gradesRevealed: boolean;
+  /** ISO timestamp of this student's final "Submit TP" (TPs only). Once set,
+   *  the TP is read-only for this student. */
+  finalSubmittedAt?: string | null;
 }
 
-export const getExamRoom = (assessmentId: string) =>
-  apiClient<ExamRoomDTO>(`/api/assessments/${assessmentId}/exam-room`, { method: "GET" });
+export const getExamRoom = (assessmentId: string, code?: string) =>
+  apiClient<ExamRoomDTO>(`/api/assessments/${assessmentId}/exam-room${code ? `?code=${encodeURIComponent(code)}` : ""}`, { method: "GET" });
+
+// Final "Submit TP" — locks this student's submissions and switches the arena
+// to the read-only results view. Backend returns 409 if called twice.
+export const finalSubmitTP = (assessmentId: string) =>
+  apiClient<{ message: string; finalSubmittedAt: string }>(
+    `/api/assessments/${assessmentId}/final-submit`, { method: "POST" });
+
+// Teacher releases final exam grades — students can then see verdicts/scores.
+export const releaseExamGrades = (assessmentId: string) =>
+  apiClient<{ message: string; gradesRevealed: boolean }>(
+    `/api/assessments/${assessmentId}/release-grades`, { method: "POST" });
+
+// Verifies an ACCESS_CODE-mode assessment's code server-side (never compare
+// the code in the browser — the correct value is not sent to students).
+export const verifyAssessmentAccessCode = (assessmentId: string, accessCode: string) =>
+  apiClient<{ message: string }>(`/api/assessments/${assessmentId}/access`, {
+    method: "POST",
+    body: JSON.stringify({ accessCode }),
+  });
+
+// --- Post-exam results ---
+
+export interface ExamProblemResultDTO {
+  problemId: string;
+  label: string;
+  title: string;
+  earnedPoints: number;
+  maxPoints: number;
+  passedCases: number;
+  totalCases: number;
+  verdict: "AC" | "PARTIAL" | "WA" | "NS";
+  submittedCode?: string | null;
+  language?: string | null;
+}
+
+export interface ExamResultsDTO {
+  assessmentId: string;
+  title: string;
+  finalScore: number;
+  totalPoints: number;
+  gradePercent: number;
+  passingScore: number;
+  passed: boolean;
+  submittedCount: number;
+  acceptedCount: number;
+  problemCount: number;
+  problems: ExamProblemResultDTO[];
+}
+
+export const getExamResults = (assessmentId: string) =>
+  apiClient<ExamResultsDTO>(`/api/assessments/${assessmentId}/exam-results`, { method: "GET" });
 
 // --- Teacher module picker ---
 
@@ -789,10 +1100,21 @@ export interface ProblemPickerItem {
   title: string;
   difficulty: "EASY" | "MEDIUM" | "HARD";
   isPublic: boolean;
+  visibility?: "GLOBAL" | "TP_ONLY" | "EXAM_ONLY" | "PRIVATE";
 }
 
-export const getProblemsPicker = () =>
-  apiClient<ProblemPickerItem[]>("/api/problems/picker", { method: "GET" });
+// `scope` narrows the bank to GLOBAL + TP_ONLY/EXAM_ONLY + the caller's own
+// problems, matching what a TP/exam builder should actually see.
+export const getProblemsPicker = (scope?: "TP" | "EXAM") =>
+  apiClient<ProblemPickerItem[]>(`/api/problems/picker${scope ? `?for=${scope}` : ""}`, { method: "GET" });
+
+// --- Assessment publish / draft ---
+
+export const publishAssessment = (id: string) =>
+  apiClient<{ message: string; isPublished: boolean }>(`/api/assessments/${id}/publish`, { method: "POST" });
+
+export const unpublishAssessment = (id: string) =>
+  apiClient<{ message: string; isPublished: boolean }>(`/api/assessments/${id}/unpublish`, { method: "POST" });
 
 // ── CTF ──────────────────────────────────────────────────────────────────────
 
@@ -809,6 +1131,7 @@ export interface CTFChallengeDTO {
   category: string;
   difficulty: "EASY" | "MEDIUM" | "HARD";
   basePoints: number;
+  currentPoints: number;
   flagFormat: string;
   requiresInstance: boolean;
   dockerImage: string | null;
@@ -817,7 +1140,7 @@ export interface CTFChallengeDTO {
   downloadableFileUrl: string | null;
   downloadableFileName: string | null;
   hints: CTFHintDTO[];
-  maxAttempts: number;
+  maxAttempts: number | null; // null = unlimited
   isActive: boolean;
   createdAt: string;
   solvedByMe: boolean;
@@ -832,7 +1155,7 @@ export interface CTFSubmitResponse {
   message: string;
   pointsAwarded: number | null;
   attemptsUsed: number;
-  maxAttempts: number;
+  maxAttempts: number | null; // null = unlimited
 }
 
 export interface CTFSubmission {
@@ -950,6 +1273,72 @@ export const updateCTFAdminConfig = (data: Partial<CTFResourceConfig>) =>
     body: JSON.stringify(data),
   });
 
+// ── Admin: CTF operations (instances / images / challenges / submissions) ──────
+// The instances/challenges endpoints return dedicated DTOs (CTFAdminInstanceDTO /
+// CTFAdminChallengeDTO) that never include flagValue/flagHash. Keep these
+// interfaces flag-free; do not add flag fields.
+
+export interface CTFAdminInstance {
+  id:               string;
+  challengeId:      string | null;
+  userId:           string | null;
+  teamId:           string | null;
+  competitionId:    string | null;
+  containerName:    string | null;
+  assignedPort:     number | null;
+  connectionString: string | null;
+  status:           string;
+  errorMessage:     string | null;
+  startedAt:        string | null;
+  expiresAt:        string | null;
+  renewalCount:     number | null;
+}
+
+export interface CTFAdminImage {
+  id:       string;
+  imageRef: string;
+  status:   string;
+  pulledAt: string | null;
+  error:    string | null;
+}
+
+export interface CTFAdminChallengeRow {
+  id:               string;
+  title:            string;
+  category:         string | null;
+  difficulty:       string | null;
+  basePoints:       number | null;
+  requiresInstance: boolean | null;
+  isActive?:        boolean | null;
+  active?:          boolean | null;
+}
+
+export const getCTFAdminInstances = () =>
+  apiClient<CTFAdminInstance[]>("/api/ctf/admin/instances", { method: "GET" });
+
+export const forceStopCTFAdminInstance = (instanceId: string) =>
+  apiClient<{ message: string }>(`/api/ctf/admin/instances/${instanceId}`, { method: "DELETE" });
+
+export const getCTFAdminImages = () =>
+  apiClient<CTFAdminImage[]>("/api/ctf/admin/images", { method: "GET" });
+
+export const prewarmCTFAdminImages = (imageRefs: string[]) =>
+  apiClient<{ message: string }>("/api/ctf/admin/images/prewarm", {
+    method: "POST",
+    body: JSON.stringify(imageRefs),
+  });
+
+export const getCTFAdminChallenges = () =>
+  apiClient<CTFAdminChallengeRow[]>("/api/ctf/admin/challenges", { method: "GET" });
+
+export const getCTFAdminSubmissions = (challengeId?: string, page = 0, size = 50) => {
+  const params = new URLSearchParams();
+  if (challengeId) params.set("challengeId", challengeId);
+  params.set("page", String(page));
+  params.set("size", String(size));
+  return apiClient<CTFSubmission[]>(`/api/ctf/admin/submissions?${params}`, { method: "GET" });
+};
+
 // ── Teacher CTF management ───────────────────────────────────────────────────
 
 export interface CTFHintRequest {
@@ -978,6 +1367,7 @@ export interface CTFChallengeCreateRequest {
   dockerPidsLimit?:   number;
   downloadableFileUrl?:  string;
   downloadableFileName?: string;
+  mediaUrl?:             string;
   maxAttempts?:       number;
   isActive?:          boolean;
   hints?:             CTFHintRequest[];
@@ -1004,6 +1394,7 @@ export interface CTFChallengeUpdateRequest {
   dockerPidsLimit?:   number;
   downloadableFileUrl?:  string;
   downloadableFileName?: string;
+  mediaUrl?:             string;
   maxAttempts?:       number;
   isActive?:          boolean;
   hints?:             CTFHintRequest[];
@@ -1031,8 +1422,10 @@ export interface CTFChallengeResponse {
   downloadableFileUrl: string | null;
   downloadableFileName: string | null;
   hints:               { id: string; cost: number; text: string }[];
-  maxAttempts:         number;
+  maxAttempts:         number | null; // null = unlimited
   isActive:            boolean;
+  competitionId:       string | null;  // null = public practice challenge; set = private (competition)
+  isLibrary:           boolean;        // true = reusable library template
   authorId:            string;
   createdAt:           string;
   updatedAt:           string;
@@ -1176,6 +1569,36 @@ export interface CTFTeamResponse {
   totalPoints:   number;
 }
 
+export interface CTFChallengeSolverDTO {
+  teamId:       string;
+  teamName:     string;
+  avatarColor:  string;
+  solvedAt:     string;
+  bloodPosition?: number | null; // 1=first, 2=second, 3=third blood; null = no blood position
+  bloodBonus?:    number | null; // bonus points awarded; null when bloodPosition is null
+}
+
+export interface CTFTeamSolveEntryDTO {
+  challengeId:    string;
+  challengeTitle: string;
+  category:       string;
+  currentPoints:  number;
+  solvedAt:       string;
+}
+
+export interface CTFTeamProfileDTO {
+  id:           string;
+  competitionId: string;
+  name:         string;
+  avatarColor:  string;
+  captainId:    string;
+  rank:         number;
+  totalPoints:  number;
+  solveCount:   number;
+  members:      CTFTeamMemberDTO[];
+  solves:       CTFTeamSolveEntryDTO[];
+}
+
 export interface CTFScoreboardEntryDTO {
   rank:         number;
   teamId:       string;
@@ -1216,6 +1639,7 @@ export interface CTFCompetitionChallengeDTO {
   category:            string;
   difficulty:          "EASY" | "MEDIUM" | "HARD";
   basePoints:          number;
+  currentPoints?:      number;
   flagFormat:          string;
   flagType?:           "STATIC" | "DYNAMIC";
   requiresInstance:    boolean;
@@ -1229,20 +1653,44 @@ export interface CTFCompetitionChallengeDTO {
   dockerPidsLimit?:    number | null;
   downloadableFileUrl: string | null;
   downloadableFileName:string | null;
+  mediaUrl?:           string | null;
   hints:               CTFHintDTO[];
-  maxAttempts:         number;
+  maxAttempts:         number | null; // null = unlimited
   isActive:            boolean;
   isHidden?:           boolean | null;
   solveCount:          number;
   solvedByMe:          boolean;
+  myHintPenalty?:      number;
+  bloodBonusEnabled?:  boolean;
+  firstBloodBonus?:    number | null;
+  secondBloodBonus?:   number | null;
+  thirdBloodBonus?:    number | null;
 }
 
 export interface CTFCompetitionSubmitResponse {
-  correct:       boolean;
-  message:       string;
-  pointsAwarded: number | null;
-  newRank:       number | null;
+  correct:          boolean;
+  message:          string;
+  pointsAwarded:    number | null;
+  newRank:          number | null;
+  attemptsUsed:     number;
+  attemptsRemaining: number | null; // null = unlimited
+  lockedOut:        boolean;
 }
+
+export interface CTFAttemptDTO {
+  id:            string;
+  submittedAt:   string; // ISO-8601
+  correct:       boolean;
+  flagMasked:    string;
+  attemptNumber: number;
+}
+
+export const getMyCtfAttempts = (competitionId: string, challengeId: string) =>
+  apiClient<CTFAttemptDTO[]>(
+    `/api/ctf/competitions/${competitionId}/challenges/${challengeId}/my-attempts`,
+    { method: "GET" },
+    { silentErrors: true },
+  );
 
 export const getCtfCompetitions = () =>
   apiClient<CTFCompetitionDTO[]>("/api/ctf/competitions", { method: "GET" });
@@ -1302,8 +1750,24 @@ export const broadcastTeacherCtfMessage = (competitionId: string, title: string,
     { method: "POST", body: JSON.stringify({ title, body }) },
   );
 
+export const getChallengeSolvers = (competitionId: string, challengeId: string) =>
+  apiClient<CTFChallengeSolverDTO[]>(
+    `/api/ctf/competitions/${competitionId}/challenges/${challengeId}/solvers`,
+    { method: "GET" },
+  );
+
+export const getCtfTeamProfile = (competitionId: string, teamId: string) =>
+  apiClient<CTFTeamProfileDTO>(
+    `/api/ctf/competitions/${competitionId}/teams/${teamId}/profile`,
+    { method: "GET" },
+  );
+
 export const getCtfScoreboard = (competitionId: string) =>
   apiClient<CTFScoreboardEntryDTO[]>(`/api/ctf/competitions/${competitionId}/scoreboard`, { method: "GET" });
+
+/** Admin/teacher only — always returns live data, ignores freeze timestamp. */
+export const getCtfScoreboardLive = (competitionId: string) =>
+  apiClient<CTFScoreboardEntryDTO[]>(`/api/ctf/admin/competitions/${competitionId}/scoreboard/live`, { method: "GET" });
 
 export const getCtfScoreboardGraph = (competitionId: string, topN = 10) =>
   apiClient<CTFScoreTimelineDTO>(
@@ -1396,7 +1860,7 @@ export async function uploadCtfCoverImage(
   file: File,
 ): Promise<{ coverImageUrl: string }> {
   const base = getApiBaseUrl();
-  const token = typeof window !== "undefined" ? localStorage.getItem("token") : null;
+  const token = getToken();
   const fd = new FormData();
   fd.append("image", file);
   const res = await fetch(`${base}/api/teacher/ctf/competitions/${id}/cover`, {
@@ -1455,9 +1919,14 @@ export interface TeacherCtfChallengeCreateRequest {
   dockerPidsLimit?:     number;
   downloadableFileUrl?: string;
   downloadableFileName?:string;
-  maxAttempts?:         number;
+  mediaUrl?:            string;
+  maxAttempts?:         number | null; // null = unlimited; 0 also treated as unlimited by backend
   isActive?:            boolean;
   hints?:               { cost: number; text: string }[];
+  bloodBonusEnabled?:   boolean;
+  firstBloodBonus?:     number;
+  secondBloodBonus?:    number;
+  thirdBloodBonus?:     number;
 }
 
 export type TeacherCtfChallengeUpdateRequest = Partial<Omit<TeacherCtfChallengeCreateRequest, "plainFlag">>;
@@ -1540,7 +2009,7 @@ export interface CTFLibraryChallengeDTO {
   dockerPidsLimit?:    number | null;
   downloadableFileUrl: string | null;
   hints:               CTFHintDTO[];
-  maxAttempts:         number;
+  maxAttempts:         number | null; // null = unlimited
   buildStatus?:        string | null;
   builtImageTag?:      string | null;
   useCount:            number;
@@ -1627,6 +2096,8 @@ export interface CTFTeacherSubmissionDTO {
   solvedByName: string;
   pointsAwarded: number;
   correct: boolean;
+  cheatFlagged: boolean;
+  submittedValue: string | null;
   at: string;
 }
 
@@ -1710,6 +2181,51 @@ export async function downloadTeacherCtfExport(id: string): Promise<void> {
   document.body.appendChild(a); a.click(); a.remove();
   URL.revokeObjectURL(url);
 }
+
+/** Shared authed-download helper: plain `<a href>` can't attach the Bearer
+ *  token, so protected CSV exports must fetch+blob instead of navigating. */
+async function downloadAuthedFile(url: string, fallbackFilename: string): Promise<void> {
+  const token = getToken();
+  const res = await fetch(`${getApiBaseUrl()}${url}`, {
+    headers: token ? { Authorization: `Bearer ${token}` } : {},
+  });
+  if (!res.ok) throw new Error(`Export failed: ${res.status}`);
+  const blob = await res.blob();
+  const cd = res.headers.get("content-disposition") ?? "";
+  const m = cd.match(/filename="?([^"]+)"?/);
+  const filename = m?.[1] ?? fallbackFilename;
+  const objUrl = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = objUrl; a.download = filename;
+  document.body.appendChild(a); a.click(); a.remove();
+  URL.revokeObjectURL(objUrl);
+}
+
+/** Per-student rollup CSV (name, score, status, last active) for a TP or exam. */
+export const downloadExamResultsExport = (assessmentId: string) =>
+  downloadAuthedFile(`/api/teacher/exams/${assessmentId}/results/export`, `results-${assessmentId}.csv`);
+
+/** Raw per-submission CSV (every attempt) for a TP or exam. */
+export const downloadExamSubmissionsExport = (assessmentId: string) =>
+  downloadAuthedFile(`/api/teacher/exams/${assessmentId}/submissions/export`, `submissions-${assessmentId}.csv`);
+
+/** Audit/violations CSV for a given domain + event (EXAM/TP/CP/CTF). */
+export const downloadAuditExport = (domain: AuditDomain, contextId: string) =>
+  downloadAuthedFile(`/api/teacher/${domain}/${contextId}/audit/export.csv`, `audit-${domain.toLowerCase()}-${contextId}.csv`);
+
+/** Admin global audit log CSV, respecting the on-screen filters (all optional). */
+export const downloadGlobalAuditExport = (filters: { domain?: string; severity?: string; from?: string; to?: string } = {}) => {
+  const params = new URLSearchParams();
+  if (filters.domain)   params.set("domain", filters.domain);
+  if (filters.severity) params.set("severity", filters.severity);
+  if (filters.from)     params.set("from", filters.from);
+  if (filters.to)       params.set("to", filters.to);
+  const qs = params.toString();
+  return downloadAuthedFile(
+    `/api/admin/audit/global/export${qs ? "?" + qs : ""}`,
+    `audit-log-${new Date().toISOString().slice(0, 10)}.csv`,
+  );
+};
 
 // ── Challenge build / packaging ───────────────────────────────────────────────
 
@@ -1795,3 +2311,77 @@ export const getCTFChallengeBuildStatus = (challengeId: string) =>
 
 export const getCTFChallengeBuildLog = (challengeId: string) =>
   apiClient<string>(`/api/teacher/ctf/challenges/${challengeId}/build-log`, { method: "GET" });
+
+// ── Triple leaderboard (Global / CP / CTF) ───────────────────────────────────
+
+export interface RankedLeaderboardEntry {
+  rank:      number;
+  userId:    string;
+  username:  string;
+  fullName:  string;
+  avatarUrl: string | null;
+  avatarId:  string | null;
+  score:     number;
+  solved:    number;
+  badge:     "MASTER" | "EXPERT" | "INTERMEDIATE" | "BEGINNER";
+}
+
+export const getLeaderboardGlobal = (limit = 50) =>
+  apiClient<RankedLeaderboardEntry[]>(`/api/leaderboard/global?limit=${limit}`, { method: "GET" });
+
+export const getLeaderboardCp = (limit = 50) =>
+  apiClient<RankedLeaderboardEntry[]>(`/api/leaderboard/cp?limit=${limit}`, { method: "GET" });
+
+export const getLeaderboardCtf = (limit = 50) =>
+  apiClient<RankedLeaderboardEntry[]>(`/api/leaderboard/ctf?limit=${limit}`, { method: "GET" });
+
+// ── Profile ──────────────────────────────────────────────────────────────────
+
+export interface ProfileActivityItem {
+  type:       "ctf_solve" | "problem_solve" | "competition" | "exam";
+  title:      string;
+  points:     number;
+  timestamp:  string;
+  category:   string | null;
+  difficulty: string | null;
+}
+
+export interface UserProfile {
+  id:        string;
+  username:  string;
+  fullName:  string;
+  email:     string | null;
+  avatarUrl: string | null;
+  avatarId:  string | null;
+  joinedAt:  string | null;
+  bio:       string | null;
+
+  ctfScore:    number;
+  cpScore:     number;
+  globalScore: number;
+
+  ctfSolved:      number;
+  problemsSolved: number;
+
+  ctfRank:    number | null;
+  cpRank:     number | null;
+  globalRank: number | null;
+
+  recentActivity: ProfileActivityItem[];
+  badge: "MASTER" | "EXPERT" | "INTERMEDIATE" | "BEGINNER";
+}
+
+export const getMyProfile = () =>
+  apiClient<UserProfile>("/api/profile/me", { method: "GET" });
+
+export const getUserProfile = (userId: string) =>
+  apiClient<UserProfile>(`/api/profile/${userId}`, { method: "GET" });
+
+export const getUserProfileByUsername = (username: string) =>
+  apiClient<UserProfile>(`/api/profile/u/${encodeURIComponent(username)}`, { method: "GET" });
+
+export const updateMyProfile = (data: { username?: string; bio?: string; avatarUrl?: string; avatarId?: string }) =>
+  apiClient<UserProfile>("/api/profile/me", {
+    method: "PATCH",
+    body: JSON.stringify(data),
+  });

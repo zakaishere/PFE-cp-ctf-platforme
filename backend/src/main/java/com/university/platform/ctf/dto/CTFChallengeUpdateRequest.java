@@ -33,9 +33,16 @@ public class CTFChallengeUpdateRequest {
     private Integer dockerPidsLimit;
     private String  downloadableFileUrl;
     private String  downloadableFileName;
+    private String  mediaUrl;
     private Integer maxAttempts;
     private Boolean isActive;
 
     /** Full replacement of the hints list; null means keep existing hints. */
     private List<CTFHintRequest> hints;
+
+    // Blood bonus settings — null = keep existing value
+    private Boolean bloodBonusEnabled;
+    private Integer firstBloodBonus;
+    private Integer secondBloodBonus;
+    private Integer thirdBloodBonus;
 }

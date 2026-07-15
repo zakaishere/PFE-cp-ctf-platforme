@@ -2,48 +2,48 @@
 
 import { useState, useEffect, useRef } from "react";
 import Link from "next/link";
-import dynamic from "next/dynamic";
-import {
-  Play, Send, Lock, AlertTriangle, CheckCircle2, XCircle, Clock, Loader2,
-} from "lucide-react";
+import { AlertTriangle, Clock, FileText, Play, ShieldAlert, List, Code2, Lock } from "lucide-react";
 import { Client as StompClient } from "@stomp/stompjs";
 import SockJS from "sockjs-client";
 import {
-  submitCode, logCheatEvent, getExamRoom, getApiBaseUrl,
-  type ExamRoomDTO, type ExamProblemDTO,
+  submitCode, logCheatEvent, getExamRoom, getExamResults, getApiBaseUrl,
+  verifyAssessmentAccessCode, ApiException,
+  type ExamRoomDTO, type ExamProblemDTO, type ExamResultsDTO,
 } from "@/lib/api";
 import { useAuth } from "@/features/auth/contexts/AuthContext";
+import { toast } from "@/components/ui/PSPToast";
+import CodeWorkspace, {
+  DEFAULT_WORKSPACE_CODE as DEFAULT_CODE,
+  type WorkspaceTestResult,
+  type WorkspaceVerdict,
+} from "@/features/arena/components/CodeWorkspace";
+import ArenaShell, { type ArenaTab } from "@/features/arena/components/ArenaShell";
+import { type ViolationEvent } from "@/hooks/useAntiCheat";
+import TaskRail, { type TaskRailItem } from "@/components/arena/TaskRail";
+import QuestionStatement from "@/components/arena/exam/QuestionStatement";
+import ExamResults from "@/components/arena/exam/ExamResults";
 
-const MonacoEditor = dynamic(() => import("@monaco-editor/react"), { ssr: false });
+type Verdict = WorkspaceVerdict;
+type TestResult = WorkspaceTestResult;
 
-const DEFAULT_CODE: Record<string, string> = {
-  java:       `import java.util.Scanner;\n\npublic class Main {\n    public static void main(String[] args) {\n        Scanner sc = new Scanner(System.in);\n        // TODO: solve here\n    }\n}`,
-  python:     `import sys\ninput = sys.stdin.readline\n\ndef solve():\n    pass\n\nsolve()`,
-  cpp:        `#include <bits/stdc++.h>\nusing namespace std;\n\nint main() {\n    ios_base::sync_with_stdio(false);\n    cin.tie(NULL);\n    // TODO: solve here\n    return 0;\n}`,
-  c:          `#include <stdio.h>\n\nint main() {\n    // TODO: solve here\n    return 0;\n}`,
-  javascript: `const lines = require('fs').readFileSync('/dev/stdin','utf8').trim().split('\\n');\n// TODO: solve here`,
-};
-
-const DIFF_STYLE: Record<string, { bg: string; color: string }> = {
-  EASY:   { bg: "#e3fcef", color: "#006644" },
-  MEDIUM: { bg: "#fffae6", color: "#974f0c" },
-  HARD:   { bg: "#ffebe6", color: "#bf2600" },
-};
-
-type Verdict = "pending" | "accepted" | "wrong" | "tle" | null;
-interface TestResult { idx: number; status: "pass" | "fail" | "tle" | null; executionTimeMs?: number; }
-
-function formatTime(secs: number): string {
-  const h = Math.floor(secs / 3600);
-  const m = Math.floor((secs % 3600) / 60);
-  const s = secs % 60;
-  return `${String(h).padStart(2, "0")}:${String(m).padStart(2, "0")}:${String(s).padStart(2, "0")}`;
+// The verified access code is cached per-assessment for the tab session only —
+// never persisted, never sent anywhere except this assessment's own endpoints.
+function accessCodeKey(examId: string) { return `arena_access_code_${examId}`; }
+function getCachedAccessCode(examId: string): string | null {
+  if (typeof window === "undefined") return null;
+  return sessionStorage.getItem(accessCodeKey(examId));
+}
+function setCachedAccessCode(examId: string, code: string) {
+  if (typeof window === "undefined") return;
+  sessionStorage.setItem(accessCodeKey(examId), code);
 }
 
 interface ArenaProps {
   examId?: string;
   mode?: "exam" | "practice" | "tp";
 }
+
+type Phase = "briefing" | "active";
 
 export default function Arena({ examId, mode = "exam" }: ArenaProps) {
   const { userId } = useAuth();
@@ -53,36 +53,85 @@ export default function Arena({ examId, mode = "exam" }: ArenaProps) {
   const [loading, setLoading]       = useState(true);
   const [accessError, setAccessError] = useState<string | null>(null);
 
+  // Access-code gate — shown instead of the arena when the assessment requires
+  // a code and none has been verified yet in this tab.
+  const [needsAccessCode, setNeedsAccessCode] = useState(false);
+  const [accessCode, setAccessCode]           = useState<string | null>(null);
+  const [codeInput, setCodeInput]             = useState("");
+  const [codeError, setCodeError]             = useState("");
+  const [verifyingCode, setVerifyingCode]     = useState(false);
+
   // Countdown
   const [remainingSecs, setRemainingSecs] = useState(0);
 
   // UI state
   const [activeProblemIdx, setActiveProblemIdx] = useState(0);
+  // Mobile single-column arena: which pane is visible via the bottom tab bar.
+  const isMobile = useIsMobile(768);
+  const [mobilePanel, setMobilePanel] = useState<"problems" | "statement" | "submit">("statement");
   const [lang, setLang]     = useState("java");
   const [code, setCode]     = useState(DEFAULT_CODE.java);
   const [judging, setJudging]   = useState(false);
   const [results, setResults]   = useState<TestResult[]>([]);
   const [verdict, setVerdict]   = useState<Verdict>(null);
   const [tabSwitches, setTabSwitches] = useState(0);
+  const [examResults, setExamResults] = useState<ExamResultsDTO | null>(null);
   const stompRef = useRef<StompClient | null>(null);
 
-  // Load exam room
+  // Entry-flow phase: briefing → active. Practice mode skips briefing.
+  const [phase, setPhase] = useState<Phase>(mode === "practice" ? "active" : "briefing");
+  const enforceLockdown   = mode === "exam";
+  // Audit/anti-cheat logging runs for both exams and TPs (take-home TPs get the
+  // same tab-switch/focus/copy-paste + multi-IP tracking, minus the fullscreen gate).
+  const auditEnabled      = mode === "exam" || mode === "tp";
+
+  // Load exam room. If the assessment requires an access code and none is
+  // cached yet, show the code gate instead of a generic access-denied screen.
   useEffect(() => {
     if (!examId) {
       setAccessError("No exam ID provided.");
       setLoading(false);
       return;
     }
-    getExamRoom(examId)
+    const cached = getCachedAccessCode(examId) ?? undefined;
+    getExamRoom(examId, cached)
       .then((data) => {
         setExamRoom(data);
         setRemainingSecs(data.remainingSeconds);
+        if (cached) setAccessCode(cached);
       })
-      .catch((err: Error) => {
-        setAccessError(err.message || "Failed to load exam.");
+      .catch((err: unknown) => {
+        const isBadCode = err instanceof ApiException && err.status === 403
+          && /access code/i.test(err.message);
+        if (isBadCode) {
+          setNeedsAccessCode(true);
+        } else {
+          setAccessError(err instanceof Error ? err.message : "Failed to load exam.");
+        }
       })
       .finally(() => setLoading(false));
   }, [examId]);
+
+  async function handleAccessCodeSubmit() {
+    if (!examId || !codeInput.trim()) return;
+    setVerifyingCode(true);
+    setCodeError("");
+    try {
+      await verifyAssessmentAccessCode(examId, codeInput.trim());
+      setCachedAccessCode(examId, codeInput.trim());
+      setAccessCode(codeInput.trim());
+      setNeedsAccessCode(false);
+      setLoading(true);
+      const data = await getExamRoom(examId, codeInput.trim());
+      setExamRoom(data);
+      setRemainingSecs(data.remainingSeconds);
+    } catch {
+      setCodeError("Invalid access code — try again");
+    } finally {
+      setVerifyingCode(false);
+      setLoading(false);
+    }
+  }
 
   // Start countdown once after exam room loads
   useEffect(() => {
@@ -91,21 +140,28 @@ export default function Arena({ examId, mode = "exam" }: ArenaProps) {
     return () => clearInterval(id);
   }, [examRoom]);
 
-  // Anti-cheat: log tab visibility changes
+  // Fetch post-exam results once the exam has ended and grades are revealed.
   useEffect(() => {
-    if (mode !== "exam" || !examId || !userId) return;
-    const onVis = () => {
-      if (document.hidden) {
-        setTabSwitches((n) => {
-          const next = n + 1;
-          logCheatEvent({ studentId: userId, assessmentId: examId, violationType: "TAB_SWITCH" }).catch(() => {});
-          return next;
-        });
-      }
-    };
-    document.addEventListener("visibilitychange", onVis);
-    return () => document.removeEventListener("visibilitychange", onVis);
-  }, [mode, examId, userId]);
+    if (mode !== "exam" || !examId || !examRoom) return;
+    const ended = examRoom.isEnded || examRoom.remainingSeconds <= 0;
+    if (!ended || !examRoom.gradesRevealed || examResults) return;
+    getExamResults(examId)
+      .then(setExamResults)
+      .catch(() => {});
+  }, [mode, examId, examRoom, examResults]);
+
+  // Anti-cheat reporter (wired into ArenaShell.lockdown.onViolation below).
+  // Reports every violation to the assessment audit endpoint; bumps the
+  // tab-switch counter shown in the sidebar for visibility violations.
+  const reportViolation = (event: ViolationEvent) => {
+    if (!auditEnabled || !examId || !userId) return;
+    if (event.type === "TAB_SWITCH") setTabSwitches((n) => n + 1);
+    logCheatEvent({
+      studentId:     userId,
+      assessmentId:  examId,
+      violationType: event.type,
+    }).catch(() => {});
+  };
 
   // Reset editor when switching problems
   useEffect(() => {
@@ -116,16 +172,18 @@ export default function Arena({ examId, mode = "exam" }: ArenaProps) {
 
   const activeProblem: ExamProblemDTO | null = examRoom?.problems[activeProblemIdx] ?? null;
   const isEnded  = (examRoom?.isEnded ?? false) || remainingSecs <= 0;
-  const isUrgent = remainingSecs > 0 && remainingSecs < 600;
-  const timerStr = formatTime(remainingSecs);
   const solvedCount = examRoom?.problems.filter((p) => p.solvedByCurrentUser).length ?? 0;
 
-  const diff      = activeProblem?.difficulty ?? "";
-  const diffStyle = DIFF_STYLE[diff] ?? { bg: "#f4f5f7", color: "var(--text-muted)" };
-  const diffLabel = diff ? diff.charAt(0) + diff.slice(1).toLowerCase() : "";
   const visibleCount = activeProblem?.visibleTestCases.length ?? 0;
   const hiddenCount  = activeProblem?.hiddenTestCaseCount ?? 0;
   const totalCases   = visibleCount + hiddenCount;
+
+  // TP submission gating: closed after deadline or once per-problem attempts run out.
+  const maxAttempts   = examRoom?.maxAttempts ?? null;
+  const attemptsUsed  = activeProblem?.attemptsUsed ?? 0;
+  const deadlinePassed = mode === "tp" && isEnded;
+  const attemptsExhausted =
+    mode === "tp" && maxAttempts != null && attemptsUsed >= maxAttempts;
 
   const handleLangChange = (newLang: string) => {
     setLang(newLang);
@@ -146,6 +204,7 @@ export default function Arena({ examId, mode = "exam" }: ArenaProps) {
         sourceCode: code,
         language: lang.toUpperCase(),
         runOnly,
+        accessCode: accessCode ?? undefined,
       });
 
       const client = new StompClient({
@@ -155,19 +214,37 @@ export default function Arena({ examId, mode = "exam" }: ArenaProps) {
           client.subscribe(`/topic/submissions/${res.submissionId}`, (frame) => {
             try {
               const data = JSON.parse(frame.body);
-              const testResults: TestResult[] = (data.testCaseResults || []).map(
-                (r: any, i: number) => ({
-                  idx: i,
-                  status: r.status === "PASS" ? "pass" : r.status === "TIMEOUT" ? "tle" : "fail",
-                  executionTimeMs: r.executionTimeMs,
-                })
-              );
-              setResults(testResults);
-              const allPassed = testResults.length > 0 && testResults.every((r) => r.status === "pass");
-              const hasTle    = testResults.some((r) => r.status === "tle");
-              setVerdict(hasTle ? "tle" : allPassed ? "accepted" : "wrong");
-              setJudging(false);
-              client.deactivate();
+
+              // Two message shapes share this topic (see WebSocketSubmissionMessage
+              // on the backend) — neither has a `testCaseResults` array, so this
+              // must branch on `type` rather than reading a field that never exists.
+              if (data.type === "TEST_CASE_RESULT") {
+                const status: TestResult["status"] =
+                  data.status === "PASS" ? "pass"
+                  : data.status === "TIME_OUT" ? "tle"
+                  : data.status === "MEMORY_OUT" ? "mle"
+                  : data.status === "ERROR" ? "error"
+                  : "fail";
+                setResults((prev) => {
+                  const next = [...prev];
+                  next[data.testCaseIndex] = { idx: data.testCaseIndex, status, executionTimeMs: data.executionTimeMs };
+                  return next;
+                });
+                return;
+              }
+
+              if (data.type === "SUBMISSION_COMPLETE") {
+                const verdict: Verdict =
+                  data.finalStatus === "PASS" ? "accepted"
+                  : data.finalStatus === "TIME_OUT" ? "tle"
+                  : data.finalStatus === "MEMORY_OUT" ? "mle"
+                  : data.finalStatus === "RUNTIME_ERROR" ? "error"
+                  : data.finalStatus === "COMPILATION_ERROR" ? "error"
+                  : "wrong"; // FAIL
+                setVerdict(verdict);
+                setJudging(false);
+                client.deactivate();
+              }
             } catch (e) {
               console.error("STOMP parse error", e);
             }
@@ -182,7 +259,15 @@ export default function Arena({ examId, mode = "exam" }: ArenaProps) {
         if (stompRef.current?.active) {
           stompRef.current.deactivate();
           setJudging(false);
-          setVerdict((v) => (v === "pending" ? "wrong" : v));
+          setVerdict((v) => {
+            if (v !== "pending") return v;
+            console.warn("Judge result never arrived within 30s for submission", res.submissionId);
+            toast.warning(
+              "Still waiting on the judge",
+              "This is taking longer than expected. Your submission was recorded — try resubmitting in a moment if this persists."
+            );
+            return null;
+          });
         }
       }, 30_000);
     } catch (e) {
@@ -192,330 +277,463 @@ export default function Arena({ examId, mode = "exam" }: ArenaProps) {
     }
   };
 
-  // ── Full-screen loading ───────────────────────────────────────────────────
-  if (loading) {
+  // ── Access-code gate ──────────────────────────────────────────────────────
+  // Shown instead of everything else when the assessment requires a code the
+  // student hasn't verified yet in this tab (direct-link entry, expired cache).
+  if (needsAccessCode) {
     return (
       <div style={{
-        height: "100vh", display: "flex", alignItems: "center", justifyContent: "center",
-        background: "#172b4d", flexDirection: "column", gap: 12,
-        fontFamily: "-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif",
+        minHeight: "100vh", display: "flex", alignItems: "center",
+        justifyContent: "center", background: "var(--bg)",
       }}>
-        <Loader2 size={28} style={{ animation: "spin 1s linear infinite", color: "#0052cc" }} />
-        <div style={{ fontSize: 14, fontWeight: 500, color: "rgba(255,255,255,0.8)" }}>Loading exam…</div>
+        <div style={{
+          background: "var(--surface)", border: "1px solid var(--line-2)",
+          borderRadius: 16, padding: "40px 48px", width: 380,
+          display: "flex", flexDirection: "column", gap: 20,
+        }}>
+          <div style={{ textAlign: "center" }}>
+            <Lock size={32} style={{ color: "var(--accent)", marginBottom: 12 }} />
+            <h2 style={{ fontSize: 20, fontWeight: 700, marginBottom: 4, color: "var(--ink)" }}>
+              Access code required
+            </h2>
+            <p style={{ fontSize: 13, color: "var(--ink-2)" }}>
+              Enter the access code to continue
+            </p>
+          </div>
+
+          <input
+            type="text"
+            placeholder="Access code"
+            value={codeInput}
+            onChange={(e) => setCodeInput(e.target.value)}
+            onKeyDown={(e) => e.key === "Enter" && handleAccessCodeSubmit()}
+            style={{
+              padding: "10px 14px", borderRadius: 10, fontSize: 14,
+              background: "var(--bg-2)",
+              border: `1px solid ${codeError ? "var(--danger)" : "var(--line-2)"}`,
+              color: "var(--ink)", outline: "none", textAlign: "center",
+              fontFamily: "var(--font-mono)", letterSpacing: "2px",
+            }}
+            autoFocus
+          />
+
+          {codeError && (
+            <p style={{ fontSize: 12, color: "var(--danger)", textAlign: "center", marginTop: -12 }}>
+              {codeError}
+            </p>
+          )}
+
+          <button
+            onClick={handleAccessCodeSubmit}
+            disabled={verifyingCode || !codeInput.trim()}
+            style={{
+              padding: "11px 0", borderRadius: 10, fontWeight: 700,
+              fontSize: 14, background: "var(--accent)", color: "#0a0a0a",
+              border: "none", cursor: verifyingCode ? "default" : "pointer",
+              opacity: verifyingCode || !codeInput.trim() ? 0.6 : 1,
+            }}
+          >
+            {verifyingCode ? "Checking…" : "Enter"}
+          </button>
+        </div>
       </div>
     );
   }
 
-  // ── Access / not-found error ──────────────────────────────────────────────
-  if (accessError) {
+  // ── Briefing screen (Exam/TP entry gate) ─────────────────────────────────
+  if (!loading && !accessError && examRoom && phase === "briefing") {
     return (
-      <div style={{
-        height: "100vh", display: "flex", alignItems: "center", justifyContent: "center",
-        background: "#172b4d", flexDirection: "column", gap: 12,
-        fontFamily: "-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif",
-      }}>
-        <div style={{ fontSize: 36 }}>🔒</div>
-        <div style={{ fontWeight: 700, fontSize: 16, color: "white" }}>Access Denied</div>
-        <div style={{ fontSize: 13, color: "rgba(255,255,255,0.55)", maxWidth: 360, textAlign: "center" }}>
-          {accessError}
-        </div>
-        <Link href="/assessments" style={{
-          marginTop: 8, background: "#0052cc", color: "white", borderRadius: 3,
-          padding: "8px 18px", fontSize: 13, fontWeight: 600, textDecoration: "none",
-        }}>
-          Back to Assessments
-        </Link>
-      </div>
+      <BriefingScreen
+        title={examRoom.title}
+        problemCount={examRoom.problems.length}
+        durationSeconds={examRoom.remainingSeconds}
+        isEnded={examRoom.isEnded}
+        enforceLockdown={enforceLockdown}
+        onEnter={() => setPhase("active")}
+      />
     );
   }
 
   const problems = examRoom?.problems ?? [];
+  const taskRailItems: TaskRailItem[] = problems.map((p) => ({
+    id: p.problemId,
+    label: p.label,
+    title: p.title,
+    points: p.points,
+    status: p.solvedByCurrentUser ? "solved" : (p.attemptsUsed ?? 0) > 0 ? "attempted" : "unsolved",
+    meta: !p.solvedByCurrentUser && (p.attemptsUsed ?? 0) > 0 ? `×${p.attemptsUsed}` : undefined,
+  }));
 
-  return (
+  // Live exams hide verdicts/scores until the exam closes; TP & practice show
+  // results live. The submitted banner reflects a prior accepted submission.
+  const hideResults = mode === "exam" && !isEnded;
+  const nounSingular = mode === "tp" ? "Task" : "Question";
+
+  // ── Responsive pane styles (desktop 3-column; mobile = single column) ─────
+  const leftPaneStyle: React.CSSProperties = {
+    display: "flex", flexDirection: "column",
+    ...(isMobile
+      ? { width: "100%", flex: 1, minHeight: 0, ...(mobilePanel !== "problems" ? { display: "none" } : {}) }
+      : { width: 220, flexShrink: 0 }),
+  };
+  const centerPaneStyle: React.CSSProperties = {
+    display: "flex", flexDirection: "column", minHeight: 0,
+    ...(isMobile
+      ? { width: "100%", flex: 1, ...(mobilePanel !== "statement" ? { display: "none" } : {}) }
+      : { flex: 1 }),
+  };
+  const rightPaneStyle: React.CSSProperties = {
+    display: "flex", minHeight: 0,
+    ...(isMobile
+      ? { width: "100%", flex: 1, ...(mobilePanel !== "submit" ? { display: "none" } : {}) }
+      : { width: 420, flexShrink: 0 }),
+  };
+
+  // ── Workspace tab content (3-pane on desktop, tabbed single-column on mobile) ─
+  const workspaceContent = (
     <div style={{
-      fontFamily: "-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif",
-      color: "var(--text-primary)", height: "100vh", overflow: "hidden", display: "flex", flexDirection: "column",
+      display: "flex", flex: 1, overflow: "hidden", background: "var(--bg)",
+      ...(isMobile ? { flexDirection: "column", paddingBottom: 52 } : {}),
     }}>
 
-      {/* ── Top bar ── */}
-      <div style={{
-        background: "#172b4d", height: 44, display: "flex", alignItems: "center",
-        padding: "0 16px", gap: 16, flexShrink: 0, borderBottom: "1px solid #253858",
-      }}>
-        <div style={{ display: "flex", alignItems: "center", gap: 6, color: "white", fontWeight: 700, fontSize: 13 }}>
-          <div style={{ width: 22, height: 22, background: "#0052cc", borderRadius: 3, display: "flex", alignItems: "center", justifyContent: "center", color: "white", fontWeight: 900, fontSize: 11 }}>P</div>
-          PSP
-        </div>
-        <span style={{ color: "rgba(255,255,255,0.25)" }}>|</span>
-        <span style={{
-          color: "rgba(255,255,255,0.85)", fontSize: 13, fontWeight: 500,
-          maxWidth: 360, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
+      {/* Left: problem/task navigator */}
+      <div style={leftPaneStyle}>
+        <TaskRail
+          items={taskRailItems}
+          activeIndex={activeProblemIdx}
+          onSelect={(i) => { setActiveProblemIdx(i); if (isMobile) setMobilePanel("statement"); }}
+          heading={mode === "tp" ? "TASKS" : "QUESTIONS"}
+        />
+      </div>
+
+      {/* Center: problem statement */}
+      <div style={centerPaneStyle}>
+        <QuestionStatement
+          problem={activeProblem}
+          currentIndex={activeProblemIdx}
+          totalCount={problems.length}
+          onPrev={() => setActiveProblemIdx((i) => Math.max(0, i - 1))}
+          onNext={() => setActiveProblemIdx((i) => Math.min(problems.length - 1, i + 1))}
+          noun={nounSingular}
+        />
+      </div>
+
+      {/* Right: editor + results / submit */}
+      <div style={rightPaneStyle}>
+        <CodeWorkspace
+          language={lang}
+          onLanguageChange={handleLangChange}
+          code={code}
+          onCodeChange={setCode}
+          onRun={() => handleSubmit(true)}
+          onSubmit={() => handleSubmit(false)}
+          judging={judging}
+          disabled={isEnded}
+          results={results}
+          verdict={verdict}
+          totalCases={totalCases}
+          visibleCount={visibleCount}
+          isEndedMessage={isEnded ? "This session has ended." : undefined}
+          hideResults={hideResults}
+          submitted={!!activeProblem?.solvedByCurrentUser}
+          runLabel="Run sample"
+          submitLabel={mode === "tp" ? "Submit" : "Submit answer"}
+          blockedBanner={
+            deadlinePassed ? (
+              <div style={blockBannerStyle("danger")}>
+                Deadline has passed — submissions are closed.
+              </div>
+            ) : attemptsExhausted ? (
+              <div style={blockBannerStyle("warn")}>
+                Maximum attempts reached ({maxAttempts} / {maxAttempts}).
+              </div>
+            ) : undefined
+          }
+        />
+      </div>
+
+        {/* Mobile bottom tab bar — Problems / Statement / Submit */}
+        {isMobile && (
+          <div style={{
+            position: "fixed", bottom: 0, left: 0, right: 0, height: 52, zIndex: 60,
+            background: "var(--surface)", borderTop: "1px solid var(--line)", display: "flex",
+          }}>
+            {([
+              { key: "problems" as const,  label: "Problems",  icon: <List size={18} /> },
+              { key: "statement" as const, label: "Statement", icon: <FileText size={18} /> },
+              { key: "submit" as const,    label: "Submit",    icon: <Code2 size={18} /> },
+            ]).map(t => {
+              const on = mobilePanel === t.key;
+              return (
+                <button
+                  key={t.key}
+                  type="button"
+                  onClick={() => setMobilePanel(t.key)}
+                  style={{
+                    flex: 1, display: "flex", flexDirection: "column", alignItems: "center",
+                    justifyContent: "center", gap: 3, background: "none", cursor: "pointer",
+                    color: on ? "var(--brand-2)" : "var(--ink-3)",
+                    borderTop: on ? "2px solid var(--brand)" : "2px solid transparent",
+                    borderLeft: "none", borderRight: "none", borderBottom: "none",
+                    font: "600 11px var(--font)",
+                  }}
+                >
+                  {t.icon}
+                  {t.label}
+                </button>
+              );
+            })}
+          </div>
+        )}
+    </div>
+  );
+
+  // Post-exam results replace the workspace once grades are revealed.
+  const showResults = mode === "exam" && isEnded && !!examResults;
+
+  const tabs: ArenaTab[] = [
+    {
+      key: "workspace",
+      label: "Workspace",
+      icon: <FileText size={14} />,
+      content: showResults ? <ExamResults data={examResults!} /> : workspaceContent,
+    },
+  ];
+
+  const answeredWord = mode === "exam" ? "answered" : "solved";
+  const progressPct = problems.length > 0 ? (solvedCount / problems.length) * 100 : 0;
+
+  // Progress block for the top bar (matches reference .tb-prog).
+  const progressExtras = problems.length > 0 && !isEnded ? (
+    <div style={{
+      display: "flex", alignItems: "center", gap: 11,
+      padding: "0 18px", borderRight: "1px solid var(--line-2)", flex: "none",
+    }}>
+      <span style={{ font: "600 12px var(--font)", color: "var(--ink-2)", whiteSpace: "nowrap" }}>
+        {solvedCount} / {problems.length} {answeredWord}
+      </span>
+      <div style={{ width: 80, height: 4, borderRadius: 4, background: "rgba(255,255,255,.07)", overflow: "hidden", flex: "none" }}>
+        <div style={{ height: "100%", width: `${progressPct}%`, background: "var(--accent)", borderRadius: 4, boxShadow: "0 0 8px rgba(0,255,0,.5)" }} />
+      </div>
+    </div>
+  ) : undefined;
+
+  // Anti-cheat status (exam only — TP has no lockdown).
+  const antiCheatExtras = enforceLockdown && !isEnded ? (
+    <div style={{
+      display: "flex", alignItems: "center", gap: 6, padding: "0 14px",
+      font: "500 12px var(--font)", color: tabSwitches > 0 ? "var(--danger)" : "var(--ink-3)",
+    }}>
+      <AlertTriangle size={13} /> Anti-cheat · {tabSwitches} switch{tabSwitches === 1 ? "" : "es"}
+    </div>
+  ) : undefined;
+
+  // TP top bar: amber deadline + per-problem attempts counter (no anti-cheat, no countdown).
+  const tpExtras = mode === "tp" && !isEnded ? (
+    <>
+      {examRoom?.deadline && (
+        <div style={{
+          display: "flex", alignItems: "center", gap: 6, padding: "0 16px",
+          borderLeft: "1px solid var(--line-2)", font: "600 13px var(--font-mono)", color: "var(--warn)",
         }}>
-          {examRoom?.title ?? "Exam"}
-        </span>
-        <div style={{ marginLeft: "auto", display: "flex", alignItems: "center", gap: 16 }}>
-          <span style={{
-            fontFamily: "monospace", fontSize: 15, fontWeight: 700,
-            color: isEnded ? "#97a0af" : isUrgent ? "#de350b" : "#ff8b00",
+          <Clock size={14} /> Due {formatDeadline(examRoom.deadline)}
+        </div>
+      )}
+      {maxAttempts != null && (
+        <div style={{
+          display: "flex", alignItems: "center", padding: "0 16px",
+          borderLeft: "1px solid var(--line-2)", font: "500 12px var(--font)", color: "var(--ink-3)",
+        }}>
+          {attemptsUsed} / {maxAttempts} attempts
+        </div>
+      )}
+    </>
+  ) : undefined;
+
+  const subtitle = isEnded
+    ? (mode === "tp" ? "TP closed" : "Exam closed")
+    : mode === "tp" ? "Take-home TP" : mode === "practice" ? "Practice" : "Live Exam";
+
+  return (
+    <ArenaShell
+      title={examRoom?.title ?? "Exam"}
+      subtitle={subtitle}
+      leftExtras={progressExtras}
+      topBarExtras={mode === "tp" ? tpExtras : antiCheatExtras}
+      backHref="/assessments"
+      backLabel={mode === "tp" ? "Leave TP" : mode === "practice" ? "Leave" : "Leave Exam"}
+      // Hide the big countdown for TPs (deadline shown instead) and on the results view.
+      remainingSeconds={mode === "tp" || showResults ? 0 : remainingSecs}
+      isEnded={isEnded && !showResults}
+      endedMessage={mode === "tp" ? "This TP is closed. Submissions are no longer accepted." : undefined}
+      loading={loading}
+      loadingMessage="Loading…"
+      accessError={accessError}
+      lockdown={
+        enforceLockdown
+          ? {
+              fullscreen:  true,
+              antiCheat:   true,
+              contextId:   examId,
+              auditDomain: "EXAM",
+              onViolation: reportViolation,
+            }
+          : mode === "tp"
+            // TP: audit logging without the fullscreen lockdown gate.
+            ? {
+                antiCheat:   true,
+                contextId:   examId,
+                auditDomain: "TP",
+                onViolation: reportViolation,
+              }
+            : undefined
+      }
+      tabs={tabs}
+    />
+  );
+}
+
+// Block-banner style for TP deadline/attempts messages.
+function blockBannerStyle(tone: "danger" | "warn"): React.CSSProperties {
+  const color = tone === "danger" ? "var(--danger-ink)" : "var(--warn)";
+  const bg = tone === "danger" ? "var(--danger-soft)" : "var(--warn-soft)";
+  const border = tone === "danger" ? "rgba(240,99,122,.25)" : "rgba(232,160,48,.25)";
+  return {
+    textAlign: "center",
+    font: "600 12.5px var(--font)",
+    color,
+    background: bg,
+    border: `1px solid ${border}`,
+    borderRadius: 9,
+    padding: "11px 14px",
+  };
+}
+
+// "in 2d 4h" / "in 3h 20m" / "Jul 8" style relative deadline.
+function formatDeadline(iso: string): string {
+  const d = new Date(iso);
+  if (isNaN(d.getTime())) return "—";
+  const diffMs = d.getTime() - Date.now();
+  if (diffMs <= 0) return "now";
+  const mins = Math.floor(diffMs / 60000);
+  const hrs = Math.floor(mins / 60);
+  const days = Math.floor(hrs / 24);
+  if (days >= 1) return `in ${days}d ${hrs % 24}h`;
+  if (hrs >= 1) return `in ${hrs}h ${mins % 60}m`;
+  return `in ${mins}m`;
+}
+
+// ── Briefing screen ──────────────────────────────────────────────────────────
+
+function BriefingScreen({
+  title, problemCount, durationSeconds, isEnded, enforceLockdown, onEnter,
+}: {
+  title:            string;
+  problemCount:     number;
+  durationSeconds:  number;
+  isEnded:          boolean;
+  enforceLockdown:  boolean;
+  onEnter:          () => void;
+}) {
+  const mins = Math.floor(Math.max(0, durationSeconds) / 60);
+  return (
+    <div style={{
+      height: "100vh", display: "flex", alignItems: "center", justifyContent: "center",
+      background: "var(--bg)", color: "var(--ink)",
+      fontFamily: "-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif",
+    }}>
+      <div style={{
+        background: "var(--bg-2)", borderRadius: 10, padding: "32px 36px",
+        maxWidth: 480, width: "100%", boxShadow: "0 16px 40px rgba(0,0,0,0.4)",
+      }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 18 }}>
+          <div style={{
+            width: 36, height: 36, background: "var(--brand)", borderRadius: 6,
+            display: "flex", alignItems: "center", justifyContent: "center",
+            color: "white", fontWeight: 900, fontSize: 16,
+          }}>P</div>
+          <div>
+            <div style={{ fontSize: 11, color: "var(--ink-2)", textTransform: "uppercase", letterSpacing: 0.6 }}>
+              Entering arena
+            </div>
+            <div style={{ fontSize: 17, fontWeight: 700 }}>{title}</div>
+          </div>
+        </div>
+
+        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10, marginBottom: 18 }}>
+          <Stat label="Problems" value={String(problemCount)} />
+          <Stat label="Duration" value={mins > 0 ? `${mins} min` : "—"} />
+        </div>
+
+        {enforceLockdown && (
+          <div style={{
+            background: "rgba(222,53,11,0.12)", border: "1px solid rgba(222,53,11,0.4)",
+            borderRadius: 6, padding: "10px 12px", marginBottom: 18,
+            display: "flex", gap: 10, alignItems: "flex-start",
           }}>
-            {isEnded ? "00:00:00" : timerStr}
-          </span>
+            <ShieldAlert size={16} color="var(--danger-ink)" style={{ flexShrink: 0, marginTop: 2 }} />
+            <div style={{ fontSize: 12, lineHeight: 1.55, color: "var(--danger-soft)" }}>
+              <strong style={{ color: "var(--danger-soft)" }}>Anti-cheat is active.</strong>{" "}
+              Fullscreen is required. Tab switches, copy/paste outside the editor,
+              dev-tools shortcuts, and right-click are logged as violations.
+            </div>
+          </div>
+        )}
+
+        <button
+          type="button"
+          onClick={onEnter}
+          disabled={isEnded}
+          style={{
+            width: "100%", height: 42,
+            background: isEnded ? "var(--line-strong)" : "var(--brand)",
+            color: "white", border: "none", borderRadius: 6,
+            fontSize: 14, fontWeight: 700,
+            cursor: isEnded ? "not-allowed" : "pointer",
+            display: "flex", alignItems: "center", justifyContent: "center", gap: 8,
+          }}
+        >
+          <Play size={14} />
+          {isEnded ? "Session has ended" : "Enter Arena"}
+        </button>
+
+        <div style={{ textAlign: "center", marginTop: 12 }}>
           <Link href="/assessments" style={{
-            background: "#de350b", color: "white", border: "none", borderRadius: 3,
-            padding: "0 12px", height: 28, fontSize: 12, fontWeight: 600,
-            cursor: "pointer", display: "flex", alignItems: "center", textDecoration: "none",
+            fontSize: 12, color: "var(--ink-2)", textDecoration: "none",
           }}>
-            Leave Exam
+            ← Back to Exams &amp; TPs
           </Link>
         </div>
       </div>
+    </div>
+  );
+}
 
-      {/* ── Ended banner ── */}
-      {isEnded && (
-        <div style={{
-          background: "var(--red-light)", borderBottom: "1px solid #ff8f73",
-          padding: "7px 16px", fontSize: 13, color: "#bf2600",
-          fontWeight: 600, display: "flex", alignItems: "center", gap: 8, flexShrink: 0,
-        }}>
-          <AlertTriangle size={14} /> This exam has ended. Submissions are no longer accepted.
-        </div>
-      )}
+// Tracks whether the viewport is at/below a mobile breakpoint (client-only).
+function useIsMobile(breakpoint = 768) {
+  const [isMobile, setIsMobile] = useState(false);
+  useEffect(() => {
+    const mq = window.matchMedia(`(max-width: ${breakpoint}px)`);
+    const update = () => setIsMobile(mq.matches);
+    update();
+    mq.addEventListener("change", update);
+    return () => mq.removeEventListener("change", update);
+  }, [breakpoint]);
+  return isMobile;
+}
 
-      {/* ── Three-panel body ── */}
-      <div style={{ display: "flex", flex: 1, overflow: "hidden" }}>
-
-        {/* Left: problem list + progress */}
-        <div style={{ width: 240, background: "#253858", display: "flex", flexDirection: "column", flexShrink: 0, borderRight: "1px solid #344563" }}>
-          <div style={{ padding: 12, flex: 1, overflowY: "auto" }}>
-            <div style={{ fontSize: 10, fontWeight: 700, color: "rgba(255,255,255,0.4)", textTransform: "uppercase", letterSpacing: 0.5, marginBottom: 8 }}>
-              Problems
-            </div>
-            {problems.length === 0 ? (
-              <div style={{ fontSize: 12, color: "rgba(255,255,255,0.3)", padding: "6px 0" }}>
-                No problems assigned.
-              </div>
-            ) : (
-              problems.map((p, i) => (
-                <div
-                  key={p.problemId}
-                  onClick={() => setActiveProblemIdx(i)}
-                  style={{
-                    display: "flex", alignItems: "center", gap: 8,
-                    padding: "8px 10px", borderRadius: 3, cursor: "pointer", marginBottom: 3,
-                    background: activeProblemIdx === i ? "#0052cc" : "transparent",
-                  }}
-                >
-                  <div style={{
-                    width: 8, height: 8, borderRadius: "50%", flexShrink: 0,
-                    background: p.solvedByCurrentUser ? "#00875a" : "#97a0af",
-                  }} />
-                  <div style={{ fontSize: 12, color: "rgba(255,255,255,0.85)", fontWeight: 500, flex: 1 }}>
-                    {p.label}. {p.title}
-                  </div>
-                  <div style={{ fontSize: 10, color: "rgba(255,255,255,0.45)" }}>{p.points} pts</div>
-                </div>
-              ))
-            )}
-          </div>
-
-          <div style={{ padding: 12, borderTop: "1px solid #344563" }}>
-            <div style={{ fontSize: 10, fontWeight: 700, color: "rgba(255,255,255,0.4)", textTransform: "uppercase", letterSpacing: 0.5, marginBottom: 6 }}>Progress</div>
-            <div style={{ fontSize: 12, color: "rgba(255,255,255,0.65)" }}>{solvedCount} / {problems.length} solved</div>
-            <div style={{ background: "#344563", height: 4, borderRadius: 2, marginTop: 6 }}>
-              <div style={{ background: "#0052cc", height: 4, borderRadius: 2, width: problems.length > 0 ? `${(solvedCount / problems.length) * 100}%` : "0%" }} />
-            </div>
-          </div>
-
-          <div style={{ padding: "8px 12px", borderTop: "1px solid #344563" }}>
-            <div style={{ fontSize: 11, color: "rgba(255,255,255,0.4)", marginBottom: 2, display: "flex", alignItems: "center", gap: 4 }}>
-              <AlertTriangle size={11} /> Anti-cheat active
-            </div>
-            <div style={{ fontSize: 11, color: tabSwitches > 0 ? "#de350b" : "rgba(255,255,255,0.4)" }}>
-              Tab switches: {tabSwitches}
-            </div>
-          </div>
-        </div>
-
-        {/* Center: problem statement */}
-        <div style={{ flex: 1, background: "var(--bg-primary)", display: "flex", flexDirection: "column", overflowY: "auto", borderRight: "1px solid var(--border)" }}>
-          {!activeProblem ? (
-            <div style={{ padding: 48, textAlign: "center", color: "var(--text-muted)", fontSize: 13 }}>
-              Select a problem from the left panel.
-            </div>
-          ) : (
-            <>
-              <div style={{ padding: "16px 20px", borderBottom: "1px solid var(--border)", flexShrink: 0 }}>
-                <div style={{ fontSize: 16, fontWeight: 700, color: "var(--text-primary)" }}>
-                  {activeProblem.label}. {activeProblem.title}
-                </div>
-                <div style={{ display: "flex", gap: 8, marginTop: 8, flexWrap: "wrap" }}>
-                  <span style={{ background: "var(--bg-secondary)", border: "1px solid var(--border)", borderRadius: 3, padding: "2px 8px", fontSize: 11, color: "var(--text-muted)", display: "flex", alignItems: "center", gap: 4 }}>
-                    <Clock size={11} /> {activeProblem.timeLimitMs} ms
-                  </span>
-                  <span style={{ background: "var(--bg-secondary)", border: "1px solid var(--border)", borderRadius: 3, padding: "2px 8px", fontSize: 11, color: "var(--text-muted)" }}>
-                    {activeProblem.memoryLimitMb} MB
-                  </span>
-                  {diff && (
-                    <span style={{ background: diffStyle.bg, border: "1px solid var(--border)", borderRadius: 3, padding: "2px 8px", fontSize: 11, color: diffStyle.color, fontWeight: 600 }}>
-                      {diffLabel}
-                    </span>
-                  )}
-                  <span style={{ background: "var(--bg-secondary)", border: "1px solid var(--border)", borderRadius: 3, padding: "2px 8px", fontSize: 11, color: "var(--text-muted)" }}>
-                    {activeProblem.points} pts
-                  </span>
-                  {activeProblem.solvedByCurrentUser && (
-                    <span style={{ display: "flex", alignItems: "center", gap: 4, background: "var(--green-light)", border: "1px solid var(--border)", borderRadius: 3, padding: "2px 8px", fontSize: 11, color: "#006644", fontWeight: 600 }}>
-                      <CheckCircle2 size={10} /> Solved
-                    </span>
-                  )}
-                </div>
-              </div>
-
-              <div style={{ padding: "16px 20px", fontSize: 13, lineHeight: 1.75 }}>
-                {activeProblem.description ? (
-                  activeProblem.description.split("\n").map((line, i) => (
-                    <p key={i} style={{ marginBottom: 4 }}>{line || <>&nbsp;</>}</p>
-                  ))
-                ) : (
-                  <p style={{ color: "var(--text-subtle)" }}>No description provided.</p>
-                )}
-
-                {activeProblem.visibleTestCases.length > 0 && (
-                  <>
-                    <h4 style={{ fontSize: 11, fontWeight: 700, textTransform: "uppercase", letterSpacing: 0.5, color: "var(--text-muted)", margin: "20px 0 8px" }}>
-                      Sample Test Cases
-                    </h4>
-                    {activeProblem.visibleTestCases.map((tc, i) => (
-                      <div key={tc.id} style={{ marginBottom: 8 }}>
-                        <div style={{ background: "var(--bg-secondary)", border: "1px solid var(--border)", borderRadius: "3px 3px 0 0", padding: "8px 12px", fontFamily: "monospace", fontSize: 12 }}>
-                          <div style={{ fontSize: 10, color: "var(--text-muted)", fontWeight: 600, textTransform: "uppercase", marginBottom: 4 }}>Input</div>
-                          <pre style={{ margin: 0, whiteSpace: "pre-wrap", wordBreak: "break-word" }}>{tc.input}</pre>
-                        </div>
-                        <div style={{ background: "var(--bg-secondary)", border: "1px solid var(--border)", borderTop: "none", borderRadius: "0 0 3px 3px", padding: "8px 12px", fontFamily: "monospace", fontSize: 12 }}>
-                          <div style={{ fontSize: 10, color: "var(--text-muted)", fontWeight: 600, textTransform: "uppercase", marginBottom: 4 }}>Expected Output</div>
-                          <pre style={{ margin: 0, whiteSpace: "pre-wrap", wordBreak: "break-word" }}>{tc.expectedOutput}</pre>
-                        </div>
-                      </div>
-                    ))}
-                  </>
-                )}
-
-                {activeProblem.hiddenTestCaseCount > 0 && (
-                  <>
-                    <h4 style={{ fontSize: 11, fontWeight: 700, textTransform: "uppercase", letterSpacing: 0.5, color: "var(--text-muted)", margin: "20px 0 8px" }}>
-                      Hidden Test Cases
-                    </h4>
-                    {Array.from({ length: activeProblem.hiddenTestCaseCount }).map((_, i) => (
-                      <div key={i} style={{ background: "var(--bg-secondary)", border: "1px solid var(--border)", borderRadius: 3, padding: "7px 12px", fontSize: 12, color: "var(--text-subtle)", display: "flex", alignItems: "center", gap: 6, marginBottom: 5 }}>
-                        <Lock size={11} /> Hidden test case {i + 1}
-                      </div>
-                    ))}
-                  </>
-                )}
-              </div>
-            </>
-          )}
-        </div>
-
-        {/* Right: editor + results */}
-        <div style={{ width: 480, display: "flex", flexDirection: "column", flexShrink: 0, background: "var(--bg-primary)" }}>
-          <div style={{ padding: "8px 12px", background: "var(--bg-tertiary)", borderBottom: "1px solid var(--border)", display: "flex", alignItems: "center", gap: 8, flexShrink: 0 }}>
-            <span style={{ fontSize: 12, fontWeight: 600, color: "var(--text-muted)" }}>Language</span>
-            <select
-              value={lang}
-              onChange={(e) => handleLangChange(e.target.value)}
-              style={{ border: "1px solid var(--border)", borderRadius: 3, padding: "0 8px", height: 28, fontSize: 12, color: "var(--text-primary)", outline: "none", background: "var(--bg-primary)" }}
-            >
-              <option value="java">Java</option>
-              <option value="python">Python</option>
-              <option value="cpp">C++</option>
-              <option value="c">C</option>
-              <option value="javascript">JavaScript</option>
-            </select>
-            <div style={{ marginLeft: "auto", display: "flex", gap: 6 }}>
-              <button
-                onClick={() => handleSubmit(true)}
-                disabled={judging || isEnded}
-                style={{ background: "var(--bg-primary)", color: "var(--text-primary)", border: "1px solid var(--border)", borderRadius: 3, height: 28, padding: "0 12px", fontSize: 12, cursor: (judging || isEnded) ? "not-allowed" : "pointer", display: "flex", alignItems: "center", gap: 4, opacity: (judging || isEnded) ? 0.5 : 1 }}
-              >
-                <Play size={11} /> Run
-              </button>
-              <button
-                onClick={() => handleSubmit(false)}
-                disabled={judging || isEnded}
-                style={{ background: (judging || isEnded) ? "#97a0af" : "#0052cc", color: "white", border: "none", borderRadius: 3, height: 28, padding: "0 14px", fontSize: 12, cursor: (judging || isEnded) ? "not-allowed" : "pointer", fontWeight: 600, display: "flex", alignItems: "center", gap: 4 }}
-              >
-                {judging
-                  ? <><Loader2 size={11} style={{ animation: "spin 1s linear infinite" }} /> Judging…</>
-                  : <><Send size={11} /> Submit</>}
-              </button>
-            </div>
-          </div>
-
-          <div style={{ flex: 1, overflow: "hidden", minHeight: 260 }}>
-            <MonacoEditor
-              height="100%"
-              language={lang}
-              theme="vs-dark"
-              value={code}
-              onChange={(v) => setCode(v ?? "")}
-              options={{ minimap: { enabled: false }, fontSize: 12, lineNumbers: "on", scrollBeyondLastLine: false }}
-            />
-          </div>
-
-          <div style={{ borderTop: "1px solid var(--border)", flexShrink: 0 }}>
-            <div style={{ padding: "8px 12px", background: "var(--bg-tertiary)", borderBottom: "1px solid var(--border)", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-              <span style={{ fontSize: 12, fontWeight: 600, color: "var(--text-primary)" }}>Test Cases</span>
-              {verdict === "pending" && (
-                <span style={{ fontSize: 11, color: "#0747a6", display: "flex", alignItems: "center", gap: 4 }}>
-                  <Loader2 size={11} style={{ animation: "spin 1s linear infinite" }} /> Judging…
-                </span>
-              )}
-            </div>
-            <div style={{ maxHeight: 200, overflowY: "auto" }}>
-              {results.length === 0 && !judging ? (
-                <div style={{ padding: 24, textAlign: "center", color: "var(--text-muted)", fontSize: 12 }}>
-                  {isEnded ? "This exam has ended." : "Run or submit your solution to see results."}
-                </div>
-              ) : (
-                Array.from({ length: Math.max(totalCases, results.length) }).map((_, i) => {
-                  const r = results[i];
-                  const isSample = i < visibleCount;
-                  const label = isSample ? `Sample ${i + 1}` : `Hidden ${i - visibleCount + 1}`;
-                  return (
-                    <div key={i} style={{ display: "flex", alignItems: "center", padding: "7px 12px", borderBottom: "1px solid #f4f5f7", gap: 8, fontSize: 12 }}>
-                      <span style={{ width: 28, color: "var(--text-muted)", fontSize: 11 }}>{i + 1}.</span>
-                      {!r ? (
-                        <span style={{ color: "var(--text-subtle)" }}>
-                          {!isSample ? <><Lock size={11} /> {label}</> : label}
-                        </span>
-                      ) : r.status === "pass" ? (
-                        <><CheckCircle2 size={14} color="#00875a" /><span style={{ flex: 1, fontWeight: 500 }}>{label}</span><span style={{ color: "var(--text-muted)", fontSize: 11 }}>{r.executionTimeMs ? `${r.executionTimeMs} ms` : "OK"}</span></>
-                      ) : r.status === "tle" ? (
-                        <><XCircle size={14} color="#ff8b00" /><span style={{ flex: 1, fontWeight: 500 }}>{label}</span><span style={{ color: "#ff8b00", fontSize: 11 }}>TLE</span></>
-                      ) : (
-                        <><XCircle size={14} color="#de350b" /><span style={{ flex: 1, fontWeight: 500 }}>{label}</span><span style={{ color: "#de350b", fontSize: 11 }}>WA</span></>
-                      )}
-                    </div>
-                  );
-                })
-              )}
-            </div>
-            {verdict && verdict !== "pending" && (
-              <div style={{
-                padding: "10px 14px", fontSize: 13, fontWeight: 600,
-                display: "flex", alignItems: "center", gap: 8,
-                background: verdict === "accepted" ? "#e3fcef" : verdict === "tle" ? "#fffae6" : "#ffebe6",
-                color:  verdict === "accepted" ? "#006644" : verdict === "tle" ? "#ff8b00" : "#bf2600",
-              }}>
-                {verdict === "accepted" ? <CheckCircle2 size={16} /> : <XCircle size={16} />}
-                {verdict === "accepted" ? "Accepted — All test cases passed" :
-                 verdict === "tle"      ? "Time Limit Exceeded" :
-                 "Wrong Answer — Some test cases failed"}
-              </div>
-            )}
-          </div>
-        </div>
+function Stat({ label, value }: { label: string; value: string }) {
+  return (
+    <div style={{
+      background: "rgba(255,255,255,0.04)",
+      border: "1px solid rgba(255,255,255,0.08)",
+      borderRadius: 6, padding: "10px 12px",
+    }}>
+      <div style={{ fontSize: 10, color: "var(--ink-2)", textTransform: "uppercase", letterSpacing: 0.6 }}>
+        {label}
+      </div>
+      <div style={{ fontSize: 16, fontWeight: 700, color: "var(--ink)", marginTop: 2 }}>
+        {value}
       </div>
     </div>
   );

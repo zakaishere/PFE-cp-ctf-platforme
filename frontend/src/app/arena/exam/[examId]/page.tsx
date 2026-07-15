@@ -1,6 +1,6 @@
-import Arena from "@/features/arena/pages/Arena";
+import ExamOverviewPage from "@/features/arena/exam/ExamOverviewPage";
 
 export default async function Page({ params }: { params: Promise<{ examId: string }> }) {
   const { examId } = await params;
-  return <Arena examId={examId} mode="exam" />;
+  return <ExamOverviewPage examId={examId} />;
 }

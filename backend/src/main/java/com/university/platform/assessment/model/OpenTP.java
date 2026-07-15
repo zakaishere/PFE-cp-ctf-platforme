@@ -27,4 +27,18 @@ public class OpenTP extends Assessment {
 
     @Column(name = "max_attempts_allowed")
     private Integer maxAttemptsAllowed;
+
+    @Column(name = "strict_access_code", length = 100)
+    private String strictAccessCode;
+
+    /** BEST_SUBMISSION (default; NO_PENALTY is the same mode, just a friendlier
+     *  label the UI can offer) or ATTEMPT_PENALTY (deduct % per failed attempt). */
+    @Column(name = "scoring_mode", nullable = false, length = 20)
+    @Builder.Default
+    private String scoringMode = "BEST_SUBMISSION";
+
+    /** Percent deducted per failed attempt before solving, when scoringMode is ATTEMPT_PENALTY. */
+    @Column(name = "penalty_percent", nullable = false)
+    @Builder.Default
+    private Integer penaltyPercent = 0;
 }

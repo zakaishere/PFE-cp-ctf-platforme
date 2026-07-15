@@ -1,371 +1,401 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
-import Link from "next/link";
+import { useState, useEffect, useMemo, useRef } from "react";
+import { useRouter } from "next/navigation";
 import Navbar from "@/components/Navbar";
-import { Trophy, Clock, Users, Plus, ChevronRight, Zap, Lock, Calendar } from "lucide-react";
+import { LoadingButton } from "@/components/ui/LoadingButton";
+import { KeyRound, ArrowRight, Trophy, Zap, AlertCircle, X, Lock, Unlock } from "lucide-react";
 import {
   getCtfCompetitions,
+  joinCtfByAccessCode,
   type CTFCompetitionDTO,
 } from "@/lib/api";
+import { EventCard, type EventStatus } from "@/components/ui/EventCard";
 
-// ── Helpers ───────────────────────────────────────────────────────────────────
+// ── Status mapping ───────────────────────────────────────────────────────────
 
-function useCountdown(targetIso: string) {
-  const [remaining, setRemaining] = useState(0);
-
-  useEffect(() => {
-    const tick = () => setRemaining(Math.max(0, new Date(targetIso).getTime() - Date.now()));
-    tick();
-    const id = setInterval(tick, 1000);
-    return () => clearInterval(id);
-  }, [targetIso]);
-
-  const d = Math.floor(remaining / 86400000);
-  const h = Math.floor((remaining % 86400000) / 3600000);
-  const m = Math.floor((remaining % 3600000) / 60000);
-  const s = Math.floor((remaining % 60000) / 1000);
-  return { remaining, d, h, m, s };
+function ctfStatus(comp: CTFCompetitionDTO): EventStatus {
+  if (comp.ended || comp.status === "ENDED") return "ended";
+  if (comp.started) return "live";
+  return "scheduled";
 }
 
-function fmtDate(iso: string | null) {
-  if (!iso) return "—";
-  return new Date(iso).toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric" });
-}
+// ── Access code modal ────────────────────────────────────────────────────────
 
-function fmtCountdown(d: number, h: number, m: number, s: number) {
-  if (d > 0) return `${d}d ${h}h ${m}m`;
-  if (h > 0) return `${h}h ${m}m ${s}s`;
-  return `${m}m ${s}s`;
-}
+function AccessCodeModal({ comp, onClose, onSuccess }: {
+  comp: CTFCompetitionDTO;
+  onClose: () => void;
+  onSuccess: (id: string) => void;
+}) {
+  const [code, setCode] = useState("");
+  const [validating, setValidating] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const inputRef = useRef<HTMLInputElement>(null);
 
-// ── Active Competition Card ────────────────────────────────────────────────────
+  useEffect(() => { inputRef.current?.focus(); }, []);
 
-function ActiveCard({ comp }: { comp: CTFCompetitionDTO }) {
-  const { d, h, m, s } = useCountdown(comp.endTime ?? "");
+  async function handleSubmit() {
+    const trimmed = code.trim();
+    if (!trimmed) { setError("Enter the access code."); return; }
+    setError(null);
+    setValidating(true);
+    try {
+      const joined = await joinCtfByAccessCode(trimmed);
+      onSuccess(joined.id);
+    } catch {
+      setError("Invalid access code. Please try again.");
+      setCode("");
+      inputRef.current?.focus();
+    } finally {
+      setValidating(false);
+    }
+  }
 
   return (
-    <Link href={`/ctf/competitions/${comp.id}`} style={{ textDecoration: "none" }}>
+    <div style={{
+      position: "fixed", inset: 0, zIndex: 999,
+      background: "rgba(0,0,0,0.65)",
+      display: "flex", alignItems: "center", justifyContent: "center",
+    }} onClick={onClose}>
       <div style={{
-        background: "linear-gradient(135deg, #0f172a 0%, #1e1b4b 100%)",
-        border: "1px solid #334155",
-        borderRadius: 8,
-        overflow: "hidden",
-        cursor: "pointer",
-        transition: "border-color 150ms ease, transform 150ms ease",
-        position: "relative",
-      }}
-        onMouseEnter={e => {
-          (e.currentTarget as HTMLDivElement).style.borderColor = "#6366f1";
-          (e.currentTarget as HTMLDivElement).style.transform = "translateY(-2px)";
-        }}
-        onMouseLeave={e => {
-          (e.currentTarget as HTMLDivElement).style.borderColor = "#334155";
-          (e.currentTarget as HTMLDivElement).style.transform = "translateY(0)";
-        }}
-      >
-        {/* Banner / gradient area */}
-        <div style={{
-          height: 120,
-          background: comp.bannerUrl
-            ? `url(${comp.bannerUrl}) center/cover`
-            : "linear-gradient(135deg, #4f46e5 0%, #7c3aed 50%, #ec4899 100%)",
-          position: "relative",
-          display: "flex",
-          alignItems: "flex-start",
-          padding: "12px 16px",
-          justifyContent: "space-between",
+        background: "var(--surface)", border: "1px solid var(--line-2)", borderRadius: "var(--r)",
+        padding: 28, width: "100%", maxWidth: 380, position: "relative",
+      }} onClick={(e) => e.stopPropagation()}>
+        <button onClick={onClose} style={{
+          position: "absolute", top: 14, right: 14,
+          background: "transparent", border: "none", cursor: "pointer", color: "var(--ink-3)",
+          display: "flex", alignItems: "center",
         }}>
-          {/* Live badge */}
-          <span style={{
-            background: "rgba(0,0,0,0.6)", backdropFilter: "blur(4px)",
-            border: "1px solid rgba(255,255,255,0.2)",
-            borderRadius: 20, padding: "3px 10px", fontSize: 11,
-            fontWeight: 700, color: "#fff",
-            display: "flex", alignItems: "center", gap: 5,
-          }}>
-            <span style={{
-              width: 6, height: 6, borderRadius: "50%",
-              background: "#22c55e",
-              boxShadow: "0 0 0 2px rgba(34,197,94,0.3)",
-              animation: "ctf-pulse 2s infinite",
-              display: "inline-block",
-            }} />
-            LIVE NOW
-          </span>
+          <X size={18} />
+        </button>
+
+        <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 6 }}>
+          <KeyRound size={16} color="var(--accent)" />
+          <span style={{ fontSize: 16, fontWeight: 700, color: "var(--ink)" }}>Access Code Required</span>
         </div>
+        <p style={{ fontSize: 13, color: "var(--ink-2)", marginBottom: 18 }}>
+          &ldquo;{comp.title}&rdquo; requires an access code to enter.
+        </p>
 
-        {/* Body */}
-        <div style={{ padding: "16px 18px" }}>
-          <div style={{ fontSize: 16, fontWeight: 700, color: "#f8fafc", marginBottom: 6 }}>
-            {comp.title}
-          </div>
-          {comp.description && (
-            <div style={{
-              fontSize: 13, color: "#94a3b8", marginBottom: 12,
-              overflow: "hidden", display: "-webkit-box",
-              WebkitLineClamp: 2, WebkitBoxOrient: "vertical",
-            }}>
-              {comp.description}
-            </div>
-          )}
+        <input
+          ref={inputRef}
+          type="text"
+          value={code}
+          onChange={(e) => { setError(null); setCode(e.target.value.toUpperCase().replace(/\s+/g, "")); }}
+          onKeyDown={(e) => { if (e.key === "Enter") handleSubmit(); if (e.key === "Escape") onClose(); }}
+          placeholder="ENTER CODE"
+          maxLength={30}
+          disabled={validating}
+          style={{
+            width: "100%", boxSizing: "border-box",
+            background: "var(--bg-2)", border: `1px solid ${error ? "var(--danger)" : "var(--line-2)"}`,
+            borderRadius: 8, padding: "12px 16px", color: "var(--ink)",
+            fontFamily: "var(--font-mono), ui-monospace, monospace",
+            fontSize: 16, fontWeight: 600, letterSpacing: "0.08em",
+            outline: "none", marginBottom: 12,
+          }}
+        />
 
-          <div style={{ display: "flex", gap: 16, alignItems: "center", flexWrap: "wrap" }}>
-            <span style={{ display: "flex", alignItems: "center", gap: 5, fontSize: 12, color: "#94a3b8" }}>
-              <Clock size={13} color="#f87171" />
-              <span style={{ color: "#f87171", fontWeight: 600 }}>
-                Ends in {comp.endTime ? fmtCountdown(d, h, m, s) : "—"}
-              </span>
-            </span>
-            <span style={{ display: "flex", alignItems: "center", gap: 5, fontSize: 12, color: "#94a3b8" }}>
-              <Users size={13} /> Max {comp.maxTeamSize} per team
-            </span>
-            <span style={{ display: "flex", alignItems: "center", gap: 5, fontSize: 12, color: "#94a3b8" }}>
-              <Zap size={13} color="#a78bfa" />
-              <span style={{ color: "#a78bfa" }}>{comp.scoringMode === "DYNAMIC" ? "Dynamic" : "Static"} scoring</span>
-            </span>
-          </div>
-
+        {error && (
           <div style={{
-            marginTop: 14, display: "flex", alignItems: "center", justifyContent: "flex-end",
-            fontSize: 12, color: "#6366f1", fontWeight: 600, gap: 4,
+            display: "flex", alignItems: "center", gap: 6,
+            color: "var(--danger)", fontSize: 13, marginBottom: 12,
           }}>
-            Enter Competition <ChevronRight size={13} />
+            <AlertCircle size={13} /> {error}
           </div>
-        </div>
-      </div>
-    </Link>
-  );
-}
+        )}
 
-// ── Upcoming Competition Card ──────────────────────────────────────────────────
-
-function UpcomingCard({ comp }: { comp: CTFCompetitionDTO }) {
-  const { d, h, m } = useCountdown(comp.startTime ?? "");
-
-  return (
-    <Link href={`/ctf/competitions/${comp.id}`} style={{ textDecoration: "none" }}>
-      <div style={{
-        background: "#0f172a",
-        border: "1px solid #1e293b",
-        borderRadius: 8, padding: "16px 18px",
-        cursor: "pointer",
-        transition: "border-color 150ms ease, transform 150ms ease",
-      }}
-        onMouseEnter={e => {
-          (e.currentTarget as HTMLDivElement).style.borderColor = "#4f46e5";
-          (e.currentTarget as HTMLDivElement).style.transform = "translateY(-2px)";
-        }}
-        onMouseLeave={e => {
-          (e.currentTarget as HTMLDivElement).style.borderColor = "#1e293b";
-          (e.currentTarget as HTMLDivElement).style.transform = "translateY(0)";
-        }}
-      >
-        <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", marginBottom: 8 }}>
-          <div style={{ fontSize: 14, fontWeight: 700, color: "#f8fafc" }}>{comp.title}</div>
-          <span style={{
-            background: "#1e293b", border: "1px solid #334155",
-            borderRadius: 4, padding: "2px 8px", fontSize: 10,
-            fontWeight: 700, color: "#60a5fa", whiteSpace: "nowrap",
+        <div style={{ display: "flex", gap: 10 }}>
+          <button onClick={onClose} disabled={validating} style={{
+            flex: 1, padding: "10px 0", background: "transparent",
+            border: "1px solid var(--line-2)", borderRadius: 8, color: "var(--ink-2)",
+            fontSize: 13, fontWeight: 600, cursor: "pointer",
           }}>
-            UPCOMING
-          </span>
-        </div>
-
-        <div style={{ fontSize: 12, color: "#64748b", marginBottom: 10 }}>
-          Starts in <span style={{ color: "#f8fafc", fontWeight: 600 }}>{fmtCountdown(d, h, m, 0)}</span>
-          {" · "}Starts {fmtDate(comp.startTime)}
-        </div>
-
-        <div style={{ display: "flex", gap: 12, fontSize: 11, color: "#64748b" }}>
-          <span><Users size={11} style={{ display: "inline", marginRight: 3 }} />{comp.maxTeamSize} per team</span>
-          <span><Zap size={11} style={{ display: "inline", marginRight: 3 }} />{comp.scoringMode}</span>
-          {comp.visibility !== "PUBLIC" && (
-            <span><Lock size={11} style={{ display: "inline", marginRight: 3 }} />{comp.visibility.replace("_", " ")}</span>
-          )}
+            Cancel
+          </button>
+          <LoadingButton
+            loading={validating}
+            onClick={handleSubmit}
+            disabled={!code.trim()}
+            style={{
+              flex: 2, padding: "10px 0",
+              background: "var(--accent)",
+              border: "none", borderRadius: 8, color: "#0a0a0a",
+              fontSize: 13, fontWeight: 700, cursor: "pointer",
+            }}
+          >
+            Enter
+          </LoadingButton>
         </div>
       </div>
-    </Link>
-  );
-}
-
-// ── Past Competition Row ───────────────────────────────────────────────────────
-
-function PastRow({ comp }: { comp: CTFCompetitionDTO }) {
-  return (
-    <Link href={`/ctf/competitions/${comp.id}`} style={{ textDecoration: "none" }}>
-      <div style={{
-        display: "flex", alignItems: "center", padding: "10px 16px",
-        borderBottom: "1px solid #1e293b",
-        cursor: "pointer", transition: "background 150ms ease",
-        gap: 16,
-      }}
-        onMouseEnter={e => (e.currentTarget as HTMLDivElement).style.background = "#0f172a"}
-        onMouseLeave={e => (e.currentTarget as HTMLDivElement).style.background = "transparent"}
-      >
-        <div style={{ flex: 1 }}>
-          <div style={{ fontSize: 13, fontWeight: 600, color: "#94a3b8" }}>{comp.title}</div>
-        </div>
-        <div style={{ fontSize: 12, color: "#475569", whiteSpace: "nowrap" }}>
-          <Calendar size={11} style={{ display: "inline", marginRight: 4 }} />
-          {fmtDate(comp.startTime)} → {fmtDate(comp.endTime)}
-        </div>
-        <span style={{ fontSize: 11, color: "#475569" }}>Ended</span>
-        <ChevronRight size={13} color="#334155" />
-      </div>
-    </Link>
-  );
-}
-
-// ── Section Header ─────────────────────────────────────────────────────────────
-
-function SectionHeader({ icon, label, count }: { icon: React.ReactNode; label: string; count?: number }) {
-  return (
-    <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 14 }}>
-      {icon}
-      <span style={{ fontSize: 13, fontWeight: 700, color: "#94a3b8", textTransform: "uppercase", letterSpacing: "0.07em" }}>
-        {label}
-      </span>
-      {count !== undefined && (
-        <span style={{
-          background: "#1e293b", border: "1px solid #334155",
-          borderRadius: 10, padding: "1px 7px", fontSize: 11, fontWeight: 700, color: "#64748b",
-        }}>{count}</span>
-      )}
     </div>
   );
 }
 
-// ── Page ──────────────────────────────────────────────────────────────────────
+// ── Open Competition Card (EventCard wrapper) ─────────────────────────────────
+
+function CtfEventCard({ comp }: { comp: CTFCompetitionDTO }) {
+  const router = useRouter();
+  const [showModal, setShowModal] = useState(false);
+  const ended = comp.ended || comp.status === "ENDED";
+  const isCode = comp.visibility === "ACCESS_CODE";
+
+  const enter = () => {
+    if (isCode && !ended) setShowModal(true);
+    else router.push(`/ctf/competitions/${comp.id}`);
+  };
+
+  const meta1 = `${comp.scoringMode === "DYNAMIC" ? "Dynamic" : "Static"} scoring · Max ${comp.maxTeamSize}/team`;
+  const meta2 = isCode ? "Access code required" : "Open to all";
+
+  return (
+    <>
+      {showModal && (
+        <AccessCodeModal
+          comp={comp}
+          onClose={() => setShowModal(false)}
+          onSuccess={(id) => router.push(`/ctf/competitions/${id}`)}
+        />
+      )}
+      <EventCard
+        type="ctf"
+        title={comp.title}
+        status={ctfStatus(comp)}
+        meta1={meta1}
+        meta2={meta2}
+        meta1Icon={Zap}
+        meta2Icon={isCode ? Lock : Unlock}
+        action={ended ? "View results" : "Enter competition"}
+        onClick={enter}
+      />
+    </>
+  );
+}
+
+// ── Page ─────────────────────────────────────────────────────────────────────
 
 export default function CTFCompetitionsPage() {
+  const router = useRouter();
+
+  const [accessCode, setAccessCode] = useState("");
+  const [submitting, setSubmitting] = useState(false);
+  const [accessError, setAccessError] = useState<string | null>(null);
+
   const [competitions, setCompetitions] = useState<CTFCompetitionDTO[]>([]);
   const [loading, setLoading] = useState(true);
 
-  const [role, setRole] = useState<string | null>(null);
-
   useEffect(() => {
-    setRole(typeof window !== "undefined" ? localStorage.getItem("autograde_role") : null);
+    setLoading(true);
     getCtfCompetitions()
       .then(setCompetitions)
-      .catch(console.error)
+      .catch(() => setCompetitions([]))
       .finally(() => setLoading(false));
   }, []);
 
-  const active   = competitions.filter(c => c.started && !c.ended);
-  const upcoming = competitions.filter(c => !c.started);
-  const past     = competitions.filter(c => c.ended);
+  const open = useMemo(
+    () => competitions.filter((c) => !c.ended),
+    [competitions]
+  );
+  const past = useMemo(
+    () => competitions.filter((c) => c.ended),
+    [competitions]
+  );
 
-  const canCreate = role === "TEACHER" || role === "ADMIN";
+  async function handleSubmit(e?: React.FormEvent) {
+    e?.preventDefault();
+    const code = accessCode.trim();
+    if (!code) {
+      setAccessError("Please enter an access code.");
+      return;
+    }
+    setAccessError(null);
+    setSubmitting(true);
+    try {
+      const comp = await joinCtfByAccessCode(code);
+      router.push(`/ctf/competitions/${comp.id}`);
+    } catch {
+      setAccessError("Invalid or expired access code.");
+    } finally {
+      setSubmitting(false);
+    }
+  }
 
   return (
     <>
       <Navbar />
-      <div className="psp-breadcrumb">
-        <Link href="/dashboard">PSP</Link> ›{" "}
-        <Link href="/ctf">CTF</Link> ›{" "}
-        <span style={{ color: "var(--text-primary)" }}>Competitions</span>
-      </div>
 
-      <div className="psp-main" style={{ maxWidth: 1000 }}>
-        {/* Page header */}
-        <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", marginBottom: 28 }}>
-          <div>
-            <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 4 }}>
-              <Trophy size={22} color="#a78bfa" />
-              <span style={{ fontSize: 22, fontWeight: 800, color: "var(--text-primary)" }}>
-                CTF Competitions
-              </span>
-            </div>
-            <div style={{ fontSize: 13, color: "var(--text-muted)" }}>
-              Team-based capture-the-flag competitions with live scoreboards.
-            </div>
+      <div style={{ minHeight: "calc(100vh - 56px)", background: "var(--bg)", color: "var(--ink)" }}>
+        {/* HERO ── access code entry ─────────────────────────────────────── */}
+        <section style={{
+          padding: "72px 24px 40px",
+          textAlign: "center",
+          maxWidth: 720,
+          margin: "0 auto",
+        }}>
+          <div style={{
+            display: "inline-flex", alignItems: "center", gap: 8,
+            background: "var(--accent-dim)", border: "1px solid var(--accent-ring)",
+            borderRadius: 999, padding: "5px 14px", fontSize: 11, fontWeight: 700,
+            color: "var(--accent)", letterSpacing: "0.08em", textTransform: "uppercase",
+            marginBottom: 22,
+          }}>
+            <Trophy size={12} /> CTF Arena
           </div>
-          {canCreate && (
-            <Link href="/teacher/ctf/competitions/new">
-              <button className="psp-btn psp-btn-secondary" style={{ gap: 6 }}>
-                <Plus size={14} /> Create Competition
-              </button>
-            </Link>
-          )}
-        </div>
 
-        {loading ? (
-          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14 }}>
-            {[...Array(4)].map((_, i) => (
-              <div key={i} className="skel" style={{ height: 200, borderRadius: 8 }} />
-            ))}
-          </div>
-        ) : (
-          <>
-            {/* Active Now */}
-            {active.length > 0 && (
-              <section style={{ marginBottom: 36 }}>
-                <SectionHeader
-                  icon={<span style={{
-                    width: 8, height: 8, borderRadius: "50%", background: "#22c55e",
-                    display: "inline-block", boxShadow: "0 0 0 2px rgba(34,197,94,0.3)",
-                    animation: "ctf-pulse 2s infinite",
-                  }} />}
-                  label="Active Now"
-                  count={active.length}
-                />
-                <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(420px, 1fr))", gap: 14 }}>
-                  {active.map(c => <ActiveCard key={c.id} comp={c} />)}
-                </div>
-              </section>
-            )}
+          <h1 style={{
+            fontSize: 44, fontWeight: 800, color: "var(--ink)",
+            letterSpacing: "-0.025em", lineHeight: 1.1, marginBottom: 14,
+          }}>
+            CTF Competitions
+          </h1>
+          <p style={{ fontSize: 16, color: "var(--ink-2)", marginBottom: 36, lineHeight: 1.5 }}>
+            Test your skills. Form a team. Compete.
+          </p>
 
-            {/* Upcoming */}
-            {upcoming.length > 0 && (
-              <section style={{ marginBottom: 36 }}>
-                <SectionHeader
-                  icon={<Calendar size={14} color="#60a5fa" />}
-                  label="Upcoming"
-                  count={upcoming.length}
-                />
-                <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(280px, 1fr))", gap: 12 }}>
-                  {upcoming.map(c => <UpcomingCard key={c.id} comp={c} />)}
-                </div>
-              </section>
-            )}
+          {/* Access code box */}
+          <form
+            onSubmit={handleSubmit}
+            style={{
+              background: "var(--surface)",
+              border: "1px solid var(--line-2)",
+              borderRadius: "var(--r)",
+              padding: 22,
+              boxShadow: "var(--card-shadow)",
+            }}
+          >
+            <div style={{
+              display: "flex", alignItems: "center", gap: 8, marginBottom: 12,
+              fontSize: 12, color: "var(--ink-2)", fontWeight: 600, letterSpacing: "0.04em", textTransform: "uppercase",
+            }}>
+              <KeyRound size={14} color="var(--accent)" />
+              Enter competition access code
+            </div>
 
-            {/* Past */}
-            {past.length > 0 && (
-              <section>
-                <SectionHeader
-                  icon={<Clock size={14} color="#475569" />}
-                  label="Past"
-                  count={past.length}
-                />
-                <div style={{
-                  background: "#0f172a", border: "1px solid #1e293b", borderRadius: 8, overflow: "hidden",
-                }}>
-                  {past.map(c => <PastRow key={c.id} comp={c} />)}
-                </div>
-              </section>
-            )}
+            <div style={{ display: "flex", gap: 10 }}>
+              <input
+                type="text"
+                value={accessCode}
+                onChange={(e) => {
+                  setAccessError(null);
+                  setAccessCode(e.target.value.toUpperCase().replace(/\s+/g, ""));
+                }}
+                placeholder="WINTER2025"
+                maxLength={30}
+                autoComplete="off"
+                spellCheck={false}
+                style={{
+                  flex: 1,
+                  background: "var(--bg-2)",
+                  border: `1px solid ${accessError ? "var(--danger)" : "var(--line-2)"}`,
+                  borderRadius: 8,
+                  padding: "13px 16px",
+                  color: "var(--ink)",
+                  fontFamily: "var(--font-mono), ui-monospace, monospace",
+                  fontSize: 16,
+                  fontWeight: 600,
+                  letterSpacing: "0.08em",
+                  outline: "none",
+                  transition: "border-color 150ms ease",
+                }}
+                onFocus={(e) => { (e.target as HTMLInputElement).style.borderColor = "var(--accent)"; }}
+                onBlur={(e) => { (e.target as HTMLInputElement).style.borderColor = accessError ? "var(--danger)" : "var(--line-2)"; }}
+              />
+              <LoadingButton
+                type="submit"
+                loading={submitting}
+                disabled={!accessCode.trim()}
+                style={{
+                  background: "var(--accent)",
+                  color: "#0a0a0a",
+                  border: "none",
+                  borderRadius: 8,
+                  padding: "0 22px",
+                  fontSize: 14,
+                  fontWeight: 700,
+                  cursor: "pointer",
+                  display: "inline-flex",
+                  alignItems: "center",
+                  gap: 6,
+                  letterSpacing: "0.02em",
+                  whiteSpace: "nowrap",
+                }}
+              >
+                Enter <ArrowRight size={15} />
+              </LoadingButton>
+            </div>
 
-            {/* Empty state */}
-            {competitions.length === 0 && (
-              <div style={{ textAlign: "center", padding: "80px 0", color: "#475569" }}>
-                <Trophy size={40} style={{ margin: "0 auto 16px", opacity: 0.3 }} />
-                <div style={{ fontSize: 16, fontWeight: 600, marginBottom: 6 }}>No competitions yet</div>
-                <div style={{ fontSize: 13 }}>
-                  {canCreate ? "Create the first CTF competition." : "Check back soon for upcoming CTF competitions."}
-                </div>
+            {accessError && (
+              <div style={{
+                marginTop: 12, display: "flex", alignItems: "center", gap: 6,
+                color: "var(--danger)", fontSize: 13, fontWeight: 500,
+              }}>
+                <AlertCircle size={14} /> {accessError}
               </div>
             )}
-          </>
-        )}
-      </div>
+          </form>
 
-      <style jsx global>{`
-        @keyframes ctf-pulse {
-          0%, 100% { opacity: 1; box-shadow: 0 0 0 2px rgba(34,197,94,0.3); }
-          50%       { opacity: 0.7; box-shadow: 0 0 0 4px rgba(34,197,94,0.15); }
-        }
-      `}</style>
+          {/* Divider */}
+          <div style={{
+            display: "flex", alignItems: "center", gap: 14, margin: "40px 0 24px",
+            color: "var(--ink-3)", fontSize: 12, fontWeight: 600,
+            textTransform: "uppercase", letterSpacing: "0.08em",
+          }}>
+            <span style={{ flex: 1, height: 1, background: "var(--line-2)" }} />
+            or browse open competitions
+            <span style={{ flex: 1, height: 1, background: "var(--line-2)" }} />
+          </div>
+        </section>
+
+        {/* OPEN COMPETITIONS ─────────────────────────────────────────────── */}
+        <section style={{
+          maxWidth: 1100, margin: "0 auto", padding: "0 24px 80px",
+        }}>
+          {loading ? (
+            <div className="card-grid">
+              {[0, 1, 2].map((i) => (
+                <div key={i} style={{
+                  height: 260, background: "var(--surface)", border: "1px solid var(--line-2)",
+                  borderRadius: "var(--r)", opacity: 0.5,
+                }} />
+              ))}
+            </div>
+          ) : open.length === 0 ? (
+            <div style={{
+              textAlign: "center", padding: "48px 0", color: "var(--ink-2)",
+              background: "var(--surface)", border: "1px dashed var(--line-2)", borderRadius: "var(--r)",
+            }}>
+              <Trophy size={36} style={{ margin: "0 auto 12px", opacity: 0.4 }} />
+              <div style={{ fontSize: 15, fontWeight: 600, color: "var(--ink)", marginBottom: 6 }}>
+                No open competitions right now
+              </div>
+              <div style={{ fontSize: 13 }}>
+                Got an access code? Enter it above to join a private competition.
+              </div>
+            </div>
+          ) : (
+            <div className="card-grid">
+              {open.map((c) => <CtfEventCard key={c.id} comp={c} />)}
+            </div>
+          )}
+
+          {!loading && past.length > 0 && (
+            <>
+              <div style={{
+                display: "flex", alignItems: "center", gap: 14, margin: "48px 0 24px",
+                color: "var(--ink-3)", fontSize: 12, fontWeight: 600,
+                textTransform: "uppercase", letterSpacing: "0.08em",
+              }}>
+                <span style={{ flex: 1, height: 1, background: "var(--line-2)" }} />
+                past competitions
+                <span style={{ flex: 1, height: 1, background: "var(--line-2)" }} />
+              </div>
+              <div className="card-grid">
+                {past.map((c) => <CtfEventCard key={c.id} comp={c} />)}
+              </div>
+            </>
+          )}
+        </section>
+      </div>
     </>
   );
 }

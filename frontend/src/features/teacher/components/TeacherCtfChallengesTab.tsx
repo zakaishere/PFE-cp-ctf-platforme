@@ -1,12 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
-import {
-  Plus, Eye, EyeOff, Edit2, Flag, Lightbulb, X, Trash2, AlertCircle,
-  Server, FileText, Cpu, HardDrive, Network, Terminal, Globe, Box,
-  Info, Copy, Check, ChevronRight, UploadCloud, FileArchive, BookOpen,
-  Search,
-} from "lucide-react";
+import { Plus, Eye, EyeOff, Edit2, Flag, Lightbulb, X, Trash2, AlertCircle, Server, FileText, Cpu, HardDrive, Network, Terminal, Globe, Box, Info, Copy, Check, ChevronRight, UploadCloud, FileArchive, BookOpen, Search, Filter, Download, Zap, Square, RefreshCw, ExternalLink, ChevronDown, SlidersHorizontal, Droplets, AlertTriangle } from "lucide-react";
 import { toast } from "@/components/ui/PSPToast";
 import {
   getTeacherCtfCompetitionChallenges,
@@ -16,27 +11,219 @@ import {
   addTeacherCtfHint, deleteTeacherCtfHint,
   getCTFChallengeBuildStatus, uploadCTFChallengeZip,
   getCtfLibrary, addLibraryChallengeToCompetition,
+  getCtfInstanceStatus, startCTFInstance, stopCTFInstance,
   type CTFCompetitionChallengeDTO,
   type TeacherCtfChallengeCreateRequest, type TeacherCtfChallengeUpdateRequest,
   type CTFChallengeBuildDTO, type CTFLibraryChallengeDTO,
+  type CTFInstanceResponse,
 } from "@/lib/api";
 import ChallengeBuildPanel from "@/features/ctf/teacher/ChallengeBuildPanel";
 
 const CATEGORIES = ["CRYPTO", "FORENSICS", "REVERSE", "WEB", "PWN", "OSINT", "MISC"] as const;
 const DIFFICULTIES = ["EASY", "MEDIUM", "HARD"] as const;
 
+// ── Color maps (shared) ─────────────────────────────────────────────────────
+
+const CAT_COLORS: Record<string, { bg: string; fg: string }> = {
+  CRYPTO:    { bg: "rgba(96,165,250,0.14)",  fg: "#60a5fa" },
+  FORENSICS: { bg: "rgba(167,139,250,0.14)", fg: "#a78bfa" },
+  REVERSE:   { bg: "rgba(251,146,60,0.14)",  fg: "#fb923c" },
+  WEB:       { bg: "rgba(34,197,94,0.14)",   fg: "#4ade80" },
+  PWN:       { bg: "rgba(239,68,68,0.14)",   fg: "#f87171" },
+  OSINT:     { bg: "rgba(234,179,8,0.14)",   fg: "#facc15" },
+  MISC:      { bg: "rgba(148,163,184,0.14)", fg: "#94a3b8" },
+};
+const DIFF_COLORS: Record<string, { bg: string; fg: string }> = {
+  EASY:   { bg: "rgba(34,197,94,0.12)",  fg: "#4ade80" },
+  MEDIUM: { bg: "rgba(251,146,60,0.12)", fg: "#fb923c" },
+  HARD:   { bg: "rgba(239,68,68,0.12)",  fg: "#f87171" },
+};
+
+// ── Filter select ────────────────────────────────────────────────────────────
+
+function FilterSelect({
+  value, onChange, options, placeholder,
+}: {
+  value: string;
+  onChange: (v: string) => void;
+  options: { value: string; label: string }[];
+  placeholder: string;
+}) {
+  return (
+    <div style={{ position: "relative", display: "inline-flex", alignItems: "center" }}>
+      <select
+        value={value}
+        onChange={e => onChange(e.target.value)}
+        style={{
+          appearance: "none",
+          padding: "6px 28px 6px 10px",
+          borderRadius: 6,
+          border: `1px solid ${value !== "" ? "rgba(99,102,241,0.5)" : "var(--border)"}`,
+          background: value !== "" ? "rgba(99,102,241,0.08)" : "var(--bg-secondary)",
+          color: value !== "" ? "#818cf8" : "var(--text-secondary)",
+          fontSize: 12, fontWeight: 600, cursor: "pointer",
+          outline: "none",
+        }}
+      >
+        <option value="">{placeholder}</option>
+        {options.map(o => (
+          <option key={o.value} value={o.value}>{o.label}</option>
+        ))}
+      </select>
+      <ChevronDown size={11} style={{
+        position: "absolute", right: 8, pointerEvents: "none",
+        color: value !== "" ? "#818cf8" : "var(--text-muted)",
+      }} />
+    </div>
+  );
+}
+
+// ── Challenge row ────────────────────────────────────────────────────────────
+
+function ChallengeRow({
+  c, competitionId,
+  onReveal, onHide, onEdit, onPreview, onHint, onFlag,
+}: {
+  c: CTFCompetitionChallengeDTO;
+  competitionId: string;
+  onReveal: () => void;
+  onHide: () => void;
+  onEdit: () => void;
+  onPreview: () => void;
+  onHint: () => void;
+  onFlag: () => void;
+}) {
+  const [hovered, setHovered] = useState(false);
+  const cat  = CAT_COLORS[c.category]  ?? CAT_COLORS.MISC!;
+  const diff = DIFF_COLORS[c.difficulty] ?? DIFF_COLORS.EASY!;
+
+  return (
+    <tr
+      onMouseEnter={() => setHovered(true)}
+      onMouseLeave={() => setHovered(false)}
+      style={{
+        borderBottom: "1px solid var(--border)",
+        background: hovered ? "var(--bg-hover)" : "transparent",
+        transition: "background 100ms",
+      }}
+    >
+      {/* Title */}
+      <td style={{ padding: "10px 14px" }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+          <span style={{ fontWeight: 700, color: "var(--text-primary)", fontSize: 13 }}>{c.title}</span>
+          {c.requiresInstance && (
+            <span style={{
+              fontSize: 9, padding: "1px 5px", borderRadius: 3, fontWeight: 700,
+              background: "rgba(167,139,250,0.14)", color: "#a78bfa",
+            }}>DOCKER</span>
+          )}
+        </div>
+        {c.downloadableFileUrl && (
+          <div style={{ fontSize: 11, color: "var(--text-muted)", marginTop: 2, display: "flex", alignItems: "center", gap: 3 }}>
+            <Download size={10} /> file attached
+          </div>
+        )}
+      </td>
+
+      {/* Category */}
+      <td style={{ padding: "10px 14px" }}>
+        <span style={{
+          display: "inline-block", padding: "2px 8px", borderRadius: 4,
+          fontSize: 10, fontWeight: 700, background: cat.bg, color: cat.fg,
+        }}>{c.category}</span>
+      </td>
+
+      {/* Difficulty */}
+      <td style={{ padding: "10px 14px" }}>
+        <span style={{
+          display: "inline-block", padding: "2px 8px", borderRadius: 4,
+          fontSize: 10, fontWeight: 700, background: diff.bg, color: diff.fg,
+        }}>{c.difficulty}</span>
+      </td>
+
+      {/* Points */}
+      <td style={{ padding: "10px 14px" }}>
+        <span style={{ fontFamily: "ui-monospace, monospace", fontSize: 13, fontWeight: 600, color: "var(--text-primary)" }}>
+          {c.basePoints}
+        </span>
+      </td>
+
+      {/* Solves */}
+      <td style={{ padding: "10px 14px", color: "var(--text-muted)", fontSize: 13 }}>{c.solveCount}</td>
+
+      {/* Status badge */}
+      <td style={{ padding: "10px 14px" }}>
+        {c.isHidden ? (
+          <span style={{
+            display: "inline-flex", alignItems: "center", gap: 4,
+            padding: "3px 8px", borderRadius: 4, fontSize: 10, fontWeight: 700,
+            background: "rgba(148,163,184,0.12)", color: "#94a3b8",
+            border: "1px solid rgba(148,163,184,0.25)",
+          }}>
+            <EyeOff size={10} /> Hidden
+          </span>
+        ) : (
+          <span style={{
+            display: "inline-flex", alignItems: "center", gap: 4,
+            padding: "3px 8px", borderRadius: 4, fontSize: 10, fontWeight: 700,
+            background: "rgba(34,197,94,0.12)", color: "#4ade80",
+            border: "1px solid rgba(34,197,94,0.25)",
+          }}>
+            <span style={{ width: 5, height: 5, borderRadius: "50%", background: "#4ade80" }} />
+            Visible
+          </span>
+        )}
+      </td>
+
+      {/* Actions */}
+      <td style={{ padding: "8px 14px" }}>
+        <div style={{ display: "flex", gap: 4, justifyContent: "flex-end" }}>
+          <ActionBtn title="Preview challenge" onClick={onPreview} color="#818cf8">
+            <Eye size={12} />
+          </ActionBtn>
+          <ActionBtn title="Edit challenge" onClick={onEdit}>
+            <Edit2 size={12} />
+          </ActionBtn>
+          <div style={{ width: 1, background: "var(--border)", margin: "2px 2px" }} />
+          {c.isHidden
+            ? <ActionBtn title="Reveal to students" onClick={onReveal} color="#4ade80"><Eye size={12} /></ActionBtn>
+            : <ActionBtn title="Hide from students" onClick={onHide} color="#fbbf24"><EyeOff size={12} /></ActionBtn>
+          }
+          <ActionBtn title="Manage hints" onClick={onHint}>
+            <Lightbulb size={12} />
+          </ActionBtn>
+          <ActionBtn title="Rotate flag" onClick={onFlag}>
+            <Flag size={12} />
+          </ActionBtn>
+        </div>
+      </td>
+    </tr>
+  );
+}
+
+// ── Props ────────────────────────────────────────────────────────────────────
+
 interface Props {
   competitionId: string;
   onChanged: () => void;
 }
 
+// ── Main component ───────────────────────────────────────────────────────────
+
 export default function TeacherCtfChallengesTab({ competitionId, onChanged }: Props) {
   const [list, setList] = useState<CTFCompetitionChallengeDTO[]>([]);
   const [loading, setLoading] = useState(true);
   const [panel, setPanel] = useState<{ mode: "create" } | { mode: "edit"; challenge: CTFCompetitionChallengeDTO } | null>(null);
+  const [previewChallenge, setPreviewChallenge] = useState<CTFCompetitionChallengeDTO | null>(null);
   const [flagModal, setFlagModal] = useState<CTFCompetitionChallengeDTO | null>(null);
   const [hintFor, setHintFor] = useState<CTFCompetitionChallengeDTO | null>(null);
   const [libraryPanelOpen, setLibraryPanelOpen] = useState(false);
+
+  // ── Filter state ───────────────────────────────────────────────────────────
+  const [search, setSearch] = useState("");
+  const [filterCat, setFilterCat] = useState("");
+  const [filterDiff, setFilterDiff] = useState("");
+  const [filterStatus, setFilterStatus] = useState("");
 
   const reload = async () => {
     setLoading(true);
@@ -67,97 +254,174 @@ export default function TeacherCtfChallengesTab({ competitionId, onChanged }: Pr
     } catch { /* toasted */ }
   };
 
+  // ── Filtered list ──────────────────────────────────────────────────────────
+  const filtered = useMemo(() => {
+    const q = search.toLowerCase().trim();
+    return list.filter(c => {
+      if (q && !c.title.toLowerCase().includes(q) && !c.category.toLowerCase().includes(q)) return false;
+      if (filterCat && c.category !== filterCat) return false;
+      if (filterDiff && c.difficulty !== filterDiff) return false;
+      if (filterStatus === "VISIBLE" && c.isHidden) return false;
+      if (filterStatus === "HIDDEN" && !c.isHidden) return false;
+      return true;
+    });
+  }, [list, search, filterCat, filterDiff, filterStatus]);
+
+  const hasFilters = search || filterCat || filterDiff || filterStatus;
+  const clearFilters = () => { setSearch(""); setFilterCat(""); setFilterDiff(""); setFilterStatus(""); };
+
+  const cats = useMemo(() => Array.from(new Set(list.map(c => c.category))).sort(), [list]);
+
   return (
     <div>
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 14 }}>
+      {/* ── Top bar ──────────────────────────────────────────────────────── */}
+      <div style={{
+        display: "flex", justifyContent: "space-between", alignItems: "center",
+        marginBottom: 14, gap: 12, flexWrap: "wrap",
+      }}>
         <div style={{ fontSize: 13, color: "var(--text-muted)" }}>
-          {list.length} challenge{list.length !== 1 ? "s" : ""} in this competition
+          {hasFilters
+            ? <>{filtered.length} of {list.length} challenge{list.length !== 1 ? "s" : ""}</>
+            : <>{list.length} challenge{list.length !== 1 ? "s" : ""} in this competition</>
+          }
         </div>
         <div style={{ display: "flex", gap: 8 }}>
-          <button
-            className="psp-btn psp-btn-secondary"
-            style={{ gap: 6 }}
-            onClick={() => setLibraryPanelOpen(true)}
-          >
+          <button className="psp-btn psp-btn-secondary" style={{ gap: 6 }} onClick={() => setLibraryPanelOpen(true)}>
             <BookOpen size={13} /> From Library
           </button>
-          <button
-            className="psp-btn psp-btn-primary"
-            style={{ gap: 6 }}
-            onClick={() => setPanel({ mode: "create" })}
-          >
+          <button className="psp-btn psp-btn-primary" style={{ gap: 6 }} onClick={() => setPanel({ mode: "create" })}>
             <Plus size={13} /> Add Challenge
           </button>
         </div>
       </div>
 
+      {/* ── Filter toolbar ───────────────────────────────────────────────── */}
+      <div style={{
+        display: "flex", gap: 8, marginBottom: 12, flexWrap: "wrap", alignItems: "center",
+        padding: "10px 14px", borderRadius: 8,
+        border: "1px solid var(--border)", background: "var(--bg-secondary)",
+      }}>
+        <SlidersHorizontal size={13} style={{ color: "var(--text-muted)", flexShrink: 0 }} />
+
+        {/* Search */}
+        <div style={{ position: "relative", flex: "1 1 180px", minWidth: 140 }}>
+          <Search size={12} style={{ position: "absolute", left: 9, top: "50%", transform: "translateY(-50%)", color: "var(--text-muted)" }} />
+          <input
+            className="input"
+            placeholder="Search by title or category…"
+            value={search}
+            onChange={e => setSearch(e.target.value)}
+            style={{ paddingLeft: 28, height: 32, fontSize: 12 }}
+          />
+        </div>
+
+        {/* Category */}
+        <FilterSelect
+          value={filterCat}
+          onChange={setFilterCat}
+          placeholder="Category"
+          options={cats.map(c => ({ value: c, label: c }))}
+        />
+
+        {/* Difficulty */}
+        <FilterSelect
+          value={filterDiff}
+          onChange={setFilterDiff}
+          placeholder="Difficulty"
+          options={[
+            { value: "EASY", label: "Easy" },
+            { value: "MEDIUM", label: "Medium" },
+            { value: "HARD", label: "Hard" },
+          ]}
+        />
+
+        {/* Status */}
+        <FilterSelect
+          value={filterStatus}
+          onChange={setFilterStatus}
+          placeholder="Status"
+          options={[
+            { value: "VISIBLE", label: "Visible" },
+            { value: "HIDDEN", label: "Hidden" },
+          ]}
+        />
+
+        {/* Clear */}
+        {hasFilters && (
+          <button
+            onClick={clearFilters}
+            style={{
+              display: "inline-flex", alignItems: "center", gap: 4,
+              padding: "5px 10px", borderRadius: 6, fontSize: 11, fontWeight: 600,
+              background: "transparent", border: "1px solid rgba(239,68,68,0.35)",
+              color: "#f87171", cursor: "pointer",
+            }}
+          >
+            <X size={10} /> Clear
+          </button>
+        )}
+      </div>
+
+      {/* ── Table ────────────────────────────────────────────────────────── */}
       {loading ? (
         <div className="skel" style={{ height: 240, borderRadius: 8 }} />
       ) : list.length === 0 ? (
         <div className="psp-empty">
           <div className="psp-empty-title">No challenges yet</div>
           <div style={{ fontSize: 13, color: "var(--text-muted)" }}>
-            Add your first challenge — it'll be hidden by default until you reveal it.
+            Add your first challenge — it&apos;ll be hidden by default until you reveal it.
           </div>
+        </div>
+      ) : filtered.length === 0 ? (
+        <div className="psp-empty">
+          <div className="psp-empty-title">No matches</div>
+          <div style={{ fontSize: 13, color: "var(--text-muted)" }}>Try adjusting your search or filters.</div>
         </div>
       ) : (
         <div style={{ overflowX: "auto", border: "1px solid var(--border)", borderRadius: 8, background: "var(--surface)" }}>
           <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13 }}>
             <thead>
-              <tr style={{ background: "var(--surface-2, #0f172a)" }}>
+              <tr style={{ borderBottom: "2px solid var(--border)" }}>
                 {["Title", "Category", "Difficulty", "Points", "Solves", "Status", "Actions"].map(h => (
                   <th key={h} style={{
                     padding: "10px 14px", textAlign: "left",
-                    fontSize: 11, color: "var(--text-muted)", textTransform: "uppercase", letterSpacing: "0.05em",
-                    fontWeight: 700, borderBottom: "1px solid var(--border)",
+                    fontSize: 10, color: "var(--text-muted)", textTransform: "uppercase",
+                    letterSpacing: "0.07em", fontWeight: 700,
+                    background: "var(--bg-secondary)",
                   }}>{h}</th>
                 ))}
               </tr>
             </thead>
             <tbody>
-              {list.map(c => (
-                <tr key={c.id} style={{ borderBottom: "1px solid var(--border)" }}>
-                  <td style={{ padding: "10px 14px", fontWeight: 600 }}>{c.title}</td>
-                  <td style={{ padding: "10px 14px", color: "var(--text-muted)" }}>{c.category}</td>
-                  <td style={{ padding: "10px 14px", color: "var(--text-muted)" }}>{c.difficulty}</td>
-                  <td style={{ padding: "10px 14px", color: "var(--text-muted)", fontFamily: "monospace" }}>{c.basePoints}</td>
-                  <td style={{ padding: "10px 14px", color: "var(--text-muted)" }}>{c.solveCount}</td>
-                  <td style={{ padding: "10px 14px" }}>
-                    {c.isHidden ? (
-                      <span style={{
-                        display: "inline-flex", alignItems: "center", gap: 4,
-                        color: "var(--text-muted)", fontSize: 11, fontWeight: 600,
-                      }}>
-                        <EyeOff size={11} /> Hidden
-                      </span>
-                    ) : (
-                      <span style={{
-                        display: "inline-flex", alignItems: "center", gap: 4,
-                        color: "#22c55e", fontSize: 11, fontWeight: 600,
-                      }}>
-                        <Eye size={11} /> Visible
-                      </span>
-                    )}
-                  </td>
-                  <td style={{ padding: "8px 14px" }}>
-                    <div style={{ display: "flex", gap: 4, justifyContent: "flex-end" }}>
-                      {c.isHidden
-                        ? <IconBtn title="Reveal to students" onClick={() => onReveal(c)}><Eye size={12} /></IconBtn>
-                        : <IconBtn title="Hide from students" onClick={() => onHide(c)}><EyeOff size={12} /></IconBtn>
-                      }
-                      <IconBtn title="Edit" onClick={() => setPanel({ mode: "edit", challenge: c })}><Edit2 size={12} /></IconBtn>
-                      <IconBtn title="Add hint" onClick={() => setHintFor(c)}><Lightbulb size={12} /></IconBtn>
-                      <IconBtn title="Change flag" onClick={() => setFlagModal(c)}><Flag size={12} /></IconBtn>
-                    </div>
-                  </td>
-                </tr>
+              {filtered.map(c => (
+                <ChallengeRow
+                  key={c.id}
+                  c={c}
+                  competitionId={competitionId}
+                  onReveal={() => onReveal(c)}
+                  onHide={() => onHide(c)}
+                  onEdit={() => setPanel({ mode: "edit", challenge: c })}
+                  onPreview={() => setPreviewChallenge(c)}
+                  onHint={() => setHintFor(c)}
+                  onFlag={() => setFlagModal(c)}
+                />
               ))}
             </tbody>
           </table>
         </div>
       )}
 
-      {/* Slide-in panel for create/edit */}
+      {/* ── Modals & panels ──────────────────────────────────────────────── */}
+
+      {previewChallenge && (
+        <ChallengePreviewDrawer
+          challenge={previewChallenge}
+          competitionId={competitionId}
+          onClose={() => setPreviewChallenge(null)}
+          onEdit={() => { setPanel({ mode: "edit", challenge: previewChallenge }); setPreviewChallenge(null); }}
+        />
+      )}
+
       {panel && (
         <ChallengePanel
           competitionId={competitionId}
@@ -169,7 +433,6 @@ export default function TeacherCtfChallengesTab({ competitionId, onChanged }: Pr
         />
       )}
 
-      {/* Flag rotation modal */}
       {flagModal && (
         <FlagRotateModal
           competitionId={competitionId}
@@ -179,7 +442,6 @@ export default function TeacherCtfChallengesTab({ competitionId, onChanged }: Pr
         />
       )}
 
-      {/* Hint manager modal */}
       {hintFor && (
         <HintManagerModal
           competitionId={competitionId}
@@ -189,7 +451,6 @@ export default function TeacherCtfChallengesTab({ competitionId, onChanged }: Pr
         />
       )}
 
-      {/* Library picker panel */}
       {libraryPanelOpen && (
         <LibraryPickerPanel
           competitionId={competitionId}
@@ -201,22 +462,383 @@ export default function TeacherCtfChallengesTab({ competitionId, onChanged }: Pr
   );
 }
 
-// ── Library picker panel ─────────────────────────────────────────────────────────
+// ── Challenge Preview Drawer ─────────────────────────────────────────────────
 
-const CAT_COLORS: Record<string, { bg: string; fg: string }> = {
-  CRYPTO:    { bg: "rgba(96,165,250,0.12)",  fg: "#60a5fa" },
-  FORENSICS: { bg: "rgba(167,139,250,0.12)", fg: "#a78bfa" },
-  REVERSE:   { bg: "rgba(251,146,60,0.12)",  fg: "#fb923c" },
-  WEB:       { bg: "rgba(34,197,94,0.12)",   fg: "#4ade80" },
-  PWN:       { bg: "rgba(239,68,68,0.12)",   fg: "#f87171" },
-  OSINT:     { bg: "rgba(234,179,8,0.12)",   fg: "#facc15" },
-  MISC:      { bg: "rgba(148,163,184,0.12)", fg: "#94a3b8" },
-};
-const DIFF_COLORS: Record<string, { bg: string; fg: string }> = {
-  EASY:   { bg: "rgba(34,197,94,0.1)",   fg: "#4ade80" },
-  MEDIUM: { bg: "rgba(251,146,60,0.1)",  fg: "#fb923c" },
-  HARD:   { bg: "rgba(239,68,68,0.1)",   fg: "#f87171" },
-};
+function ChallengePreviewDrawer({
+  challenge, competitionId, onClose, onEdit,
+}: {
+  challenge: CTFCompetitionChallengeDTO;
+  competitionId: string;
+  onClose: () => void;
+  onEdit: () => void;
+}) {
+  const cat  = CAT_COLORS[challenge.category]  ?? CAT_COLORS.MISC!;
+  const diff = DIFF_COLORS[challenge.difficulty] ?? DIFF_COLORS.EASY!;
+
+  const [instance, setInstance] = useState<CTFInstanceResponse | null>(null);
+  const [instanceBusy, setInstanceBusy] = useState(false);
+  const [instanceError, setInstanceError] = useState<string | null>(null);
+  const [copied, setCopied] = useState(false);
+
+  // Fetch existing admin instance on open (if challenge requires one)
+  useEffect(() => {
+    if (!challenge.requiresInstance) return;
+    getCtfInstanceStatus(challenge.id)
+      .then(r => setInstance(r))
+      .catch(() => {});
+  }, [challenge.id, challenge.requiresInstance]);
+
+  const launchInstance = async () => {
+    setInstanceBusy(true);
+    setInstanceError(null);
+    try {
+      const r = await startCTFInstance(challenge.id, { competitionId });
+      setInstance(r);
+    } catch (e: any) {
+      setInstanceError(e?.message ?? "Failed to launch instance.");
+    } finally {
+      setInstanceBusy(false);
+    }
+  };
+
+  const killInstance = async () => {
+    if (!instance) return;
+    setInstanceBusy(true);
+    try {
+      await stopCTFInstance(challenge.id, instance.instanceId);
+      setInstance(null);
+    } catch (e: any) {
+      setInstanceError(e?.message ?? "Failed to stop instance.");
+    } finally {
+      setInstanceBusy(false);
+    }
+  };
+
+  const copyConnection = async () => {
+    const conn = instance?.connectionString ?? instance?.accessUrl ?? "";
+    if (!conn) return;
+    try { await navigator.clipboard.writeText(conn); setCopied(true); setTimeout(() => setCopied(false), 1500); } catch {}
+  };
+
+  const connStr = instance?.connectionString ?? instance?.accessUrl ?? null;
+  const isRunning = instance?.status === "RUNNING" || instance?.status === "STARTING";
+
+  return (
+    <div
+      style={{
+        position: "fixed", inset: 0, background: "rgba(0,0,0,0.55)", zIndex: 300,
+        display: "flex", justifyContent: "flex-end", backdropFilter: "blur(2px)",
+      }}
+      onClick={onClose}
+    >
+      <div
+        style={{
+          width: 560, maxWidth: "96vw", height: "100vh", display: "flex", flexDirection: "column",
+          background: "var(--bg-elevated)", boxShadow: "-16px 0 48px rgba(0,0,0,0.45)",
+        }}
+        onClick={e => e.stopPropagation()}
+      >
+        {/* Header */}
+        <div style={{
+          padding: "14px 20px", borderBottom: "1px solid var(--border)",
+          background: "var(--bg-secondary)",
+          display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 12,
+        }}>
+          <div style={{ minWidth: 0 }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 6, flexWrap: "wrap" }}>
+              <span style={{
+                fontSize: 10, padding: "2px 7px", borderRadius: 4, fontWeight: 700,
+                background: cat.bg, color: cat.fg,
+              }}>{challenge.category}</span>
+              <span style={{
+                fontSize: 10, padding: "2px 7px", borderRadius: 4, fontWeight: 700,
+                background: diff.bg, color: diff.fg,
+              }}>{challenge.difficulty}</span>
+              {challenge.isHidden ? (
+                <span style={{
+                  fontSize: 10, padding: "2px 7px", borderRadius: 4, fontWeight: 700,
+                  background: "rgba(148,163,184,0.12)", color: "#94a3b8",
+                }}>Hidden</span>
+              ) : (
+                <span style={{
+                  fontSize: 10, padding: "2px 7px", borderRadius: 4, fontWeight: 700,
+                  background: "rgba(34,197,94,0.12)", color: "#4ade80",
+                }}>Visible</span>
+              )}
+            </div>
+            <div style={{ fontSize: 17, fontWeight: 800, color: "var(--text-primary)", lineHeight: 1.2 }}>
+              {challenge.title}
+            </div>
+            <div style={{ fontSize: 12, color: "var(--text-muted)", marginTop: 4 }}>
+              {challenge.basePoints} pts · {challenge.solveCount} solve{challenge.solveCount !== 1 ? "s" : ""}
+              {challenge.hints.length > 0 && ` · ${challenge.hints.length} hint${challenge.hints.length !== 1 ? "s" : ""}`}
+            </div>
+          </div>
+          <div style={{ display: "flex", gap: 6, flexShrink: 0 }}>
+            <button
+              onClick={onEdit}
+              style={{
+                display: "inline-flex", alignItems: "center", gap: 5,
+                padding: "6px 10px", borderRadius: 6, fontSize: 12, fontWeight: 600,
+                background: "var(--bg-hover)", border: "1px solid var(--border)",
+                color: "var(--text-secondary)", cursor: "pointer",
+              }}
+            >
+              <Edit2 size={12} /> Edit
+            </button>
+            <button onClick={onClose} style={{
+              background: "transparent", border: "1px solid var(--border)", borderRadius: 6,
+              cursor: "pointer", color: "var(--text-muted)", padding: "6px 8px",
+              display: "flex", alignItems: "center",
+            }}>
+              <X size={15} />
+            </button>
+          </div>
+        </div>
+
+        {/* Scrollable body */}
+        <div style={{ flex: 1, overflowY: "auto", padding: "20px" }}>
+
+          {/* Player's View label */}
+          <div style={{
+            display: "flex", alignItems: "center", gap: 6, marginBottom: 14,
+            fontSize: 10, fontWeight: 700, color: "var(--text-muted)",
+            textTransform: "uppercase", letterSpacing: "0.07em",
+          }}>
+            <Eye size={11} /> Player&apos;s view
+          </div>
+
+          {/* Description */}
+          <div style={{
+            padding: "16px 18px", borderRadius: 8,
+            border: "1px solid var(--border)", background: "var(--bg-secondary)",
+            marginBottom: 16,
+          }}>
+            <div style={{ fontSize: 11, fontWeight: 700, color: "var(--text-muted)", textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: 10 }}>
+              Description
+            </div>
+            {challenge.description ? (
+              <pre style={{
+                margin: 0, fontFamily: "inherit", fontSize: 13, lineHeight: 1.7,
+                color: "var(--text-secondary)", whiteSpace: "pre-wrap", wordBreak: "break-word",
+              }}>{challenge.description}</pre>
+            ) : (
+              <div style={{ fontSize: 12, color: "var(--text-muted)", fontStyle: "italic" }}>
+                No description provided.
+              </div>
+            )}
+          </div>
+
+          {/* Downloadable file */}
+          {challenge.downloadableFileUrl && (
+            <div style={{
+              display: "flex", alignItems: "center", gap: 10, padding: "12px 14px",
+              borderRadius: 8, border: "1px solid var(--border)", background: "var(--bg-secondary)",
+              marginBottom: 16,
+            }}>
+              <Download size={14} style={{ color: "#60a5fa", flexShrink: 0 }} />
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <div style={{ fontSize: 12, fontWeight: 600, color: "var(--text-primary)" }}>
+                  {challenge.downloadableFileName ?? "Challenge file"}
+                </div>
+                <div style={{ fontSize: 11, color: "var(--text-muted)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                  {challenge.downloadableFileUrl}
+                </div>
+              </div>
+              <a
+                href={challenge.downloadableFileUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                style={{
+                  display: "inline-flex", alignItems: "center", gap: 4,
+                  padding: "5px 10px", borderRadius: 6, fontSize: 11, fontWeight: 600,
+                  background: "var(--bg-hover)", border: "1px solid var(--border)",
+                  color: "var(--text-secondary)", textDecoration: "none",
+                }}
+              >
+                <ExternalLink size={11} /> Open
+              </a>
+            </div>
+          )}
+
+          {/* Hints */}
+          {challenge.hints.length > 0 && (
+            <div style={{
+              padding: "14px 16px", borderRadius: 8,
+              border: "1px solid rgba(251,191,36,0.2)", background: "rgba(251,191,36,0.04)",
+              marginBottom: 16,
+            }}>
+              <div style={{ fontSize: 11, fontWeight: 700, color: "#fbbf24", textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: 10 }}>
+                Hints ({challenge.hints.length})
+              </div>
+              <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+                {challenge.hints.map((h, i) => (
+                  <div key={h.id} style={{
+                    display: "flex", gap: 10, padding: "8px 10px",
+                    borderRadius: 6, background: "rgba(251,191,36,0.06)", border: "1px solid rgba(251,191,36,0.15)",
+                  }}>
+                    <span style={{ fontSize: 10, fontWeight: 700, color: "#fbbf24", minWidth: 52 }}>Hint {i + 1}</span>
+                    <span style={{ fontSize: 12, color: "var(--text-secondary)", flex: 1 }}>{h.text}</span>
+                    <span style={{ fontSize: 10, color: "var(--text-muted)", flexShrink: 0 }}>{h.cost} pts</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* ── Docker instance testing ─────────────────────────────────── */}
+          {challenge.requiresInstance && (
+            <div style={{
+              borderRadius: 8, border: "1px solid rgba(167,139,250,0.3)",
+              background: "rgba(167,139,250,0.04)", overflow: "hidden",
+            }}>
+              {/* Section header */}
+              <div style={{
+                padding: "12px 16px", borderBottom: "1px solid rgba(167,139,250,0.15)",
+                background: "rgba(167,139,250,0.06)",
+                display: "flex", alignItems: "center", gap: 8,
+              }}>
+                <Zap size={13} style={{ color: "#a78bfa" }} />
+                <div>
+                  <div style={{ fontSize: 12, fontWeight: 700, color: "var(--text-primary)" }}>
+                    Instance Testing
+                  </div>
+                  <div style={{ fontSize: 10, color: "var(--text-muted)", marginTop: 1 }}>
+                    Admin test — spawns a real container to verify the challenge works
+                  </div>
+                </div>
+              </div>
+
+              <div style={{ padding: "14px 16px" }}>
+                {instanceError && (
+                  <div style={{
+                    display: "flex", alignItems: "center", gap: 6, marginBottom: 12,
+                    padding: "8px 12px", borderRadius: 6, fontSize: 12,
+                    background: "rgba(239,68,68,0.08)", border: "1px solid rgba(239,68,68,0.25)",
+                    color: "#f87171",
+                  }}>
+                    <AlertCircle size={12} /> {instanceError}
+                  </div>
+                )}
+
+                {!instance || !isRunning ? (
+                  <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+                    {/* Config summary */}
+                    <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
+                      <span style={{
+                        fontSize: 10, padding: "2px 8px", borderRadius: 4, fontWeight: 700,
+                        background: "rgba(167,139,250,0.12)", color: "#a78bfa",
+                      }}>
+                        {challenge.connectionType ?? "DOCKER"}
+                      </span>
+                      {challenge.dockerExposedPort && (
+                        <span style={{
+                          fontSize: 10, padding: "2px 8px", borderRadius: 4, fontWeight: 700,
+                          background: "var(--bg-secondary)", color: "var(--text-muted)",
+                          fontFamily: "ui-monospace, monospace",
+                        }}>
+                          :{challenge.dockerExposedPort}
+                        </span>
+                      )}
+                      {challenge.dockerMemoryMb && (
+                        <span style={{
+                          fontSize: 10, padding: "2px 8px", borderRadius: 4, fontWeight: 700,
+                          background: "var(--bg-secondary)", color: "var(--text-muted)",
+                        }}>
+                          {challenge.dockerMemoryMb} MB
+                        </span>
+                      )}
+                    </div>
+
+                    <button
+                      className="psp-btn psp-btn-primary"
+                      style={{
+                        gap: 6, justifyContent: "center", alignSelf: "flex-start",
+                        background: "linear-gradient(135deg, #7c3aed, #6d28d9)",
+                        borderColor: "#7c3aed",
+                      }}
+                      disabled={instanceBusy}
+                      onClick={launchInstance}
+                    >
+                      {instanceBusy ? (
+                        <><RefreshCw size={12} style={{ animation: "spin 1s linear infinite" }} /> Launching…</>
+                      ) : (
+                        <><Zap size={12} /> Launch Test Instance</>
+                      )}
+                    </button>
+                  </div>
+                ) : (
+                  <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+                    {/* Status */}
+                    <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                      {instance.status === "STARTING" ? (
+                        <RefreshCw size={12} style={{ color: "#fbbf24", animation: "spin 1s linear infinite" }} />
+                      ) : (
+                        <span style={{ width: 8, height: 8, borderRadius: "50%", background: "#4ade80", animation: "ctf-pulse 2s infinite" }} />
+                      )}
+                      <span style={{ fontSize: 12, fontWeight: 700, color: instance.status === "STARTING" ? "#fbbf24" : "#4ade80" }}>
+                        {instance.status === "STARTING" ? "Starting…" : "Running"}
+                      </span>
+                      <span style={{ fontSize: 11, color: "var(--text-muted)", marginLeft: 4 }}>
+                        Expires {new Date(instance.expiresAt).toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit" })}
+                      </span>
+                    </div>
+
+                    {/* Connection string */}
+                    {connStr && (
+                      <div style={{
+                        display: "flex", alignItems: "center", gap: 8,
+                        padding: "8px 12px", borderRadius: 6,
+                        background: "rgba(0,0,0,0.25)", border: "1px solid rgba(167,139,250,0.25)",
+                      }}>
+                        {challenge.connectionType === "HTTP" ? <Globe size={12} style={{ color: "#60a5fa", flexShrink: 0 }} /> : <Terminal size={12} style={{ color: "#60a5fa", flexShrink: 0 }} />}
+                        <span style={{ flex: 1, fontFamily: "ui-monospace, monospace", fontSize: 12, color: "#a5b4fc", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                          {challenge.connectionType === "TCP" ? `nc ${connStr}` : connStr}
+                        </span>
+                        <button type="button" onClick={copyConnection} style={{
+                          background: "none", border: "none", cursor: "pointer",
+                          display: "flex", alignItems: "center", gap: 3,
+                          fontSize: 11, color: copied ? "#4ade80" : "#64748b",
+                        }}>
+                          {copied ? <><Check size={11} /> Copied</> : <><Copy size={11} /> Copy</>}
+                        </button>
+                        {challenge.connectionType === "HTTP" && (
+                          <a href={connStr} target="_blank" rel="noopener noreferrer" style={{
+                            display: "flex", alignItems: "center", gap: 3,
+                            fontSize: 11, color: "#818cf8", textDecoration: "none",
+                          }}>
+                            <ExternalLink size={11} /> Open
+                          </a>
+                        )}
+                      </div>
+                    )}
+
+                    <button
+                      onClick={killInstance}
+                      disabled={instanceBusy}
+                      style={{
+                        display: "inline-flex", alignItems: "center", gap: 5,
+                        padding: "6px 12px", borderRadius: 6, fontSize: 12, fontWeight: 600,
+                        alignSelf: "flex-start",
+                        background: "rgba(239,68,68,0.08)", border: "1px solid rgba(239,68,68,0.3)",
+                        color: "#f87171", cursor: "pointer",
+                      }}
+                    >
+                      {instanceBusy ? <RefreshCw size={12} style={{ animation: "spin 1s linear infinite" }} /> : <Square size={12} />}
+                      Stop Instance
+                    </button>
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ── Library picker panel ─────────────────────────────────────────────────────────
 
 function LibraryPickerPanel({
   competitionId, onClose, onAdded,
@@ -262,7 +884,7 @@ function LibraryPickerPanel({
 
   return (
     <div style={{
-      position: "fixed", inset: 0, background: "rgba(0,0,0,0.55)", zIndex: 100,
+      position: "fixed", inset: 0, background: "rgba(0,0,0,0.55)", zIndex: 300,
       display: "flex", justifyContent: "flex-end", backdropFilter: "blur(2px)",
     }} onClick={onClose}>
       <div style={{
@@ -365,7 +987,7 @@ function LibraryPickerPanel({
                         background: buildReady ? "rgba(34,197,94,0.1)" : "rgba(148,163,184,0.12)",
                         color: buildReady ? "#4ade80" : "#94a3b8",
                       }}>
-                        {buildReady ? "Docker ✓" : "Docker – no image"}
+                        {buildReady ? "Docker ready" : "Docker – no image"}
                       </span>
                     )}
                   </div>
@@ -374,7 +996,7 @@ function LibraryPickerPanel({
                   </div>
                   <div style={{ fontSize: 11, color: "var(--text-muted)", marginTop: 2 }}>
                     {c.basePoints} pts · used {c.useCount}×
-                    {buildPending && <span style={{ color: "#f59e0b", marginLeft: 6 }}>⚠ image not built yet</span>}
+                    {buildPending && <span style={{ color: "#f59e0b", marginLeft: 6 }}><AlertTriangle size={11} style={{verticalAlign:"-1px",marginRight:3}} />image not built yet</span>}
                   </div>
                 </div>
                 <button
@@ -429,6 +1051,15 @@ function ChallengePanel({
     plainFlag: "",
     flagFormat: existing?.flagFormat ?? "FLAG{?}",
     downloadableFileUrl: existing?.downloadableFileUrl ?? "",
+    mediaUrl: existing?.mediaUrl ?? "",
+    maxAttempts: existing?.maxAttempts != null ? String(existing.maxAttempts) : "10",
+    attemptsMode: (existing?.maxAttempts == null ? "unlimited" : "limited") as "limited" | "unlimited",
+
+    // Blood bonus
+    bloodBonusEnabled: existing?.bloodBonusEnabled ?? false,
+    firstBloodBonus: existing?.firstBloodBonus != null ? String(existing.firstBloodBonus) : "0",
+    secondBloodBonus: existing?.secondBloodBonus != null ? String(existing.secondBloodBonus) : "0",
+    thirdBloodBonus: existing?.thirdBloodBonus != null ? String(existing.thirdBloodBonus) : "0",
 
     // Docker
     requiresInstance: existing?.requiresInstance ?? false,
@@ -557,9 +1188,15 @@ function ChallengePanel({
           plainFlag: form.flagType === "STATIC" ? form.plainFlag.trim() : undefined,
           flagFormat: form.flagType === "DYNAMIC" ? form.flagFormat.trim() : undefined,
           downloadableFileUrl: form.downloadableFileUrl || undefined,
+          mediaUrl: form.mediaUrl || undefined,
           requiresInstance: form.requiresInstance,
           ...dockerFields,
+          maxAttempts: form.attemptsMode === "unlimited" ? 0 : parseInt(form.maxAttempts) || 10,
           hints: hints.length > 0 ? hints : undefined,
+          bloodBonusEnabled: form.bloodBonusEnabled,
+          firstBloodBonus: form.bloodBonusEnabled ? (parseInt(form.firstBloodBonus) || 0) : 0,
+          secondBloodBonus: form.bloodBonusEnabled ? (parseInt(form.secondBloodBonus) || 0) : 0,
+          thirdBloodBonus: form.bloodBonusEnabled ? (parseInt(form.thirdBloodBonus) || 0) : 0,
         };
         const created = await addTeacherCtfChallenge(competitionId, payload);
         if (reveal) {
@@ -592,8 +1229,14 @@ function ChallengePanel({
           flagType: form.flagType,
           flagFormat: form.flagType === "DYNAMIC" ? form.flagFormat.trim() : undefined,
           downloadableFileUrl: form.downloadableFileUrl || undefined,
+          mediaUrl: form.mediaUrl || undefined,
           requiresInstance: form.requiresInstance,
           ...dockerFields,
+          maxAttempts: form.attemptsMode === "unlimited" ? 0 : parseInt(form.maxAttempts) || 10,
+          bloodBonusEnabled: form.bloodBonusEnabled,
+          firstBloodBonus: form.bloodBonusEnabled ? (parseInt(form.firstBloodBonus) || 0) : 0,
+          secondBloodBonus: form.bloodBonusEnabled ? (parseInt(form.secondBloodBonus) || 0) : 0,
+          thirdBloodBonus: form.bloodBonusEnabled ? (parseInt(form.thirdBloodBonus) || 0) : 0,
         };
         await updateTeacherCtfChallenge(competitionId, existing.id, payload);
         toast.success("Challenge updated", form.title);
@@ -610,7 +1253,7 @@ function ChallengePanel({
   if (zipUploading || buildModeId) {
     return (
       <div style={{
-        position: "fixed", inset: 0, background: "rgba(0,0,0,0.55)", zIndex: 100,
+        position: "fixed", inset: 0, background: "rgba(0,0,0,0.55)", zIndex: 300,
         display: "flex", justifyContent: "flex-end", backdropFilter: "blur(2px)",
       }}>
         <div style={{
@@ -675,12 +1318,12 @@ function ChallengePanel({
 
   return (
     <div style={{
-      position: "fixed", inset: 0, background: "rgba(0,0,0,0.55)", zIndex: 100,
+      position: "fixed", inset: 0, background: "rgba(0,0,0,0.55)", zIndex: 300,
       display: "flex", justifyContent: "flex-end", backdropFilter: "blur(2px)",
     }} onClick={onClose}>
       <div style={{
         width: 680, maxWidth: "96vw", height: "100vh", display: "flex", flexDirection: "column",
-        background: "var(--surface)", boxShadow: "-12px 0 40px rgba(0,0,0,0.4)",
+        background: "var(--bg-elevated)", boxShadow: "-16px 0 48px rgba(0,0,0,0.45)",
       }} onClick={(e) => e.stopPropagation()}>
 
         {/* ── Header ──────────────────────────────────────────────────────── */}
@@ -900,6 +1543,36 @@ function BasicsTab({
               onBlur={() => markTouched("basePoints")}
             />
           </Field>
+          <Field label="Attempts per team">
+            <div style={{ display: "flex", gap: 6, marginBottom: 6 }}>
+              {(["limited", "unlimited"] as const).map(mode => (
+                <button
+                  key={mode}
+                  type="button"
+                  onClick={() => setForm({ ...form, attemptsMode: mode })}
+                  style={{
+                    flex: 1, padding: "6px 0", borderRadius: 6, cursor: "pointer",
+                    border: form.attemptsMode === mode ? "1px solid #6366f1" : "1px solid var(--border)",
+                    background: form.attemptsMode === mode ? "rgba(99,102,241,0.15)" : "transparent",
+                    color: form.attemptsMode === mode ? "#a5b4fc" : "var(--text-muted)",
+                    fontSize: 12, fontWeight: 600,
+                  }}
+                >
+                  {mode === "unlimited" ? "Unlimited ∞" : "Limited"}
+                </button>
+              ))}
+            </div>
+            {form.attemptsMode === "limited" && (
+              <input
+                className="input"
+                type="number"
+                min={1}
+                placeholder="e.g. 10"
+                value={form.maxAttempts}
+                onChange={(e) => setForm({ ...form, maxAttempts: e.target.value })}
+              />
+            )}
+          </Field>
         </div>
       </Section>
 
@@ -910,6 +1583,57 @@ function BasicsTab({
             placeholder="https://…/challenge.zip"
           />
         </Field>
+      </Section>
+
+      <Section icon={Globe} title="Media (optional)" desc="Image or GIF displayed inside the challenge modal.">
+        <Field label="Media URL">
+          <input className="input" value={form.mediaUrl}
+            onChange={(e) => setForm({ ...form, mediaUrl: e.target.value })}
+            placeholder="https://…/image.png"
+          />
+        </Field>
+      </Section>
+
+      <Section icon={Droplets} title="Blood bonuses (optional)" desc="Award extra points to the 1st, 2nd, and 3rd teams to solve this challenge. Does not affect the displayed challenge value.">
+        <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: form.bloodBonusEnabled ? 14 : 0 }}>
+          <button
+            type="button"
+            onClick={() => setForm({ ...form, bloodBonusEnabled: !form.bloodBonusEnabled })}
+            style={{
+              display: "flex", alignItems: "center", gap: 6,
+              padding: "6px 14px", borderRadius: 6, cursor: "pointer",
+              border: form.bloodBonusEnabled ? "1px solid #ef4444" : "1px solid var(--border)",
+              background: form.bloodBonusEnabled ? "rgba(239,68,68,0.12)" : "transparent",
+              color: form.bloodBonusEnabled ? "#fca5a5" : "var(--text-muted)",
+              fontSize: 12, fontWeight: 600,
+            }}
+          >
+            <Droplets size={13} />
+            {form.bloodBonusEnabled ? "Enabled" : "Enable blood bonuses"}
+          </button>
+        </div>
+        {form.bloodBonusEnabled && (
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 12 }}>
+            <Field label="1st blood bonus (pts)">
+              <input className="input" type="number" min={0} value={form.firstBloodBonus}
+                onChange={(e) => setForm({ ...form, firstBloodBonus: e.target.value })}
+                placeholder="e.g. 100"
+              />
+            </Field>
+            <Field label="2nd blood bonus (pts)">
+              <input className="input" type="number" min={0} value={form.secondBloodBonus}
+                onChange={(e) => setForm({ ...form, secondBloodBonus: e.target.value })}
+                placeholder="e.g. 50"
+              />
+            </Field>
+            <Field label="3rd blood bonus (pts)">
+              <input className="input" type="number" min={0} value={form.thirdBloodBonus}
+                onChange={(e) => setForm({ ...form, thirdBloodBonus: e.target.value })}
+                placeholder="e.g. 25"
+              />
+            </Field>
+          </div>
+        )}
       </Section>
     </div>
   );
@@ -1679,7 +2403,7 @@ function FlagRotateModal({
   return (
     <div style={{
       position: "fixed", inset: 0, background: "rgba(0,0,0,0.6)",
-      display: "flex", alignItems: "center", justifyContent: "center", zIndex: 100,
+      display: "flex", alignItems: "center", justifyContent: "center", zIndex: 300,
     }} onClick={onClose}>
       <div className="psp-card" style={{ width: 440, maxWidth: "92vw", padding: 20 }} onClick={(e) => e.stopPropagation()}>
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 10 }}>
@@ -1758,7 +2482,7 @@ function HintManagerModal({
   return (
     <div style={{
       position: "fixed", inset: 0, background: "rgba(0,0,0,0.6)",
-      display: "flex", alignItems: "center", justifyContent: "center", zIndex: 100,
+      display: "flex", alignItems: "center", justifyContent: "center", zIndex: 300,
     }} onClick={onClose}>
       <div className="psp-card" style={{ width: 520, maxWidth: "92vw", padding: 20 }} onClick={(e) => e.stopPropagation()}>
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12 }}>
@@ -1807,19 +2531,32 @@ function HintManagerModal({
 
 // ── Small helpers ──────────────────────────────────────────────────────────────
 
-function IconBtn({ title, children, onClick }: { title: string; children: React.ReactNode; onClick: () => void }) {
+function ActionBtn({
+  title, children, onClick, color,
+}: {
+  title: string; children: React.ReactNode; onClick: () => void; color?: string;
+}) {
+  const [hov, setHov] = useState(false);
   return (
     <button
       type="button"
       title={title}
       onClick={onClick}
+      onMouseEnter={() => setHov(true)}
+      onMouseLeave={() => setHov(false)}
       style={{
-        background: "var(--bg-secondary)", border: "1px solid var(--border)",
-        borderRadius: 4, padding: "4px 6px", color: "var(--text-secondary)",
+        background: hov ? "var(--bg-hover)" : "var(--bg-secondary)",
+        border: "1px solid var(--border)",
+        borderRadius: 5, padding: "5px 7px",
+        color: hov && color ? color : "var(--text-secondary)",
         cursor: "pointer", display: "inline-flex", alignItems: "center", gap: 4,
+        transition: "all 100ms",
       }}
     >
       {children}
     </button>
   );
 }
+
+// Keep IconBtn as alias used by HintManagerModal
+const IconBtn = ActionBtn;

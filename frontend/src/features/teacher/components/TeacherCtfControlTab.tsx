@@ -31,7 +31,7 @@ const ACTION_COPY: Record<Action, { title: string; body: string; cta: string; da
   resume:   { title: "Resume competition?", body: "Teams will be able to submit flags again.", cta: "Resume", danger: false, requiresName: false },
   freeze:   { title: "Freeze scoreboard?",  body: "The scoreboard freezes at this moment. Teams keep solving, but rankings stay hidden.", cta: "Freeze", danger: false, requiresName: false },
   unfreeze: { title: "Unfreeze scoreboard?", body: "Live rankings will be revealed again.", cta: "Unfreeze", danger: false, requiresName: false },
-  end:      { title: "End competition early?", body: "⚠ This cannot be undone. All submissions will close immediately. Type the competition name to confirm.", cta: "End competition", danger: true, requiresName: true },
+  end:      { title: "End competition early?", body: "This cannot be undone. All submissions will close immediately. Type the competition name to confirm.", cta: "End competition", danger: true, requiresName: true },
 };
 
 function fmtRange(start: string | null, end: string | null) {

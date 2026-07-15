@@ -3,6 +3,7 @@
 import {
   useState, useRef, forwardRef, useImperativeHandle, useCallback,
 } from "react";
+import { Check, X, Clock, Zap, Package, AlertTriangle, CircleX, CheckCircle2, XCircle, Play } from "lucide-react";
 import { Client as StompClient } from "@stomp/stompjs";
 import SockJS from "sockjs-client";
 import { runCode, submitCode, type RunResult, type RunTestCaseResult } from "@/lib/api";
@@ -102,43 +103,43 @@ function normalizeRunResult(raw: any): RunResult {
   };
 }
 
+// Practice submissions are judged the same way as TP/Exam (the `results`
+// table), so they use that vocabulary directly — PASS/FAIL/ERROR/TIME_OUT/
+// MEMORY_OUT — not the CP-only AC/WA/TLE short codes.
 function legacyStatusToVerdict(status: string | undefined): string {
-  return ({
-    PASS:       "ACCEPTED",
-    FAIL:       "WRONG_ANSWER",
-    TIME_OUT:   "TIME_LIMIT_EXCEEDED",
-    ERROR:      "RUNTIME_ERROR",
-    MEMORY_OUT: "MEMORY_LIMIT_EXCEEDED",
-  } as Record<string, string>)[status ?? ""] ?? "WRONG_ANSWER";
+  return (status ?? "FAIL").toUpperCase();
 }
 
 // ── Helper ────────────────────────────────────────────────────────────────────
 
 function verdictLabel(v: string): string {
   return ({
-    ACCEPTED:             "Accepted",
-    WRONG_ANSWER:         "Wrong Answer",
-    TIME_LIMIT_EXCEEDED:  "Time Limit Exceeded",
-    RUNTIME_ERROR:        "Runtime Error",
-    MEMORY_LIMIT_EXCEEDED:"Memory Limit Exceeded",
-    COMPILATION_ERROR:    "Compilation Error",
+    PASS:              "Pass",
+    FAIL:              "Fail",
+    TIME_OUT:          "Time Out",
+    ERROR:             "Error",
+    MEMORY_OUT:        "Memory Out",
+    // Aggregate finalStatus (SUBMISSION_COMPLETE) has two ERROR sub-cases
+    // that per-test-case results.status doesn't distinguish:
+    RUNTIME_ERROR:     "Runtime Error",
+    COMPILATION_ERROR: "Compilation Error",
   } as Record<string, string>)[v] ?? v;
 }
 
 const VERDICT_COLOR: Record<string, string> = {
-  ACCEPTED:              "#57d9a3",
-  WRONG_ANSWER:          "#ff6b4a",
-  TIME_LIMIT_EXCEEDED:   "#ffc107",
-  RUNTIME_ERROR:         "#c678dd",
-  MEMORY_LIMIT_EXCEEDED: "#56b6c2",
+  PASS:       "var(--success-ink)",
+  FAIL:       "var(--danger-ink)",
+  TIME_OUT:   "var(--warn-ink)",
+  ERROR:      "#c678dd",
+  MEMORY_OUT: "#56b6c2",
 };
 
-const VERDICT_ICON: Record<string, string> = {
-  ACCEPTED:              "✓",
-  WRONG_ANSWER:          "✗",
-  TIME_LIMIT_EXCEEDED:   "⏱",
-  RUNTIME_ERROR:         "💥",
-  MEMORY_LIMIT_EXCEEDED: "📦",
+const VERDICT_ICON: Record<string, React.ReactNode> = {
+  PASS:       <Check size={14} />,
+  FAIL:       <X size={14} />,
+  TIME_OUT:   <Clock size={14} />,
+  ERROR:      <Zap size={14} />,
+  MEMORY_OUT: <Package size={14} />,
 };
 
 function MiniSpinner({ color = "#888", size = 12 }: { color?: string; size?: number }) {
@@ -175,14 +176,14 @@ function IOBlock({ label, value, highlight = false, diff }: {
     ok: "transparent", wrong: "rgba(255,107,74,0.15)", extra: "rgba(255,193,7,0.1)", missing: "rgba(198,120,221,0.1)",
   };
   const textColor: Record<LineDiff["type"], string> = {
-    ok: "#ccc", wrong: "#ff6b4a", extra: "#ffc107", missing: "#c678dd",
+    ok: "#ccc", wrong: "var(--danger-ink)", extra: "#ffc107", missing: "#c678dd",
   };
 
   return (
     <div style={{ border: `1px solid ${highlight ? "rgba(255,107,74,0.3)" : "#333"}`, borderRadius: 5, overflow: "hidden" }}>
       <div style={{
         padding: "5px 10px", background: "#2d2d2d",
-        fontSize: 10, fontWeight: 700, color: highlight ? "#ff6b4a" : "#666",
+        fontSize: 10, fontWeight: 700, color: highlight ? "var(--danger-ink)" : "#666",
         textTransform: "uppercase", letterSpacing: "0.5px", borderBottom: "1px solid #333",
       }}>
         {label}
@@ -216,15 +217,15 @@ function DiffSummary({ expected, actual }: { expected: string; actual: string })
   const a = actual.trim().split("\n");
   if (e.length !== a.length) {
     return (
-      <div style={{ fontSize: 11, color: "#ff6b4a", padding: "6px 10px", background: "rgba(255,107,74,0.08)", borderRadius: 4 }}>
-        ⚠ Output has {a.length} line{a.length !== 1 ? "s" : ""}, expected {e.length}
+      <div style={{ fontSize: 11, color: "var(--danger-ink)", padding: "6px 10px", background: "var(--danger-soft)", borderRadius: 4, display: "flex", alignItems: "center", gap: 6 }}>
+        <AlertTriangle size={12} /> Output has {a.length} line{a.length !== 1 ? "s" : ""}, expected {e.length}
       </div>
     );
   }
   const first = e.findIndex((l, i) => l !== a[i]);
   if (first >= 0) {
     return (
-      <div style={{ fontSize: 11, color: "#ff6b4a", padding: "6px 10px", background: "rgba(255,107,74,0.08)", borderRadius: 4 }}>
+      <div style={{ fontSize: 11, color: "var(--danger-ink)", padding: "6px 10px", background: "rgba(255,107,74,0.08)", borderRadius: 4 }}>
         First difference on line {first + 1}: expected{" "}
         <code style={{ background: "#333", padding: "1px 4px", borderRadius: 3 }}>{e[first]}</code>
         , got <code style={{ background: "#333", padding: "1px 4px", borderRadius: 3 }}>{a[first]}</code>
@@ -239,11 +240,11 @@ function DiffSummary({ expected, actual }: { expected: string; actual: string })
 function CompilationErrorView({ error }: { error: string }) {
   return (
     <div style={{ padding: 16 }}>
-      <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 10, fontSize: 13, fontWeight: 700, color: "#ff6b4a" }}>
-        🔴 Compilation Error
+      <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 10, fontSize: 13, fontWeight: 700, color: "var(--danger-ink)" }}>
+        <CircleX size={15} /> Compilation Error
       </div>
       <pre style={{
-        fontFamily: "ui-monospace, Consolas, monospace", fontSize: 12, color: "#ff8f6b",
+        fontFamily: "ui-monospace, Consolas, monospace", fontSize: 12, color: "var(--danger)",
         background: "rgba(255,107,74,0.08)", border: "1px solid rgba(255,107,74,0.2)",
         borderRadius: 5, padding: "12px 14px", margin: 0, whiteSpace: "pre-wrap",
         wordBreak: "break-all", lineHeight: 1.7, maxHeight: 300, overflow: "auto",
@@ -280,9 +281,9 @@ function TimeLimitView({ timeMs }: { timeMs: number }) {
     <div style={{
       display: "flex", alignItems: "center", gap: 10, padding: "10px 12px",
       background: "rgba(255,193,7,0.08)", border: "1px solid rgba(255,193,7,0.2)",
-      borderRadius: 5, fontSize: 12, color: "#ffc107",
+      borderRadius: 5, fontSize: 12, color: "var(--warn-ink)",
     }}>
-      <span style={{ fontSize: 20 }}>⏱</span>
+      <Clock size={20} />
       <div>
         <div style={{ fontWeight: 700 }}>Time Limit Exceeded</div>
         <div style={{ color: "#888", marginTop: 2 }}>
@@ -332,9 +333,9 @@ function SkippedCasesRow({ skipped, reason }: { skipped: number; reason: string 
 function TestCaseRow({ result, rowIndex, isExpanded, onToggle }: {
   result: RunTestCaseResult; rowIndex: number; isExpanded: boolean; onToggle: () => void;
 }) {
-  const verdict = result.verdict || "WRONG_ANSWER";
+  const verdict = result.verdict || "FAIL";
   const vc = VERDICT_COLOR[verdict] ?? "#888";
-  const vi = VERDICT_ICON[verdict] ?? "✗";
+  const vi = VERDICT_ICON[verdict] ?? <X size={14} />;
   const displayIndex = result.index ?? rowIndex + 1;
 
   return (
@@ -365,13 +366,13 @@ function TestCaseRow({ result, rowIndex, isExpanded, onToggle }: {
       {/* Expanded detail */}
       {isExpanded && (
         <div style={{ padding: 12, background: "#212121", borderTop: "1px solid #333" }}>
-          {verdict === "RUNTIME_ERROR" && result.actualOutput && (
+          {verdict === "ERROR" && result.actualOutput && (
             <RuntimeErrorView error={result.actualOutput} />
           )}
-          {verdict === "TIME_LIMIT_EXCEEDED" && (
+          {verdict === "TIME_OUT" && (
             <TimeLimitView timeMs={result.timeMs} />
           )}
-          {(verdict === "WRONG_ANSWER" || verdict === "ACCEPTED") && result.input !== undefined && (
+          {(verdict === "FAIL" || verdict === "PASS") && result.input !== undefined && (
             <IOComparisonView
               input={result.input ?? ""}
               expected={result.expectedOutput ?? ""}
@@ -396,12 +397,12 @@ function RunSummaryBar({ result }: { result: RunResult }) {
     <div style={{
       display: "flex", alignItems: "center", gap: 12, padding: "10px 12px", marginBottom: 10,
       borderRadius: 6,
-      background: allPassed ? "rgba(0,135,90,0.1)" : "rgba(222,53,11,0.1)",
-      border: `1px solid ${allPassed ? "rgba(87,217,163,0.2)" : "rgba(255,107,74,0.2)"}`,
+      background: allPassed ? "var(--success-soft)" : "var(--danger-soft)",
+      border: `1px solid ${allPassed ? "var(--success-soft)" : "var(--danger-soft)"}`,
     }}>
-      <span style={{ fontSize: 18, lineHeight: 1 }}>{allPassed ? "✅" : "❌"}</span>
+      <span style={{ lineHeight: 1, color: allPassed ? "var(--success-ink)" : "var(--danger-ink)", display: "inline-flex" }}>{allPassed ? <CheckCircle2 size={18} /> : <XCircle size={18} />}</span>
       <div style={{ flex: 1 }}>
-        <div style={{ fontSize: 13, fontWeight: 700, color: allPassed ? "#57d9a3" : "#ff6b4a" }}>
+        <div style={{ fontSize: 13, fontWeight: 700, color: allPassed ? "var(--success-ink)" : "var(--danger-ink)" }}>
           {allPassed
             ? `All ${total} test case${total === 1 ? "" : "s"} passed`
             : stoppedAt != null
@@ -499,19 +500,19 @@ function SubmitResultsView({ status, rows, complete }: {
   if (status === "IDLE") {
     return (
       <div style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", height: "100%", gap: 8, color: "#555", fontSize: 13 }}>
-        <span style={{ fontSize: 24 }}>⚡</span>
+        <Zap size={24} />
         Click <strong style={{ color: "#ccc" }}>Submit</strong> to judge against all test cases
       </div>
     );
   }
 
   const verdictColor: Record<string, string> = {
-    ACCEPTED:              "#57d9a3",
-    WRONG_ANSWER:          "#ff6b4a",
-    RUNTIME_ERROR:         "#c678dd",
-    TIME_OUT:              "#ffc107",
-    MEMORY_LIMIT_EXCEEDED: "#56b6c2",
-    COMPILATION_ERROR:     "#ff6b4a",
+    PASS:              "var(--success-ink)",
+    FAIL:              "var(--danger-ink)",
+    RUNTIME_ERROR:     "#c678dd",
+    TIME_OUT:          "#ffc107",
+    MEMORY_OUT:        "#56b6c2",
+    COMPILATION_ERROR: "var(--danger-ink)",
   };
 
   const finalColor = complete ? (verdictColor[complete.finalStatus] ?? "#888") : "#888";
@@ -523,10 +524,10 @@ function SubmitResultsView({ status, rows, complete }: {
         <div style={{
           display: "flex", alignItems: "center", gap: 12, padding: "10px 14px", marginBottom: 12,
           borderRadius: 6,
-          background: complete.finalStatus === "ACCEPTED" ? "rgba(0,135,90,0.1)" : "rgba(222,53,11,0.1)",
-          border: `1px solid ${complete.finalStatus === "ACCEPTED" ? "rgba(87,217,163,0.2)" : "rgba(255,107,74,0.2)"}`,
+          background: complete.finalStatus === "PASS" ? "rgba(0,135,90,0.1)" : "rgba(222,53,11,0.1)",
+          border: `1px solid ${complete.finalStatus === "PASS" ? "rgba(87,217,163,0.2)" : "rgba(255,107,74,0.2)"}`,
         }}>
-          <span style={{ fontSize: 22 }}>{complete.finalStatus === "ACCEPTED" ? "🎉" : "❌"}</span>
+          <span style={{ display: "inline-flex", color: finalColor }}>{complete.finalStatus === "PASS" ? <CheckCircle2 size={22} /> : <XCircle size={22} />}</span>
           <div style={{ flex: 1 }}>
             <div style={{ fontSize: 14, fontWeight: 700, color: finalColor }}>
               {verdictLabel(complete.finalStatus)}
@@ -537,7 +538,7 @@ function SubmitResultsView({ status, rows, complete }: {
               </div>
             )}
             {complete.errorMessage && (
-              <pre style={{ fontSize: 11, color: "#ff8f6b", margin: "6px 0 0", whiteSpace: "pre-wrap", wordBreak: "break-all" }}>
+              <pre style={{ fontSize: 11, color: "var(--danger)", margin: "6px 0 0", whiteSpace: "pre-wrap", wordBreak: "break-all" }}>
                 {complete.errorMessage}
               </pre>
             )}
@@ -555,9 +556,9 @@ function SubmitResultsView({ status, rows, complete }: {
             const canExpand  = !isPending && !isNotRun;
             const isExpanded = expanded === i;
             const rowColor   = isPending ? "#888"
-              : isPass    ? "#57d9a3"
+              : isPass    ? "var(--success-ink)"
               : isNotRun  ? "#444"
-              : VERDICT_COLOR[r.status] ?? "#ff6b4a";
+              : VERDICT_COLOR[r.status] ?? "var(--danger-ink)";
 
             return (
               <div key={i} style={{
@@ -586,7 +587,7 @@ function SubmitResultsView({ status, rows, complete }: {
                     display: "flex", alignItems: "center", justifyContent: "center",
                     fontSize: 10, fontWeight: 800, color: rowColor,
                   }}>
-                    {isPending ? <MiniSpinner size={8} /> : isPass ? "✓" : isNotRun ? "–" : "✗"}
+                    {isPending ? <MiniSpinner size={8} /> : isPass ? <Check size={11} /> : isNotRun ? "–" : <X size={11} />}
                   </div>
 
                   <span style={{ fontSize: 12, color: isNotRun ? "#555" : "#aaa", flex: 1 }}>
@@ -628,15 +629,15 @@ function SubmitResultsView({ status, rows, complete }: {
                             Hidden test case — input and expected output are not shown.
                           </div>
                           {r.actualOutput != null && (
-                            <OutputBlock label="Your Output" value={r.actualOutput} accent={isPass ? "#57d9a3" : "#ff6b4a"} />
+                            <OutputBlock label="Your Output" value={r.actualOutput} accent={isPass ? "var(--success-ink)" : "var(--danger-ink)"} />
                           )}
                         </>
                       ) : (
                         <>
                           {r.inputData != null && <OutputBlock label="Input" value={r.inputData} />}
-                          {r.expectedOutput != null && <OutputBlock label="Expected Output" value={r.expectedOutput} accent="#57d9a3" />}
+                          {r.expectedOutput != null && <OutputBlock label="Expected Output" value={r.expectedOutput} accent="var(--success-ink)" />}
                           {r.actualOutput != null && (
-                            <OutputBlock label="Your Output" value={r.actualOutput} accent={isPass ? "#57d9a3" : "#ff6b4a"} />
+                            <OutputBlock label="Your Output" value={r.actualOutput} accent={isPass ? "var(--success-ink)" : "var(--danger-ink)"} />
                           )}
                         </>
                       )}
@@ -837,14 +838,14 @@ export const ResultsPanel = forwardRef<ResultsPanelHandle, ResultsPanelProps>(
               style={{
                 padding: "0 16px", height: 38,
                 background: "transparent", border: "none",
-                borderBottom: activeTab === tab ? "2px solid #0052cc" : "2px solid transparent",
-                color: activeTab === tab ? "#4c9aff" : "#888",
+                borderBottom: activeTab === tab ? "2px solid var(--brand)" : "2px solid transparent",
+                color: activeTab === tab ? "var(--brand-2)" : "#888",
                 fontSize: 12, fontWeight: activeTab === tab ? 700 : 500,
                 cursor: "pointer", fontFamily: "inherit", transition: "all 0.12s",
                 display: "flex", alignItems: "center", gap: 6,
               }}
             >
-              {tab === "run" ? "▷ Run Results" : "⚡ Submit Results"}
+              {tab === "run" ? <span style={{display:"inline-flex",alignItems:"center",gap:6}}><Play size={12} /> Run Results</span> : <span style={{display:"inline-flex",alignItems:"center",gap:6}}><Zap size={12} /> Submit Results</span>}
               {tab === "run"    && runStatus    === "RUNNING" && <MiniSpinner />}
               {tab === "submit" && submitStatus === "JUDGING" && <MiniSpinner />}
             </button>

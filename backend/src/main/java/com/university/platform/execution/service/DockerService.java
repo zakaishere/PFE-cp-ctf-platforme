@@ -9,7 +9,9 @@ import com.university.platform.assessment.model.LiveExam;
 import com.university.platform.assessment.model.Problem;
 import com.university.platform.assessment.model.TestCase;
 
+import jakarta.annotation.PostConstruct;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.util.FileSystemUtils;
 
@@ -28,6 +30,18 @@ public class DockerService {
 
     private static final int COMPILE_TIMEOUT_SEC = 30;
     private static final int EXEC_TIMEOUT_SEC    = 15;
+
+    @Value("${execution.workdir:/dev/shm}")
+    private String executionWorkDir;
+
+    @Value("${execution.tmpfs-size-mb:100}")
+    private int tmpfsSizeMb;
+
+    @PostConstruct
+    void logExecutionConfig() {
+        log.info("[DOCKER] Execution work dir: {} (container /app tmpfs {}MB)",
+                executionWorkDir, tmpfsSizeMb);
+    }
 
     public record LanguageProfile(
             String fileName,
@@ -102,10 +116,10 @@ public class DockerService {
         LanguageProfile profile = resolveLanguage(lang);
 
         String folderName = "psp_run_" + UUID.randomUUID();
-        // Using /dev/shm (RAM-disk) to bypass HDD speed limitations
-        Path hostSrcPath  = Paths.get("/dev/shm", folderName);
+        // Default: /dev/shm (RAM-disk) — fast. Override with execution.workdir when /dev/shm is too small.
+        Path hostSrcPath  = Paths.get(executionWorkDir, folderName);
         Files.createDirectories(hostSrcPath);
-        log.debug("[DOCKER] Created RAM-based temp src dir: {}", hostSrcPath);
+        log.debug("[DOCKER] Created temp src dir: {}", hostSrcPath);
 
 
         List<TestCaseResult> results = new ArrayList<>();
@@ -285,13 +299,17 @@ public class DockerService {
         cmd.add("--network"); cmd.add("none");
 
         cmd.add("--memory");  cmd.add(memFlag);
-        cmd.add("--cpus");    cmd.add("0.5");
+        // 0.5 cores made javac/compile-heavy languages the dominant latency cost
+        // (measured 6.6s @ 0.5 cores vs 2.2s @ 1.0 core for a trivial Java compile+run).
+        // Host has 8 cores; --cpus is a soft throttle, not a reservation, so this is
+        // safe even with several submissions judged concurrently.
+        cmd.add("--cpus");    cmd.add("1.0");
 
         if (enableStdin) cmd.add("-i");
 
         cmd.add("-v"); cmd.add(hostSrcPath.toAbsolutePath() + ":/src:ro");
 
-        cmd.add("--tmpfs"); cmd.add("/app:rw,exec,size=100m");
+        cmd.add("--tmpfs"); cmd.add("/app:rw,exec,size=" + tmpfsSizeMb + "m");
 
         cmd.add("-w"); cmd.add("/app");
 

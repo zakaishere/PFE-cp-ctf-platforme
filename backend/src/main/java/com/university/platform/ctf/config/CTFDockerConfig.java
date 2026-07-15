@@ -12,6 +12,7 @@ import org.springframework.scheduling.concurrent.ThreadPoolTaskExecutor;
 
 import java.net.URI;
 import java.util.concurrent.Executor;
+import java.util.concurrent.ThreadPoolExecutor;
 
 @Slf4j
 @Configuration
@@ -52,8 +53,9 @@ public class CTFDockerConfig {
         ThreadPoolTaskExecutor exec = new ThreadPoolTaskExecutor();
         exec.setCorePoolSize(3);
         exec.setMaxPoolSize(10);
-        exec.setQueueCapacity(20);
+        exec.setQueueCapacity(50);
         exec.setThreadNamePrefix("ctf-instance-");
+        exec.setRejectedExecutionHandler(new ThreadPoolExecutor.CallerRunsPolicy());
         exec.setWaitForTasksToCompleteOnShutdown(true);
         exec.setAwaitTerminationSeconds(30);
         exec.initialize();
@@ -64,9 +66,10 @@ public class CTFDockerConfig {
     public Executor ctfBuildExecutor() {
         ThreadPoolTaskExecutor exec = new ThreadPoolTaskExecutor();
         exec.setCorePoolSize(2);
-        exec.setMaxPoolSize(3);
-        exec.setQueueCapacity(10);
+        exec.setMaxPoolSize(5);
+        exec.setQueueCapacity(20);
         exec.setThreadNamePrefix("ctf-build-");
+        exec.setRejectedExecutionHandler(new ThreadPoolExecutor.CallerRunsPolicy());
         exec.setWaitForTasksToCompleteOnShutdown(true);
         exec.setAwaitTerminationSeconds(60);
         exec.initialize();

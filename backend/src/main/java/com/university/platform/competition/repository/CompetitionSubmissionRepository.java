@@ -15,6 +15,9 @@ public interface CompetitionSubmissionRepository extends JpaRepository<Competiti
 
     List<CompetitionSubmission> findByCompetitionId(UUID competitionId);
 
+    /** Idempotency check: has this submission already been recorded in CP history? */
+    boolean existsBySubmissionId(UUID submissionId);
+
     int countByCompetitionIdAndStudentIdAndProblemId(UUID competitionId, UUID studentId, UUID problemId);
 
     int countByCompetitionIdAndTeamIdAndProblemId(UUID competitionId, UUID teamId, UUID problemId);

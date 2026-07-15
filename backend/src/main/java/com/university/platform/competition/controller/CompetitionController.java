@@ -6,6 +6,8 @@ import com.university.platform.competition.model.Competition.CompetitionStatus;
 import com.university.platform.competition.model.CompetitionProblem;
 import com.university.platform.competition.repository.CompetitionProblemRepository;
 import com.university.platform.competition.repository.CompetitionRepository;
+import com.university.platform.competition.repository.CompetitionSubmissionRepository;
+import com.university.platform.competition.repository.TeamRepository;
 import com.university.platform.competition.service.CompetitionService;
 import com.university.platform.competition.service.ScoreboardService;
 import com.university.platform.identity.service.JwtService;
@@ -33,6 +35,8 @@ public class CompetitionController {
     private final ScoreboardService scoreboardService;
     private final CompetitionRepository competitionRepository;
     private final CompetitionProblemRepository competitionProblemRepository;
+    private final CompetitionSubmissionRepository competitionSubmissionRepository;
+    private final TeamRepository teamRepository;
     private final JwtService jwtService;
 
     // -------------------------------------------------------------------------
@@ -132,7 +136,8 @@ public class CompetitionController {
         }
 
         boolean includeTeacherData = "TEACHER".equals(role) || "ADMIN".equals(role);
-        return ResponseEntity.ok(competitionService.listCompetitions(statusFilter, studentId, includeTeacherData));
+        UUID teacherId = "TEACHER".equals(role) ? UUID.fromString(claims.getSubject()) : null;
+        return ResponseEntity.ok(competitionService.listCompetitions(statusFilter, studentId, includeTeacherData, teacherId));
     }
 
     // -------------------------------------------------------------------------
@@ -277,6 +282,22 @@ public class CompetitionController {
         parseClaims(auth);
         List<?> scoreboard = scoreboardService.getScoreboard(id);
         return ResponseEntity.ok(scoreboard);
+    }
+
+    // -------------------------------------------------------------------------
+    // GET /api/competitions/{id}/scoreboard/full  (mode-aware; freeze applies
+    // to students, teachers/admins always see live standings)
+    // -------------------------------------------------------------------------
+
+    @GetMapping("/{id}/scoreboard/full")
+    public ResponseEntity<?> getFullScoreboard(
+            @PathVariable UUID id,
+            @RequestHeader("Authorization") String auth) {
+
+        Claims claims = parseClaims(auth);
+        String role = claims.get("role", String.class);
+        boolean isTeacher = "TEACHER".equals(role) || "ADMIN".equals(role);
+        return ResponseEntity.ok(scoreboardService.getFullScoreboard(id, isTeacher));
     }
 
     // -------------------------------------------------------------------------
@@ -463,6 +484,88 @@ public class CompetitionController {
         if (body.containsKey("durationMinutes")) competition.setDurationMinutes(((Number) body.get("durationMinutes")).intValue());
         competitionRepository.save(competition);
         return ResponseEntity.ok(Map.of("message", "Settings saved"));
+    }
+
+    // -------------------------------------------------------------------------
+    // Lifecycle: start / end  (TEACHER | ADMIN)
+    // -------------------------------------------------------------------------
+
+    @PostMapping("/{id}/start")
+    public ResponseEntity<?> startCompetition(
+            @PathVariable UUID id,
+            @RequestHeader("Authorization") String auth) {
+
+        Claims claims = parseClaims(auth);
+        requireRole(claims, "TEACHER", "ADMIN");
+        UUID requesterId = UUID.fromString(claims.getSubject());
+
+        Competition competition = competitionRepository.findById(id)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Competition not found"));
+        if (!competition.getCreatedBy().equals(requesterId)) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Only the creator can start a competition");
+        }
+        if (competition.getStatus() != CompetitionStatus.REGISTRATION) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
+                    "Competition must be in REGISTRATION state to start (current: " + competition.getStatus() + ")");
+        }
+        competition.setStatus(CompetitionStatus.ACTIVE);
+        competitionRepository.save(competition);
+        return ResponseEntity.ok(Map.of("message", "Competition started", "status", "ACTIVE"));
+    }
+
+    @PostMapping("/{id}/end")
+    public ResponseEntity<?> endCompetition(
+            @PathVariable UUID id,
+            @RequestHeader("Authorization") String auth) {
+
+        Claims claims = parseClaims(auth);
+        requireRole(claims, "TEACHER", "ADMIN");
+        UUID requesterId = UUID.fromString(claims.getSubject());
+
+        Competition competition = competitionRepository.findById(id)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Competition not found"));
+        if (!competition.getCreatedBy().equals(requesterId)) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Only the creator can end a competition");
+        }
+        if (competition.getStatus() == CompetitionStatus.ENDED) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Competition is already ended");
+        }
+        competition.setStatus(CompetitionStatus.ENDED);
+        competitionRepository.save(competition);
+        return ResponseEntity.ok(Map.of("message", "Competition ended", "status", "ENDED"));
+    }
+
+    // -------------------------------------------------------------------------
+    // Teacher read: competition overview stats
+    // -------------------------------------------------------------------------
+
+    @GetMapping("/{id}/overview")
+    public ResponseEntity<?> getTeacherOverview(
+            @PathVariable UUID id,
+            @RequestHeader("Authorization") String auth) {
+
+        Claims claims = parseClaims(auth);
+        requireRole(claims, "TEACHER", "ADMIN");
+
+        Competition competition = competitionRepository.findById(id)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Competition not found"));
+
+        long teamCount        = teamRepository.findByCompetitionId(id).size();
+        long submissionCount  = competitionSubmissionRepository.findByCompetitionId(id).size();
+        long acCount          = competitionSubmissionRepository.findByCompetitionId(id).stream()
+                .filter(s -> s.getVerdict() == com.university.platform.competition.model.CompetitionSubmission.Verdict.AC)
+                .count();
+
+        return ResponseEntity.ok(Map.of(
+                "competitionId",   id,
+                "title",           competition.getTitle(),
+                "status",          competition.getStatus().name(),
+                "mode",            competition.getMode().name(),
+                "scoringMode",     competition.getScoringMode().name(),
+                "teamCount",       teamCount,
+                "submissionCount", submissionCount,
+                "acCount",         acCount
+        ));
     }
 
     // -------------------------------------------------------------------------

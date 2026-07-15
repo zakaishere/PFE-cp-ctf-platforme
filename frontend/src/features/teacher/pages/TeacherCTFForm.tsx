@@ -48,6 +48,7 @@ interface FormState {
   downloadableFileUrl: string;
   downloadableFileName: string;
   maxAttempts:         string;
+  attemptsMode:        "limited" | "unlimited";
   isActive:            boolean;
 }
 
@@ -72,6 +73,7 @@ const emptyForm = (): FormState => ({
   downloadableFileUrl: "",
   downloadableFileName: "",
   maxAttempts:         "10",
+  attemptsMode:        "limited",
   isActive:            false,
 });
 
@@ -281,7 +283,8 @@ const TeacherCTFForm = ({ editId }: Props) => {
           difficulty:          c.difficulty,
           basePoints:          String(c.basePoints),
           plainFlag:           "",
-          flagType:            (c.flagType === "DYNAMIC" ? "DYNAMIC" : "STATIC") as "STATIC" | "DYNAMIC",
+          // Practice challenges are solo — the flag is always static.
+          flagType:            "STATIC" as const,
           flagFormat:          c.flagFormat ?? "",
           requiresInstance:    c.requiresInstance ?? false,
           dockerImage:         c.dockerImage ?? "",
@@ -294,7 +297,8 @@ const TeacherCTFForm = ({ editId }: Props) => {
           dockerPidsLimit:     c.dockerPidsLimit ? String(c.dockerPidsLimit) : "",
           downloadableFileUrl: c.downloadableFileUrl ?? "",
           downloadableFileName: c.downloadableFileName ?? "",
-          maxAttempts:         String(c.maxAttempts),
+          maxAttempts:         c.maxAttempts != null ? String(c.maxAttempts) : "10",
+          attemptsMode:        c.maxAttempts == null ? "unlimited" : "limited",
           isActive:            c.isActive,
         });
         const existingEnvVars = c.dockerEnvVars;
@@ -343,8 +347,10 @@ const TeacherCTFForm = ({ editId }: Props) => {
       }
     }
 
-    const maxAt = parseInt(form.maxAttempts);
-    if (isNaN(maxAt) || maxAt < 1) e.maxAttempts = "Max attempts must be at least 1";
+    if (form.attemptsMode === "limited") {
+      const maxAt = parseInt(form.maxAttempts);
+      if (isNaN(maxAt) || maxAt < 1) e.maxAttempts = "Max attempts must be at least 1";
+    }
 
     if (form.requiresInstance) {
       if (!form.dockerImage.trim()) e.dockerImage = "Docker image is required for instance challenges";
@@ -382,8 +388,10 @@ const TeacherCTFForm = ({ editId }: Props) => {
     if (!withActive.difficulty)         prevErrors.difficulty  = "Difficulty is required";
     const pts = parseInt(withActive.basePoints);
     if (isNaN(pts) || pts < 1)          prevErrors.basePoints  = "Points must be a positive number";
-    const maxAt = parseInt(withActive.maxAttempts);
-    if (isNaN(maxAt) || maxAt < 1)      prevErrors.maxAttempts = "Max attempts must be at least 1";
+    if (withActive.attemptsMode === "limited") {
+      const maxAt = parseInt(withActive.maxAttempts);
+      if (isNaN(maxAt) || maxAt < 1) prevErrors.maxAttempts = "Max attempts must be at least 1";
+    }
     if (withActive.requiresInstance) {
       if (!withActive.dockerImage.trim()) prevErrors.dockerImage = "Docker image is required";
       const port = parseInt(withActive.dockerExposedPort);
@@ -431,7 +439,7 @@ const TeacherCTFForm = ({ editId }: Props) => {
           ...dockerPayload,
           downloadableFileUrl: withActive.downloadableFileUrl || undefined,
           downloadableFileName: withActive.downloadableFileName || undefined,
-          maxAttempts:         parseInt(withActive.maxAttempts),
+          maxAttempts:         withActive.attemptsMode === "unlimited" ? 0 : parseInt(withActive.maxAttempts),
           isActive:            publish,
           hints:               hintPayload,
         });
@@ -450,13 +458,13 @@ const TeacherCTFForm = ({ editId }: Props) => {
           ...dockerPayload,
           downloadableFileUrl: withActive.downloadableFileUrl || undefined,
           downloadableFileName: withActive.downloadableFileName || undefined,
-          maxAttempts:         parseInt(withActive.maxAttempts),
+          maxAttempts:         withActive.attemptsMode === "unlimited" ? 0 : parseInt(withActive.maxAttempts),
           isActive:            publish,
           hints:               hintPayload,
         });
         toast.success("Challenge created", publish ? "Challenge is now live." : "Saved as draft.");
       }
-      router.push("/teacher/ctf");
+      router.push("/teacher/ctf/practice");
     } catch (err: unknown) {
       const apiErr = err as { fieldErrors?: Record<string, string>; message?: string };
       if (apiErr?.fieldErrors) {
@@ -476,11 +484,6 @@ const TeacherCTFForm = ({ editId }: Props) => {
     return (
       <>
         <Navbar />
-        <div className="psp-breadcrumb">
-          <Link href="/teacher">PSP</Link> ›{" "}
-          <Link href="/teacher/ctf">CTF Challenges</Link> ›{" "}
-          <span style={{ color: "var(--text-primary)" }}>Loading…</span>
-        </div>
         <div className="psp-main">
           {[...Array(4)].map((_, i) => (
             <div key={i} className="skel" style={{ height: 140, borderRadius: 6, marginBottom: 12 }} />
@@ -493,12 +496,6 @@ const TeacherCTFForm = ({ editId }: Props) => {
   return (
     <>
       <Navbar />
-      <div className="psp-breadcrumb">
-        <Link href="/teacher">PSP</Link> ›{" "}
-        <Link href="/teacher/ctf">CTF Challenges</Link> ›{" "}
-        <span style={{ color: "var(--text-primary)" }}>{isEdit ? "Edit Challenge" : "New Challenge"}</span>
-      </div>
-
       <div className="psp-main" style={{ maxWidth: 780 }}>
 
         {/* ── Page header ── */}
@@ -514,7 +511,7 @@ const TeacherCTFForm = ({ editId }: Props) => {
         </div>
 
         {/* ═══ Card 1: Basic Info ═══════════════════════════════════════════ */}
-        <div className="psp-card" style={{ marginBottom: 16, padding: 20 }}>
+        <div className="psp-card" style={{ marginBottom: 16, padding: 20, border: "1px solid rgba(255,255,255,.08)" }}>
           <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 16 }}>
             <FileText size={15} color="var(--blue)" />
             <h2 style={{ fontSize: 14, fontWeight: 600, color: "var(--text-primary)", margin: 0 }}>Basic Information</h2>
@@ -582,94 +579,72 @@ const TeacherCTFForm = ({ editId }: Props) => {
                 <FieldError errors={errors} fieldName="basePoints" />
               </div>
               <div>
-                <label className="psp-form-label">Max Attempts</label>
-                <input
-                  className="psp-form-input"
-                  type="number"
-                  min={1}
-                  value={form.maxAttempts}
-                  onChange={e => set("maxAttempts", e.target.value)}
-                />
-                <FieldError errors={errors} fieldName="maxAttempts" />
+                <label className="psp-form-label">Attempts per team</label>
+                <div style={{ display: "flex", gap: 8, marginBottom: 6 }}>
+                  {(["limited", "unlimited"] as const).map(mode => (
+                    <button
+                      key={mode}
+                      type="button"
+                      onClick={() => set("attemptsMode", mode)}
+                      style={{
+                        flex: 1, padding: "7px 0", borderRadius: 6, cursor: "pointer",
+                        border: form.attemptsMode === mode ? "1px solid #6366f1" : "1px solid #334155",
+                        background: form.attemptsMode === mode ? "rgba(99,102,241,0.15)" : "transparent",
+                        color: form.attemptsMode === mode ? "#a5b4fc" : "#64748b",
+                        fontSize: 12, fontWeight: 600, textTransform: "capitalize",
+                      }}
+                    >
+                      {mode === "unlimited" ? "Unlimited ∞" : "Limited"}
+                    </button>
+                  ))}
+                </div>
+                {form.attemptsMode === "limited" && (
+                  <>
+                    <input
+                      className="psp-form-input"
+                      type="number"
+                      min={1}
+                      placeholder="e.g. 10"
+                      value={form.maxAttempts}
+                      onChange={e => set("maxAttempts", e.target.value)}
+                    />
+                    <FieldError errors={errors} fieldName="maxAttempts" />
+                  </>
+                )}
               </div>
             </div>
           </div>
         </div>
 
         {/* ═══ Card 2: Flag ════════════════════════════════════════════════ */}
-        <div className="psp-card" style={{ marginBottom: 16, padding: 20 }}>
+        <div className="psp-card" style={{ marginBottom: 16, padding: 20, border: "1px solid rgba(255,255,255,.08)" }}>
           <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 16 }}>
             <Flag size={15} color="var(--green)" />
             <h2 style={{ fontSize: 14, fontWeight: 600, color: "var(--text-primary)", margin: 0 }}>Flag</h2>
           </div>
 
           <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
-            {/* Flag type toggle */}
+            {/* Practice challenges are solo (no teams), so the flag is always
+                static — one flag for everyone. Dynamic per-team flags only
+                apply to competitions. */}
             <div>
-              <label className="psp-form-label">Flag Type *</label>
-              <div style={{ display: "flex", gap: 8 }}>
-                {(["STATIC", "DYNAMIC"] as const).map(type => (
-                  <label key={type} style={{
-                    flex: 1, display: "flex", alignItems: "flex-start", gap: 10,
-                    padding: "10px 14px", borderRadius: 6, cursor: "pointer",
-                    border: `1px solid ${form.flagType === type ? "var(--blue)" : "var(--border)"}`,
-                    background: form.flagType === type ? "rgba(96,165,250,0.08)" : "var(--bg-secondary)",
-                  }}>
-                    <input
-                      type="radio"
-                      name="flagType"
-                      value={type}
-                      checked={form.flagType === type}
-                      onChange={() => set("flagType", type)}
-                      style={{ marginTop: 2, accentColor: "var(--blue)" }}
-                    />
-                    <div>
-                      <div style={{ fontSize: 13, fontWeight: 600, color: "var(--text-primary)" }}>
-                        {type === "STATIC" ? "Static" : "Dynamic"}
-                      </div>
-                      <div style={{ fontSize: 11, color: "var(--text-muted)", marginTop: 2 }}>
-                        {type === "STATIC"
-                          ? "One flag for all teams — you set it now."
-                          : "Per-team unique flag — auto-generated, injected into the Docker container."}
-                      </div>
-                    </div>
-                  </label>
-                ))}
-              </div>
+              <label className="psp-form-label">
+                {isEdit ? "New Flag (leave blank to keep current)" : "Flag *"}
+              </label>
+              <input
+                className="psp-form-input"
+                value={form.plainFlag}
+                onChange={e => set("plainFlag", e.target.value)}
+                placeholder="e.g. CTF{example_flag}"
+                spellCheck={false}
+                autoComplete="off"
+              />
+              <p style={{ fontSize: 11, color: "var(--text-muted)", marginTop: 4 }}>
+                Any format you want — e.g. <code style={{ background: "var(--bg-tertiary)", padding: "0 4px", borderRadius: 2 }}>HTB{"{...}"}</code>, <code style={{ background: "var(--bg-tertiary)", padding: "0 4px", borderRadius: 2 }}>UNICTF{"{...}"}</code>, or any string.
+                Stored as SHA-256 — never visible again after saving.
+              </p>
+              <FieldError errors={errors} fieldName="plainFlag" />
             </div>
-
-            {/* Plain flag input — only for STATIC */}
-            {form.flagType === "STATIC" && (
-              <div>
-                <label className="psp-form-label">
-                  {isEdit ? "New Flag (leave blank to keep current)" : "Flag *"}
-                </label>
-                <input
-                  className="psp-form-input"
-                  value={form.plainFlag}
-                  onChange={e => set("plainFlag", e.target.value)}
-                  placeholder="e.g. CTF{example_flag}"
-                  spellCheck={false}
-                  autoComplete="off"
-                />
-                <p style={{ fontSize: 11, color: "var(--text-muted)", marginTop: 4 }}>
-                  Any format you want — e.g. <code style={{ background: "var(--bg-tertiary)", padding: "0 4px", borderRadius: 2 }}>HTB{"{...}"}</code>, <code style={{ background: "var(--bg-tertiary)", padding: "0 4px", borderRadius: 2 }}>UNICTF{"{...}"}</code>, or any string.
-                  Stored as SHA-256 — never visible again after saving.
-                </p>
-                <FieldError errors={errors} fieldName="plainFlag" />
-              </div>
-            )}
-
-            {/* Dynamic flag info */}
-            {form.flagType === "DYNAMIC" && (
-              <div style={{
-                padding: "10px 14px", borderRadius: 6,
-                background: "rgba(96,165,250,0.06)", border: "1px solid rgba(96,165,250,0.2)",
-                fontSize: 12, color: "var(--text-secondary)", lineHeight: 1.5,
-              }}>
-                Each team receives a unique flag automatically generated by the server using your format template (e.g. <code style={{ fontFamily: "monospace" }}>UNICTF{"{…}"}</code>). It will be injected into the Docker container via environment variables — make sure your challenge reads and exposes it to the player.
-              </div>
-            )}
 
             <div>
               <label className="psp-form-label">Flag Format Hint (shown to students)</label>
@@ -684,7 +659,7 @@ const TeacherCTFForm = ({ editId }: Props) => {
         </div>
 
         {/* ═══ Card 3: Downloads & Resources ═══════════════════════════════ */}
-        <div className="psp-card" style={{ marginBottom: 16, padding: 20 }}>
+        <div className="psp-card" style={{ marginBottom: 16, padding: 20, border: "1px solid rgba(255,255,255,.08)" }}>
           <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 16 }}>
             <FileText size={15} color="var(--orange)" />
             <h2 style={{ fontSize: 14, fontWeight: 600, color: "var(--text-primary)", margin: 0 }}>Downloadable File</h2>
@@ -712,7 +687,7 @@ const TeacherCTFForm = ({ editId }: Props) => {
         </div>
 
         {/* ═══ Card 4: Docker Instance ════════════════════════════════════ */}
-        <div className="psp-card" style={{ marginBottom: 16, padding: 20 }}>
+        <div className="psp-card" style={{ marginBottom: 16, padding: 20, border: "1px solid rgba(255,255,255,.08)" }}>
           <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 16 }}>
             <Server size={15} color="var(--purple)" />
             <h2 style={{ fontSize: 14, fontWeight: 600, color: "var(--text-primary)", margin: 0 }}>Docker Instance</h2>
@@ -915,7 +890,7 @@ const TeacherCTFForm = ({ editId }: Props) => {
         </div>
 
         {/* ═══ Card 5: Hints ══════════════════════════════════════════════ */}
-        <div className="psp-card" style={{ marginBottom: 24, padding: 20 }}>
+        <div className="psp-card" style={{ marginBottom: 24, padding: 20, border: "1px solid rgba(255,255,255,.08)" }}>
           <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 16 }}>
             <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
               <Lightbulb size={15} color="#d97706" />
@@ -981,7 +956,7 @@ const TeacherCTFForm = ({ editId }: Props) => {
 
         {/* ═══ Footer actions ══════════════════════════════════════════════ */}
         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", paddingBottom: 32 }}>
-          <Link href="/teacher/ctf">
+          <Link href="/teacher/ctf/practice">
             <button className="psp-btn psp-btn-secondary" style={{ display: "flex", alignItems: "center", gap: 6 }}>
               <ArrowLeft size={14} /> Cancel
             </button>

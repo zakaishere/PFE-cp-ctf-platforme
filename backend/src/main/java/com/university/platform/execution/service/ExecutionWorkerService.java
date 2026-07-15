@@ -2,7 +2,6 @@ package com.university.platform.execution.service;
 
 import com.university.platform.assessment.model.TestCase;
 import com.university.platform.assessment.repository.TestCaseRepository;
-import com.university.platform.competition.service.CompetitionScoringService;
 import com.university.platform.config.RabbitMQConfig;
 import com.university.platform.execution.dto.WebSocketSubmissionMessage.SubmissionCompleteMessage;
 import com.university.platform.execution.dto.WebSocketSubmissionMessage.TestCaseResultMessage;
@@ -35,7 +34,7 @@ public class ExecutionWorkerService {
     private final TestCaseRepository testCaseRepository;
     private final DockerService dockerService;
     private final SimpMessagingTemplate messagingTemplate;
-    private final CompetitionScoringService competitionScoringService;
+    private final SubmissionScoringDispatcher scoringDispatcher;
 
     @RabbitListener(queues = RabbitMQConfig.QUEUE_NAME)
     @Transactional
@@ -48,6 +47,14 @@ public class ExecutionWorkerService {
         if (submission == null) {
             // Stale message (submission was deleted or from a previous DB) — ACK and discard
             log.warn("[WORKER] Submission {} not found in DB, discarding stale message", submissionId);
+            return;
+        }
+
+        // Idempotency guard: a redelivered message for an already-finished
+        // submission must not re-run Docker or re-score (scoring is also guarded
+        // independently by the atomic claim in SubmissionScoringDispatcher).
+        if (submission.getStatus() == SubmissionStatus.COMPLETED) {
+            log.info("[WORKER] Submission {} already COMPLETED — skipping redelivered message", submissionId);
             return;
         }
 
@@ -100,9 +107,7 @@ public class ExecutionWorkerService {
                 submission.setStatus(SubmissionStatus.COMPLETED);
                 submissionRepository.save(submission);
 
-                if (submission.getCompetitionId() != null) {
-                    competitionScoringService.processResult(submission, errorResult);
-                }
+                dispatchScoring(submission, errorResult, 0, results.size());
                 pushSubmissionComplete(submissionId, 0, results.size(), results.size(), "COMPILATION_ERROR", feedback);
                 return;
             }
@@ -169,12 +174,11 @@ public class ExecutionWorkerService {
             }
             submissionRepository.save(submission);
 
-            if (submission.getCompetitionId() != null) {
-                competitionScoringService.processResult(submission, result);
-            }
-
             int totalPassed = (int) results.stream().filter(TestCaseResult::passed).count();
             int totalFailed = results.size() - totalPassed;
+
+            dispatchScoring(submission, result, totalPassed, results.size());
+
             pushSubmissionComplete(submissionId, totalPassed, totalFailed, results.size(),
                     toFinalStatus(metrics.overallStatus()));
 
@@ -192,12 +196,27 @@ public class ExecutionWorkerService {
             submission.setStatus(SubmissionStatus.COMPLETED);
             submissionRepository.save(submission);
 
-            if (submission.getCompetitionId() != null) {
-                competitionScoringService.processResult(submission, errorResult);
-            }
+            dispatchScoring(submission, errorResult, 0, 0);
             pushSubmissionComplete(submissionId, 0, 0, 0, "RUNTIME_ERROR");
 
             throw new RuntimeException("Worker execution failed", ex);
+        }
+    }
+
+    // -------------------------------------------------------------------------
+    // Scoring dispatch — runs AFTER results are persisted. Each scoring service
+    // runs in its own (REQUIRES_NEW) transaction and is wrapped here so a
+    // scoring failure can never roll back or block the saved result.
+    // -------------------------------------------------------------------------
+
+    private void dispatchScoring(Submission submission, Result result, int passedCount, int totalCount) {
+        // Exactly-once, lock-correct scoring in a single transaction.
+        // Wrapped so a scoring failure can never roll back or block the saved Result.
+        try {
+            scoringDispatcher.scoreOnce(submission, result, passedCount, totalCount);
+        } catch (Exception ex) {
+            log.error("[WORKER] Scoring failed for submission {}: {}",
+                    submission.getSubmissionId(), ex.getMessage(), ex);
         }
     }
 
@@ -240,13 +259,17 @@ public class ExecutionWorkerService {
         }
     }
 
+    // Mirrors results.status (PASS/FAIL/ERROR/TIME_OUT/MEMORY_OUT) exactly —
+    // this used to rename PASS/FAIL to CP-style ACCEPTED/WRONG_ANSWER on the
+    // wire, which caused the practice/TP/Exam arenas (which should show the
+    // same PASS/FAIL vocabulary as the DB) to display CP terminology instead.
     private String toFinalStatus(ResultStatus status) {
         return switch (status) {
-            case PASS       -> "ACCEPTED";
-            case FAIL       -> "WRONG_ANSWER";
+            case PASS       -> "PASS";
+            case FAIL       -> "FAIL";
             case ERROR      -> "RUNTIME_ERROR";
             case TIME_OUT   -> "TIME_OUT";
-            case MEMORY_OUT -> "MEMORY_LIMIT_EXCEEDED";
+            case MEMORY_OUT -> "MEMORY_OUT";
         };
     }
 

@@ -14,9 +14,9 @@ spring:
     password: ${DB_PASSWORD:psp_password}
     driver-class-name: org.postgresql.Driver
     hikari:
-      maximum-pool-size: ${DB_POOL_SIZE:20}
-      minimum-idle: 5
-      connection-timeout: 3000
+      maximum-pool-size: ${DB_POOL_SIZE:50}
+      minimum-idle: 10
+      connection-timeout: 5000
       idle-timeout: 600000
       max-lifetime: 1800000
       leak-detection-threshold: 60000
@@ -25,10 +25,12 @@ spring:
   # ── JPA ──────────────────────────────────────────
   jpa:
     hibernate:
-      ddl-auto: validate
-      # NEVER use 'update' — use migration files instead.
       # validate: checks schema matches entities, fails fast if mismatch.
-      # (Local dev overrides this to 'update' in application-dev.yml.)
+      # NEVER set 'update' in production — use migration files instead.
+      # (Local dev overrides this in application-dev.yml. DDL_AUTO=update is
+      # the documented escape hatch for FIRST boot on a fresh Docker volume,
+      # where no schema exists yet — switch back to validate afterwards.)
+      ddl-auto: ${DDL_AUTO:validate}
     show-sql: false
     properties:
       hibernate:
@@ -45,12 +47,17 @@ spring:
     host: ${RABBITMQ_HOST:localhost}
     port: ${RABBITMQ_PORT:5672}
     username: ${RABBITMQ_USER:guest}
-    password: ${RABBITMQ_PASS:guest}
+    password: ${RABBITMQ_PASSWORD:${RABBITMQ_PASS:guest}}
     listener:
       simple:
         concurrency: 3
         max-concurrency: 10
-        prefetch: 1
+        prefetch: 4
+        retry:
+          enabled: true
+          initial-interval: 2000
+          max-attempts: 3
+          multiplier: 2.0
 
   # ── Mail ─────────────────────────────────────────
   mail:
@@ -74,6 +81,7 @@ spring:
       - competition-status
       - user-profile
       - leaderboard
+      - hint-unlocks
 
 # ── Server ───────────────────────────────────────────
 server:
@@ -117,6 +125,17 @@ ctf:
   build:
     timeout-seconds: 300
     max-zip-size-mb: 100
+  # URL the worker agent uses to reach this platform (ZIP downloads for builds)
+  platform-internal-url: ${PLATFORM_INTERNAL_URL:http://localhost:8080}
+  # External worker agent (FastAPI) — leave url empty to disable and use local Docker
+  worker:
+    agent:
+      url: ${WORKER_AGENT_URL:}
+      key-id: ${WORKER_AGENT_KEY_ID:}
+      secret: ${WORKER_AGENT_SECRET:}
+      timeout-seconds: 30
+      poll-interval-ms: 2000
+      poll-max-attempts: 60
 
 # ── Docker ───────────────────────────────────────────
 docker:
@@ -124,6 +143,42 @@ docker:
   tls:
     verify: ${DOCKER_TLS_VERIFY:false}
     cert-path: ${DOCKER_CERT_PATH:}
+
+# ── Ephemeral execution (Exam/CP code runner) ───────
+# workdir: host directory where per-submission source/input files are staged
+#   and bind-mounted read-only into the container at /src. Defaults to /dev/shm
+#   (RAM-disk, fast). Override to a disk path if /dev/shm is undersized.
+# tmpfs-size-mb: in-container /app tmpfs size for compiled artefacts + runtime
+#   scratch. The host backend container must also have shm_size >= ~ N * this
+#   value where N is your peak concurrent submissions (see docker-compose.yml).
+execution:
+  workdir: ${EXECUTION_WORKDIR:/dev/shm}
+  tmpfs-size-mb: ${EXECUTION_TMPFS_MB:100}
+
+# ── Actuator & Metrics ──────────────────────────────
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics,prometheus
+      base-path: /api/actuator
+  endpoint:
+    health:
+      show-details: when-authorized
+      show-components: always
+  health:
+    # Personal Gmail SMTP has no password configured in dev — email is a
+    # false-positive dependency here since verification is bypassed in dev
+    # ("Testing Mode") and demo/prod-without-email should not read as DOWN
+    # for an unrelated, unused dependency.
+    mail:
+      enabled: false
+  metrics:
+    export:
+      prometheus:
+        enabled: true
+    tags:
+      application: ${spring.application.name}
 
 # ── Logging ──────────────────────────────────────────
 logging:

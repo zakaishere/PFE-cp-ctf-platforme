@@ -54,4 +54,17 @@ public class AssessmentProblem {
 
     @Column(name = "points_override")
     private Integer pointsOverride;
+
+    /** Max points this problem contributes to the assessment (migration v22). */
+    @Column(name = "max_points")
+    @Builder.Default
+    private Integer maxPoints = 25;
+
+    /** Effective max points: explicit override wins, else max_points, else 25. */
+    @Transient
+    public int effectiveMaxPoints() {
+        if (pointsOverride != null && pointsOverride > 0) return pointsOverride;
+        if (maxPoints != null && maxPoints > 0) return maxPoints;
+        return 25;
+    }
 }

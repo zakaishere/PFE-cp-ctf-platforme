@@ -6,6 +6,7 @@ import com.github.dockerjava.api.command.PullImageResultCallback;
 import com.github.dockerjava.api.model.BuildResponseItem;
 import com.github.dockerjava.api.model.ExposedPort;
 import com.github.dockerjava.api.model.InternetProtocol;
+import com.university.platform.ctf.config.WorkerAgentConfig;
 import com.university.platform.ctf.dto.CTFBuildWebSocketMessage;
 import com.university.platform.ctf.entity.CTFChallengeBuild;
 import com.university.platform.ctf.repository.CTFChallengeBuildRepository;
@@ -36,9 +37,15 @@ public class CTFBuildService {
     private final SimpMessagingTemplate      ws;
     private final String                     imagePrefix;
     private final int                        buildTimeoutSeconds;
+    private final WorkerAgentConfig          workerAgentConfig;
+    private final WorkerAgentClient          workerAgentClient;
+    private final InternalZipTokenService    zipTokenService;
 
     @Value("${ctf.build.max-zip-size-mb:100}")
     private int maxZipSizeMb;
+
+    @Value("${ctf.platform-internal-url:http://localhost:8080}")
+    private String platformInternalUrl;
 
     public CTFBuildService(
             @Nullable DockerClient dockerClient,
@@ -47,7 +54,10 @@ public class CTFBuildService {
             CTFChallengeRepository challengeRepo,
             SimpMessagingTemplate ws,
             @Value("${ctf.images.prefix:psp-ctf}") String imagePrefix,
-            @Value("${ctf.build.timeout-seconds:300}") int buildTimeoutSeconds) {
+            @Value("${ctf.build.timeout-seconds:300}") int buildTimeoutSeconds,
+            WorkerAgentConfig workerAgentConfig,
+            WorkerAgentClient workerAgentClient,
+            InternalZipTokenService zipTokenService) {
         this.dockerClient        = dockerClient;
         this.storageService      = storageService;
         this.buildRepo           = buildRepo;
@@ -55,6 +65,9 @@ public class CTFBuildService {
         this.ws                  = ws;
         this.imagePrefix         = imagePrefix;
         this.buildTimeoutSeconds = buildTimeoutSeconds;
+        this.workerAgentConfig   = workerAgentConfig;
+        this.workerAgentClient   = workerAgentClient;
+        this.zipTokenService     = zipTokenService;
     }
 
     /**
@@ -62,7 +75,7 @@ public class CTFBuildService {
      */
     @Async("ctfBuildExecutor")
     public void buildFromZip(CTFChallengeBuild build, Path zipPath) {
-        doBuildFromZip(build, zipPath);
+        doBuildFromZip(build, zipPath, null);
     }
 
     /**
@@ -140,8 +153,10 @@ public class CTFBuildService {
         build.setBuiltImageTag(null);
         buildRepo.save(build);
 
-        // Run the build pipeline directly (already on ctfBuildExecutor thread)
-        doBuildFromZip(build, newZipPath);
+        // Run the build pipeline directly (already on ctfBuildExecutor thread).
+        // Pass the old image tag so Docker can reuse unchanged layers (e.g. the
+        // apt-get layer) instead of re-downloading packages from scratch.
+        doBuildFromZip(build, newZipPath, oldImageTag);
 
         // Only remove the old image after the new one is confirmed READY so that
         // in-flight spawns keep working throughout the rebuild window.
@@ -157,8 +172,17 @@ public class CTFBuildService {
 
     /**
      * Internal synchronous build logic — shared by buildFromZip and rebuild.
+     *
+     * @param cacheFromTag optional image tag to use as a layer-cache source
+     *                     (pass the previous image on rebuilds to skip unchanged
+     *                     apt-get layers; pass null for first-time builds)
      */
-    private void doBuildFromZip(CTFChallengeBuild build, Path zipPath) {
+    private void doBuildFromZip(CTFChallengeBuild build, Path zipPath,
+                                @org.springframework.lang.Nullable String cacheFromTag) {
+        if (workerAgentConfig.isEnabled()) {
+            doBuildViaAgent(build, zipPath);
+            return;
+        }
         Path extractedDir = null;
         try {
             build.setBuildStatus("BUILDING");
@@ -175,6 +199,30 @@ public class CTFBuildService {
                         "Zip the folder's contents (not the folder itself) so Dockerfile is at the ZIP root.");
             }
 
+            // Parse EXPOSE from the Dockerfile text immediately so the DB has a port
+            // value even before the image finishes building. This is an early estimate
+            // — the post-build image inspection (autoDetectContainerPort) is the
+            // authoritative value and will overwrite this if they differ.
+            Integer earlyPort = storageService.parseDockerfileExposePort(dockerContext);
+            if (earlyPort != null) {
+                log.info("Dockerfile EXPOSE {} detected for challenge {} (early, pre-build)",
+                        earlyPort, build.getChallengeId());
+            } else {
+                // Default to 1337 so the challenge is spawnable even if the author
+                // forgot EXPOSE. The post-build image inspection will correct it.
+                earlyPort = 1337;
+                log.warn("No EXPOSE instruction found in Dockerfile for challenge {} — " +
+                         "defaulting container port to 1337. Add EXPOSE <port> to your Dockerfile.",
+                        build.getChallengeId());
+            }
+            final int resolvedEarlyPort = earlyPort;
+            challengeRepo.findById(build.getChallengeId()).ifPresent(c -> {
+                if (c.getDockerExposedPort() == null) {
+                    c.setDockerExposedPort(resolvedEarlyPort);
+                    challengeRepo.save(c);
+                }
+            });
+
             String imageTag = buildImageTag(build.getChallengeId(), build.getVersion());
             build.setBuiltImageTag(imageTag);
 
@@ -189,8 +237,30 @@ public class CTFBuildService {
                 File contextDir = dockerContext.toFile();
                 AtomicReference<StringBuilder> logBuilder = new AtomicReference<>(new StringBuilder());
 
-                boolean completed = dockerClient.buildImageCmd(contextDir)
+                var buildCmd = dockerClient.buildImageCmd(contextDir)
                         .withTags(Set.of(imageTag))
+                        // Tell BuildKit (when enabled on the daemon) to embed its layer
+                        // manifest into the image so future builds can use it as cache.
+                        // Harmless when BuildKit is not enabled — the daemon ignores it.
+                        // To enable BuildKit globally: add {"features":{"buildkit":true}}
+                        // to /etc/docker/daemon.json and restart Docker.
+                        .withBuildArg("BUILDKIT_INLINE_CACHE", "1");
+
+                // Reuse the previous image's layers as a cache source so unchanged
+                // layers (especially the apt-get install layer in pwn Dockerfiles) are
+                // not re-run on rebuilds. This is the primary build-speed win.
+                if (cacheFromTag != null && !cacheFromTag.isBlank()) {
+                    try {
+                        dockerClient.inspectImageCmd(cacheFromTag).exec();
+                        buildCmd = buildCmd.withCacheFrom(Set.of(cacheFromTag));
+                        log.info("Build will use cache-from: {}", cacheFromTag);
+                    } catch (Exception e) {
+                        log.debug("Cache-from image {} not available locally, building without cache: {}",
+                                cacheFromTag, e.getMessage());
+                    }
+                }
+
+                boolean completed = buildCmd
                         .exec(new BuildImageResultCallback() {
                             @Override
                             public void onNext(BuildResponseItem item) {
@@ -238,6 +308,78 @@ public class CTFBuildService {
             if (extractedDir != null) {
                 storageService.cleanup(extractedDir);
             }
+        }
+    }
+
+    // ── Worker Agent build path ───────────────────────────────────────────────
+
+    /**
+     * Delegates the Docker build to the remote worker agent.
+     * The agent fetches the ZIP from a file:/// URL (requires the upload directory
+     * to be bind-mounted into both the platform and the agent containers).
+     * Set CTF_UPLOAD_PATH to the same host path in docker-compose for both services.
+     */
+    private void doBuildViaAgent(CTFChallengeBuild build, Path zipPath) {
+        try {
+            build.setBuildStatus("BUILDING");
+            build.setBuildStartedAt(LocalDateTime.now());
+            buildRepo.save(build);
+            notifyBuild(build, null);
+
+            String zipUrl   = platformInternalUrl + "/api/internal/zip/" + build.getChallengeId();
+            String zipToken = zipTokenService.issue(build.getChallengeId());
+            String buildId  = workerAgentClient.buildImage(build.getChallengeId().toString(), zipUrl, zipToken);
+            log.info("Remote build started for challenge {}: buildId={}", build.getChallengeId(), buildId);
+
+            for (int i = 0; i < 200; i++) {
+                var status = workerAgentClient.getBuildStatus(buildId);
+                String state = (String) status.get("status");
+                if ("SUCCESS".equals(state)) {
+                    String imageName = (String) status.get("image_name");
+                    build.setBuildStatus("READY");
+                    build.setBuiltImageTag(imageName);
+                    build.setBuildFinishedAt(LocalDateTime.now());
+                    buildRepo.save(build);
+                    challengeRepo.findById(build.getChallengeId()).ifPresent(c -> {
+                        c.setDockerImage(imageName);
+                        challengeRepo.save(c);
+                    });
+                    log.info("Remote build READY for challenge {}: {}", build.getChallengeId(), imageName);
+                    notifyBuild(build, null);
+                    return;
+                }
+                if ("FAILED".equals(state)) {
+                    String error = (String) status.get("error");
+                    build.setBuildStatus("FAILED");
+                    build.setBuildFinishedAt(LocalDateTime.now());
+                    build.setErrorMessage(error);
+                    buildRepo.save(build);
+                    notifyBuild(build, error);
+                    return;
+                }
+                Thread.sleep(3000);
+            }
+
+            build.setBuildStatus("FAILED");
+            build.setErrorMessage("Build timed out after 10 minutes");
+            build.setBuildFinishedAt(LocalDateTime.now());
+            buildRepo.save(build);
+            notifyBuild(build, "Build timed out after 10 minutes");
+
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            build.setBuildStatus("FAILED");
+            build.setErrorMessage("Build interrupted");
+            build.setBuildFinishedAt(LocalDateTime.now());
+            buildRepo.save(build);
+            notifyBuild(build, "Build interrupted");
+        } catch (Exception e) {
+            log.error("Remote build FAILED for challenge {}: {}", build.getChallengeId(), e.getMessage());
+            build.setBuildStatus("FAILED");
+            build.setBuildFinishedAt(LocalDateTime.now());
+            build.setErrorMessage(e.getMessage());
+            buildRepo.save(build);
+            notifyBuild(build, e.getMessage());
         }
     }
 

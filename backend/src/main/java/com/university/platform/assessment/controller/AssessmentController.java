@@ -3,7 +3,9 @@ import com.university.platform.assessment.JoinRequest;
 import com.university.platform.assessment.JoinRequestStatus;
 import com.university.platform.assessment.VisibilityMode;
 import com.university.platform.assessment.repository.AssessmentProblemRepository;
+import com.university.platform.assessment.repository.ExamAttemptResultRepository;
 import com.university.platform.assessment.repository.JoinRequestRepository;
+import com.university.platform.assessment.repository.TPFinalSubmissionRepository;
 import com.university.platform.assessment.model.AssessmentProblem;
 import com.university.platform.assessment.repository.AssessmentRepository;
 import com.university.platform.execution.repository.SubmissionRepository;
@@ -55,6 +57,8 @@ public class AssessmentController {
     private final AssessmentProblemRepository assessmentProblemRepository;
     private final SubmissionRepository submissionRepository;
     private final JoinRequestRepository joinRequestRepository;
+    private final ExamAttemptResultRepository examAttemptResultRepository;
+    private final TPFinalSubmissionRepository tpFinalSubmissionRepository;
     private final JwtService jwtService;
 
     @Transactional
@@ -163,6 +167,7 @@ public class AssessmentController {
                 .createdBy(teacher)
                 .deadline(dto.getDeadline())
                 .maxAttemptsAllowed(dto.getMaxAttempts())
+                .strictAccessCode(dto.getStrictAccessCode())
                 .module(module)
                 .visibilityMode(visibility)
                 .build();
@@ -220,21 +225,31 @@ public class AssessmentController {
 
         if ("TEACHER".equals(role) || "ADMIN".equals(role)) {
             hasStarted = true; // Bypass restriction for staff
+        } else if ("STUDENT".equals(role) && !Boolean.TRUE.equals(assessment.getIsPublished())) {
+            return ResponseEntity.status(403).body("{\"error\": \"This assessment has not been published yet.\"}");
         }
-        
+
         java.util.Map<String, Object> response = new java.util.HashMap<>();
         response.put("assessmentId", assessment.getAssessmentId());
         response.put("title", assessment.getTitle());
         response.put("description", assessment.getDescription());
         response.put("isStarted", hasStarted);
+        response.put("isPublished", Boolean.TRUE.equals(assessment.getIsPublished()));
+        response.put("visibilityMode", assessment.getVisibilityMode() != null
+                ? assessment.getVisibilityMode().name() : VisibilityMode.MODULE_ONLY.name());
         
         if (assessment instanceof LiveExam exam) {
             response.put("scheduledStartTime", exam.getScheduledStartTime());
             response.put("durationMinutes", exam.getDurationMinutes());
             response.put("type", "LIVE_EXAM");
+            response.put("scoringMode", exam.getScoringMode());
+            response.put("passingScore", exam.getPassingScore());
+            response.put("gradesRevealed", Boolean.TRUE.equals(exam.getGradesRevealed()));
         } else if (assessment instanceof OpenTP tp) {
             response.put("deadline", tp.getDeadline());
             response.put("type", "OPEN_TP");
+            response.put("scoringMode", tp.getScoringMode());
+            response.put("penaltyPercent", tp.getPenaltyPercent());
         }
         
         if (hasStarted) {
@@ -379,24 +394,29 @@ public class AssessmentController {
             map.put("problemsCount", problemCount);
             map.put("strictAccessCode", null);
 
+            boolean isPublished = Boolean.TRUE.equals(a.getIsPublished());
+            map.put("isPublished", isPublished);
+
             if (a instanceof LiveExam exam) {
                 map.put("type", "LIVE_EXAM");
                 map.put("scheduledStartTime", exam.getScheduledStartTime());
                 map.put("durationMinutes", exam.getDurationMinutes());
-                map.put("strictAccessCode", exam.getStrictAccessCode());
+                // Never send the real code to a student — it must be verified
+                // server-side via POST /access, not compared client-side.
+                map.put("strictAccessCode", ("TEACHER".equals(role) || "ADMIN".equals(role)) ? exam.getStrictAccessCode() : null);
                 LocalDateTime now = LocalDateTime.now();
                 LocalDateTime start = exam.getScheduledStartTime();
                 LocalDateTime end = start != null && exam.getDurationMinutes() != null
                         ? start.plusMinutes(exam.getDurationMinutes()) : null;
                 boolean closed = Boolean.TRUE.equals(exam.getIsClosed()) || (end != null && now.isAfter(end));
                 boolean live = !closed && start != null && !now.isBefore(start) && (end == null || now.isBefore(end));
-                map.put("status", closed ? "CLOSED" : live ? "LIVE" : "UPCOMING");
+                map.put("status", !isPublished ? "DRAFT" : closed ? "CLOSED" : live ? "LIVE" : "UPCOMING");
             } else if (a instanceof OpenTP tp) {
                 map.put("type", "OPEN_TP");
                 map.put("deadline", tp.getDeadline());
                 map.put("maxAttempts", tp.getMaxAttemptsAllowed());
                 boolean tpClosed = tp.getDeadline() != null && LocalDateTime.now().isAfter(tp.getDeadline());
-                map.put("status", tpClosed ? "CLOSED" : "OPEN");
+                map.put("status", !isPublished ? "DRAFT" : tpClosed ? "CLOSED" : "OPEN");
             }
             return map;
         }).toList();
@@ -408,6 +428,7 @@ public class AssessmentController {
     @Transactional(readOnly = true)
     public ResponseEntity<?> getExamRoom(
             @PathVariable UUID assessmentId,
+            @RequestParam(required = false) String code,
             @RequestHeader("Authorization") String authHeader) {
 
         String token = authHeader.substring(7);
@@ -415,31 +436,86 @@ public class AssessmentController {
         UUID studentId = UUID.fromString(claims.getSubject());
 
         Assessment assessment = assessmentRepository.findById(assessmentId).orElse(null);
-        if (!(assessment instanceof LiveExam)) {
+        // The arena serves both live exams and open TPs. Anything else has no room.
+        if (!(assessment instanceof LiveExam) && !(assessment instanceof OpenTP)) {
             return ResponseEntity.notFound().build();
         }
-        LiveExam exam = (LiveExam) assessment;
 
-        VisibilityMode visibility = exam.getVisibilityMode() != null
-                ? exam.getVisibilityMode() : VisibilityMode.MODULE_ONLY;
-        if (visibility == VisibilityMode.REQUEST_BASED || visibility == VisibilityMode.ACCESS_CODE) {
+        if (!Boolean.TRUE.equals(assessment.getIsPublished())) {
+            return ResponseEntity.status(403)
+                    .body("{\"error\": \"This assessment has not been published yet.\"}");
+        }
+
+        VisibilityMode visibility = assessment.getVisibilityMode() != null
+                ? assessment.getVisibilityMode() : VisibilityMode.MODULE_ONLY;
+
+        // ACCESS_CODE assessments require the correct code on every entry — the
+        // waiting room's own check only ran client-side and never actually gated
+        // the arena content, so a student who knew the URL could bypass it. A
+        // blank/unset code (assessments created before this was enforced never
+        // had one) means nothing was ever configured — don't hard-lock it.
+        if (visibility == VisibilityMode.ACCESS_CODE) {
+            String expected = assessment instanceof LiveExam exam ? exam.getStrictAccessCode()
+                    : assessment instanceof OpenTP tp ? tp.getStrictAccessCode() : null;
+            if (expected != null && !expected.isBlank()
+                    && (code == null || !expected.equals(code.trim()))) {
+                return ResponseEntity.status(403)
+                        .body("{\"error\": \"Invalid access code\"}");
+            }
+        }
+
+        // REQUEST_BASED assessments gate on an approved join request.
+        if (visibility == VisibilityMode.REQUEST_BASED) {
             boolean approved = joinRequestRepository.existsByAssessmentIdAndStudentIdAndStatus(
                     assessmentId, studentId, JoinRequestStatus.APPROVED);
             if (!approved) {
                 return ResponseEntity.status(403)
-                        .body("{\"error\": \"Access denied. You do not have an approved request for this exam.\"}");
+                        .body("{\"error\": \"Access denied. You do not have an approved request for this assessment.\"}");
             }
         }
 
         LocalDateTime now = LocalDateTime.now();
-        LocalDateTime endTime = exam.getScheduledStartTime().plusMinutes(exam.getDurationMinutes());
-        long remainingSeconds = Math.max(0, ChronoUnit.SECONDS.between(now, endTime));
-        boolean isEnded = Boolean.TRUE.equals(exam.getIsClosed()) || remainingSeconds == 0;
+
+        // Subtype-specific timing + metadata. Exams run a fixed-duration countdown
+        // and gate results behind a reveal flag; TPs run to a deadline with a
+        // per-problem attempt cap and no anti-cheat.
+        long remainingSeconds;
+        boolean isEnded;
+        String deadlineIso = null;
+        Integer maxAttempts = null;
+        boolean gradesRevealed = false;
+        final boolean isTp = assessment instanceof OpenTP;
+
+        if (assessment instanceof LiveExam exam) {
+            LocalDateTime endTime = exam.getScheduledStartTime().plusMinutes(exam.getDurationMinutes());
+            remainingSeconds = Math.max(0, ChronoUnit.SECONDS.between(now, endTime));
+            isEnded = Boolean.TRUE.equals(exam.getIsClosed()) || remainingSeconds == 0;
+            gradesRevealed = Boolean.TRUE.equals(exam.getGradesRevealed());
+        } else {
+            OpenTP tp = (OpenTP) assessment;
+            LocalDateTime deadline = tp.getDeadline();
+            remainingSeconds = Math.max(0, ChronoUnit.SECONDS.between(now, deadline));
+            isEnded = now.isAfter(deadline);
+            deadlineIso = deadline.toString();
+            maxAttempts = tp.getMaxAttemptsAllowed();
+        }
 
         Set<UUID> solvedIds = submissionRepository.findSolvedProblemIdsByAssessment(studentId, assessmentId);
 
         List<AssessmentProblem> aps = assessmentProblemRepository
                 .findByAssessment_AssessmentIdOrderByOrderIndexAsc(assessmentId);
+
+        // TP overview/results pages always show per-task earned scores; exams
+        // keep them hidden until grades are released (gated below, per-field,
+        // not by omitting the lookup — ExamAttemptResult rows exist for both
+        // assessment types).
+        final Map<UUID, Integer> earnedByProblem =
+                examAttemptResultRepository.findByAssessmentIdAndStudentId(assessmentId, studentId).stream()
+                        .collect(Collectors.toMap(
+                                com.university.platform.assessment.model.ExamAttemptResult::getProblemId,
+                                com.university.platform.assessment.model.ExamAttemptResult::getEarnedScore,
+                                (a, b) -> a));
+        final boolean showEarnedScore = isTp || gradesRevealed;
 
         String[] labels = {"A","B","C","D","E","F","G","H","I","J"};
 
@@ -459,20 +535,104 @@ public class AssessmentController {
                             .filter(tc -> Boolean.TRUE.equals(tc.getIsHidden()))
                             .count();
 
+                    // TP top bar shows a per-problem attempt counter; exams don't.
+                    Integer attemptsUsed = isTp
+                            ? (int) submissionRepository.countAttempts(studentId, p.getProblemId(), assessmentId)
+                            : null;
+
                     return new ExamProblemDTO(
                             p.getProblemId(), label, p.getTitle(),
                             p.getDifficultyLevel().name(),
                             p.getTimeLimitMs(), p.getMemoryLimitMb(),
                             p.getDescription(),
-                            ap.getPointsOverride() != null ? ap.getPointsOverride() : 0,
+                            ap.effectiveMaxPoints(),
                             visible, hiddenCount,
-                            solvedIds.contains(p.getProblemId())
+                            solvedIds.contains(p.getProblemId()),
+                            attemptsUsed,
+                            showEarnedScore ? earnedByProblem.getOrDefault(p.getProblemId(), 0) : null
                     );
                 })
                 .collect(Collectors.toList());
 
+        // TP final-submit state for THIS student (null for exams / not submitted).
+        String finalSubmittedAt = isTp
+                ? tpFinalSubmissionRepository.findByAssessmentIdAndStudentId(assessmentId, studentId)
+                        .map(f -> f.getSubmittedAt().toString()).orElse(null)
+                : null;
+
         return ResponseEntity.ok(new ExamRoomDTO(
-                assessmentId, exam.getTitle(), remainingSeconds, isEnded, problems));
+                assessmentId, assessment.getTitle(), remainingSeconds, isEnded, problems,
+                deadlineIso, maxAttempts, gradesRevealed, finalSubmittedAt));
+    }
+
+    /**
+     * Student's final "Submit TP" — locks their submissions for this TP and
+     * flips the arena into the read-only results view. Per-student: only THIS
+     * student's work is locked.
+     */
+    @PostMapping("/{assessmentId}/final-submit")
+    @Transactional
+    public ResponseEntity<?> finalSubmitTP(
+            @PathVariable UUID assessmentId,
+            @RequestHeader("Authorization") String authHeader) {
+
+        String token = authHeader.substring(7);
+        UUID studentId = UUID.fromString(jwtService.parseToken(token).getSubject());
+
+        Assessment assessment = assessmentRepository.findById(assessmentId)
+                .orElseThrow(() -> new RuntimeException("Assessment not found"));
+        if (!(assessment instanceof OpenTP tp)) {
+            return ResponseEntity.badRequest().body(Map.of("error", "Only TPs support final submission."));
+        }
+        if (!Boolean.TRUE.equals(tp.getIsPublished())) {
+            return ResponseEntity.status(403).body(Map.of("error", "This TP has not been published yet."));
+        }
+        if (tp.getDeadline() != null && LocalDateTime.now().isAfter(tp.getDeadline())) {
+            return ResponseEntity.status(403).body(Map.of("error", "The deadline for this TP has passed."));
+        }
+        if (tpFinalSubmissionRepository.existsByAssessmentIdAndStudentId(assessmentId, studentId)) {
+            return ResponseEntity.status(409).body(Map.of("error", "You have already submitted this TP."));
+        }
+
+        com.university.platform.assessment.model.TPFinalSubmission fs =
+                com.university.platform.assessment.model.TPFinalSubmission.builder()
+                        .assessmentId(assessmentId)
+                        .studentId(studentId)
+                        .build();
+        tpFinalSubmissionRepository.save(fs);
+
+        return ResponseEntity.ok(Map.of(
+                "message", "TP submitted",
+                "finalSubmittedAt", fs.getSubmittedAt().toString()));
+    }
+
+    /**
+     * Teacher releases final grades for a live exam — flips {@code gradesRevealed}
+     * so students can see their verdicts/scores. Nothing else in the codebase
+     * ever sets this flag; without this endpoint the results view is unreachable.
+     */
+    @PostMapping("/{assessmentId}/release-grades")
+    @Transactional
+    public ResponseEntity<?> releaseGrades(
+            @PathVariable UUID assessmentId,
+            @RequestHeader("Authorization") String authHeader) {
+
+        String token = authHeader.substring(7);
+        UUID teacherId = UUID.fromString(jwtService.parseToken(token).getSubject());
+
+        Assessment assessment = assessmentRepository.findById(assessmentId)
+                .orElseThrow(() -> new RuntimeException("Assessment not found"));
+        if (!(assessment instanceof LiveExam exam)) {
+            return ResponseEntity.badRequest().body(Map.of("error", "Only live exams have grades to release."));
+        }
+        if (!assessment.getCreatedBy().getId().equals(teacherId)) {
+            return ResponseEntity.status(403).body(Map.of("error", "Unauthorized"));
+        }
+
+        exam.setGradesRevealed(true);
+        assessmentRepository.save(exam);
+
+        return ResponseEntity.ok(Map.of("message", "Grades released", "gradesRevealed", true));
     }
 
     @GetMapping("/my-modules")
@@ -614,18 +774,68 @@ public class AssessmentController {
                 exam.setScheduledStartTime(java.time.LocalDateTime.parse(raw,
                         java.time.format.DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH:mm")));
             }
+            if (body.containsKey("scoringMode"))
+                exam.setScoringMode((String) body.get("scoringMode"));
+            if (body.containsKey("passingScore"))
+                exam.setPassingScore(((Number) body.get("passingScore")).intValue());
         } else if (assessment instanceof OpenTP tp) {
             if (body.containsKey("maxAttemptsAllowed"))
                 tp.setMaxAttemptsAllowed(((Number) body.get("maxAttemptsAllowed")).intValue());
+            if (body.containsKey("strictAccessCode"))
+                tp.setStrictAccessCode((String) body.get("strictAccessCode"));
             if (body.containsKey("deadline")) {
                 String raw = (String) body.get("deadline");
                 tp.setDeadline(java.time.LocalDateTime.parse(raw,
                         java.time.format.DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH:mm")));
             }
+            if (body.containsKey("scoringMode"))
+                tp.setScoringMode((String) body.get("scoringMode"));
+            if (body.containsKey("penaltyPercent"))
+                tp.setPenaltyPercent(((Number) body.get("penaltyPercent")).intValue());
         }
 
         assessmentRepository.save(assessment);
         return ResponseEntity.ok(Map.of("message", "Settings updated"));
+    }
+
+    @PostMapping("/{assessmentId}/publish")
+    @Transactional
+    public ResponseEntity<?> publishAssessment(
+            @PathVariable UUID assessmentId,
+            @RequestHeader("Authorization") String authHeader) {
+
+        String token = authHeader.substring(7);
+        UUID teacherId = UUID.fromString(jwtService.parseToken(token).getSubject());
+
+        Assessment assessment = assessmentRepository.findById(assessmentId)
+                .orElseThrow(() -> new RuntimeException("Assessment not found"));
+        if (!assessment.getCreatedBy().getId().equals(teacherId)) {
+            return ResponseEntity.status(403).body("{\"error\": \"Unauthorized\"}");
+        }
+
+        assessment.setIsPublished(true);
+        assessmentRepository.save(assessment);
+        return ResponseEntity.ok(Map.of("message", "Published", "isPublished", true));
+    }
+
+    @PostMapping("/{assessmentId}/unpublish")
+    @Transactional
+    public ResponseEntity<?> unpublishAssessment(
+            @PathVariable UUID assessmentId,
+            @RequestHeader("Authorization") String authHeader) {
+
+        String token = authHeader.substring(7);
+        UUID teacherId = UUID.fromString(jwtService.parseToken(token).getSubject());
+
+        Assessment assessment = assessmentRepository.findById(assessmentId)
+                .orElseThrow(() -> new RuntimeException("Assessment not found"));
+        if (!assessment.getCreatedBy().getId().equals(teacherId)) {
+            return ResponseEntity.status(403).body("{\"error\": \"Unauthorized\"}");
+        }
+
+        assessment.setIsPublished(false);
+        assessmentRepository.save(assessment);
+        return ResponseEntity.ok(Map.of("message", "Unpublished", "isPublished", false));
     }
 
     @PostMapping("/{assessmentId}/access")
@@ -633,18 +843,24 @@ public class AssessmentController {
             @PathVariable UUID assessmentId,
             @RequestBody Map<String, String> body,
             @RequestHeader("Authorization") String authHeader) {
-        
-        String token = authHeader.replace("Bearer ", "");
-        UUID studentId = UUID.fromString(jwtService.parseToken(token).getSubject());
 
         Assessment assessment = assessmentRepository.findById(assessmentId)
                 .orElseThrow(() -> new RuntimeException("Assessment not found"));
 
-        if (assessment instanceof LiveExam exam) {
-            // Access code validation bypassed to enable seamless integration testing 
-            // where visibility automatically grants access as requested.
+        VisibilityMode visibility = assessment.getVisibilityMode() != null
+                ? assessment.getVisibilityMode() : VisibilityMode.MODULE_ONLY;
+
+        if (visibility == VisibilityMode.ACCESS_CODE) {
+            String provided = body.get("accessCode");
+            String expected = assessment instanceof LiveExam exam ? exam.getStrictAccessCode()
+                    : assessment instanceof OpenTP tp ? tp.getStrictAccessCode() : null;
+            // Blank/unset code = nothing was ever configured — don't hard-lock it.
+            if (expected != null && !expected.isBlank()
+                    && (provided == null || !expected.equals(provided.trim()))) {
+                return ResponseEntity.status(403).body(Map.of("error", "Invalid access code"));
+            }
         }
-        
+
         return ResponseEntity.ok(Map.of("message", "Access granted"));
     }
 }

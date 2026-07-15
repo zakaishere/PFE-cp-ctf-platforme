@@ -258,8 +258,8 @@ export default function CTFDetailPage() {
           <div className="psp-empty">
             <AlertTriangle size={32} style={{ margin: "0 auto 10px", color: "var(--red)" }} />
             <div className="psp-empty-title">Challenge not found</div>
-            <Link href="/ctf" className="btn btn-secondary btn-sm" style={{ marginTop: 12 }}>
-              Back to CTF
+            <Link href="/ctf/practice" className="btn btn-secondary btn-sm" style={{ marginTop: 12 }}>
+              Back to Practice
             </Link>
           </div>
         </div>
@@ -277,12 +277,6 @@ export default function CTFDetailPage() {
   return (
     <>
       <Navbar />
-      <div className="psp-breadcrumb">
-        <Link href="/dashboard">PSP</Link> ›{" "}
-        <Link href="/ctf">CTF</Link> ›{" "}
-        <span style={{ color: "var(--text-primary)" }}>{challenge.title}</span>
-      </div>
-
       <div className="psp-main">
         <div style={{
           display: "grid",
@@ -293,10 +287,10 @@ export default function CTFDetailPage() {
           {/* ── Left panel ─────────────────────────────────────────────── */}
           <div>
             <Link
-              href="/ctf"
+              href="/ctf/practice"
               style={{ display: "inline-flex", alignItems: "center", gap: 6, fontSize: 12, color: "var(--text-muted)", textDecoration: "none", marginBottom: 14 }}
             >
-              <ArrowLeft size={13} /> Back to CTF
+              <ArrowLeft size={13} /> Back to Practice
             </Link>
 
             {/* Category + difficulty */}

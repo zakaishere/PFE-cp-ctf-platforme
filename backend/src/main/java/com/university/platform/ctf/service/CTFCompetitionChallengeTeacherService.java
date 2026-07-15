@@ -85,11 +85,13 @@ public class CTFCompetitionChallengeTeacherService {
         c.setDifficulty(CTFChallenge.CTFDifficulty.valueOf(dto.getDifficulty().toUpperCase()));
         c.setBasePoints(dto.getBasePoints());
         c.setFlagType(flagType);
-        // For STATIC challenges the teacher provides the flag; for DYNAMIC a placeholder hash is stored
-        // (never checked — submission uses the per-team hash from ctf_team_flags).
-        c.setFlagHash(flagType == CTFChallenge.FlagType.STATIC
-                ? sha256(dto.getPlainFlag().trim())
-                : "dynamic");
+        if (flagType == CTFChallenge.FlagType.STATIC) {
+            c.setFlagHash(sha256(dto.getPlainFlag().trim()));
+            c.setFlagValue(dto.getPlainFlag().trim()); // plaintext injected into containers
+        } else {
+            c.setFlagHash("dynamic"); // never checked — submission uses ctf_team_flags
+            c.setFlagValue(null);
+        }
         c.setFlagFormat(dto.getFlagFormat() != null ? dto.getFlagFormat() : "FLAG{?}");
         c.setRequiresInstance(dto.getRequiresInstance() != null ? dto.getRequiresInstance() : false);
         c.setDockerImage(dto.getDockerImage());
@@ -103,12 +105,19 @@ public class CTFCompetitionChallengeTeacherService {
         c.setDockerPidsLimit(dto.getDockerPidsLimit());
         c.setDownloadableFileUrl(dto.getDownloadableFileUrl());
         c.setDownloadableFileName(dto.getDownloadableFileName());
-        c.setMaxAttempts(dto.getMaxAttempts() != null ? dto.getMaxAttempts() : 10);
+        c.setMediaUrl(dto.getMediaUrl());
+        // null or 0 = unlimited (stored as null); positive = hard limit per team
+        Integer ma = dto.getMaxAttempts();
+        c.setMaxAttempts(ma != null && ma > 0 ? ma : null);
         c.setIsActive(true);
         c.setIsHidden(true); // hidden by default — teacher reveals explicitly
         c.setHints(buildHints(dto.getHints()));
         c.setAuthorId(userId);
         c.setDeleted(false);
+        c.setBloodBonusEnabled(Boolean.TRUE.equals(dto.getBloodBonusEnabled()));
+        c.setFirstBloodBonus(dto.getFirstBloodBonus()  != null ? dto.getFirstBloodBonus()  : 0);
+        c.setSecondBloodBonus(dto.getSecondBloodBonus() != null ? dto.getSecondBloodBonus() : 0);
+        c.setThirdBloodBonus(dto.getThirdBloodBonus()  != null ? dto.getThirdBloodBonus()  : 0);
 
         challengeRepo.save(c);
 
@@ -161,9 +170,16 @@ public class CTFCompetitionChallengeTeacherService {
         if (dto.getDockerPidsLimit() != null)      c.setDockerPidsLimit(dto.getDockerPidsLimit());
         if (dto.getDownloadableFileUrl() != null)  c.setDownloadableFileUrl(dto.getDownloadableFileUrl());
         if (dto.getDownloadableFileName() != null) c.setDownloadableFileName(dto.getDownloadableFileName());
-        if (dto.getMaxAttempts() != null)          c.setMaxAttempts(dto.getMaxAttempts());
+        if (dto.getMediaUrl() != null)             c.setMediaUrl(dto.getMediaUrl());
+        if (dto.getMaxAttempts() != null) {
+            c.setMaxAttempts(dto.getMaxAttempts() <= 0 ? null : dto.getMaxAttempts());
+        }
         if (dto.getIsActive() != null)             c.setIsActive(dto.getIsActive());
         if (dto.getHints() != null)                c.setHints(buildHints(dto.getHints()));
+        if (dto.getBloodBonusEnabled() != null)    c.setBloodBonusEnabled(dto.getBloodBonusEnabled());
+        if (dto.getFirstBloodBonus()  != null)     c.setFirstBloodBonus(dto.getFirstBloodBonus());
+        if (dto.getSecondBloodBonus() != null)     c.setSecondBloodBonus(dto.getSecondBloodBonus());
+        if (dto.getThirdBloodBonus()  != null)     c.setThirdBloodBonus(dto.getThirdBloodBonus());
 
         challengeRepo.save(c);
 
@@ -221,6 +237,7 @@ public class CTFCompetitionChallengeTeacherService {
         CTFChallenge c = loadChallenge(competitionId, challengeId);
         String oldHash = c.getFlagHash();
         c.setFlagHash(sha256(newPlainFlag.trim()));
+        c.setFlagValue(newPlainFlag.trim()); // keep plaintext in sync for container injection
         challengeRepo.save(c);
 
         // Wipe + regenerate per-team flags. We don't bother with a partial
@@ -354,6 +371,9 @@ public class CTFCompetitionChallengeTeacherService {
     // ── Internals ────────────────────────────────────────────────────────────
 
     private void generateTeamFlagsForChallenge(UUID competitionId, UUID challengeId) {
+        CTFChallenge challenge = challengeRepo.findByIdAndDeletedFalse(challengeId).orElse(null);
+        // STATIC challenges use one shared flag — no per-team rows needed or wanted.
+        if (challenge == null || challenge.getFlagType() != CTFChallenge.FlagType.DYNAMIC) return;
         List<CTFTeam> teams = teamRepo.findByCompetitionId(competitionId);
         for (CTFTeam team : teams) {
             String hash = teamService.computeTeamFlagHash(competitionId, challengeId, team.getId());
@@ -435,6 +455,7 @@ public class CTFCompetitionChallengeTeacherService {
                 .dockerPidsLimit(c.getDockerPidsLimit())
                 .downloadableFileUrl(c.getDownloadableFileUrl())
                 .downloadableFileName(c.getDownloadableFileName())
+                .mediaUrl(c.getMediaUrl())
                 .hints(c.getHints() == null ? List.of() :
                         c.getHints().stream()
                                 .map(h -> new CTFHintDTO(h.id(), h.cost(), h.text()))
@@ -444,6 +465,10 @@ public class CTFCompetitionChallengeTeacherService {
                 .isHidden(Boolean.TRUE.equals(c.getIsHidden()))
                 .solveCount(0)
                 .solvedByMe(false)
+                .bloodBonusEnabled(Boolean.TRUE.equals(c.getBloodBonusEnabled()))
+                .firstBloodBonus(c.getFirstBloodBonus())
+                .secondBloodBonus(c.getSecondBloodBonus())
+                .thirdBloodBonus(c.getThirdBloodBonus())
                 .build();
     }
 

@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { Download } from "lucide-react";
+import { Download, AlertTriangle } from "lucide-react";
 import { toast } from "@/components/ui/PSPToast";
 import {
   getTeacherCtfSubmissions, downloadTeacherCtfExport,
@@ -59,44 +59,70 @@ export default function TeacherCtfSubmissionsTab({ competitionId }: Props) {
         <div style={{ overflowX: "auto", border: "1px solid var(--border)", borderRadius: 8, background: "var(--surface)" }}>
           <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13 }}>
             <thead>
-              <tr style={{ background: "var(--surface-2, #0f172a)" }}>
-                {["When", "Team", "Member", "Challenge", "Category", "Points", "Result"].map(h => (
+              <tr style={{ background: "var(--bg-secondary)" }}>
+                {["When", "Team", "Member", "Challenge", "Category", "Submitted Flag", "Points", "Result"].map(h => (
                   <th key={h} style={{
                     padding: "10px 14px", textAlign: "left",
-                    fontSize: 11, color: "var(--text-muted)", textTransform: "uppercase", letterSpacing: "0.05em",
-                    fontWeight: 700, borderBottom: "1px solid var(--border)",
+                    fontSize: 10, color: "var(--text-muted)", textTransform: "uppercase",
+                    letterSpacing: "0.07em", fontWeight: 700, borderBottom: "2px solid var(--border)",
                   }}>{h}</th>
                 ))}
               </tr>
             </thead>
             <tbody>
               {filtered.map(r => (
-                <tr key={r.id} style={{ borderBottom: "1px solid var(--border)" }}>
-                  <td style={{ padding: "8px 14px", color: "var(--text-muted)", whiteSpace: "nowrap" }}>
+                <tr key={r.id} style={{
+                  borderBottom: "1px solid var(--border)",
+                  background: r.cheatFlagged ? "rgba(167,139,250,0.04)" : !r.correct ? "rgba(239,68,68,0.02)" : undefined,
+                }}>
+                  <td style={{ padding: "8px 14px", color: "var(--text-muted)", whiteSpace: "nowrap", fontFamily: "ui-monospace,monospace", fontSize: 12 }}>
                     {new Date(r.at).toLocaleString("en-GB", { dateStyle: "short", timeStyle: "medium" })}
                   </td>
                   <td style={{ padding: "8px 14px" }}>
                     <span style={{ display: "inline-flex", alignItems: "center", gap: 6 }}>
-                      <span style={{ width: 16, height: 16, borderRadius: "50%", background: r.avatarColor, display: "inline-block" }} />
+                      <span style={{ width: 16, height: 16, borderRadius: "50%", background: r.avatarColor, display: "inline-block", flexShrink: 0 }} />
                       {r.teamName}
                     </span>
                   </td>
                   <td style={{ padding: "8px 14px", color: "var(--text-muted)" }}>{r.solvedByName}</td>
                   <td style={{ padding: "8px 14px", fontWeight: 600 }}>{r.challengeTitle}</td>
                   <td style={{ padding: "8px 14px", color: "var(--text-muted)" }}>{r.challengeCategory ?? ""}</td>
-                  <td style={{ padding: "8px 14px", fontFamily: "monospace", fontWeight: 700, color: "#22c55e" }}>
-                    +{r.pointsAwarded}
+                  <td style={{ padding: "8px 14px" }}>
+                    {r.submittedValue ? (
+                      <span style={{
+                        fontFamily: "ui-monospace,monospace", fontSize: 11,
+                        color: "var(--text-muted)", background: "var(--bg-secondary)",
+                        border: "1px solid var(--border)", borderRadius: 3, padding: "2px 6px",
+                        maxWidth: 220, overflow: "hidden", textOverflow: "ellipsis",
+                        display: "inline-block", whiteSpace: "nowrap",
+                      }}
+                        title={r.submittedValue}
+                      >
+                        {r.submittedValue.length > 30 ? r.submittedValue.slice(0, 30) + "…" : r.submittedValue}
+                      </span>
+                    ) : "—"}
+                  </td>
+                  <td style={{ padding: "8px 14px", fontFamily: "monospace", fontWeight: 700, color: r.correct ? "#22c55e" : "var(--text-muted)" }}>
+                    {r.correct && r.pointsAwarded > 0 ? `+${r.pointsAwarded}` : "—"}
                   </td>
                   <td style={{ padding: "8px 14px" }}>
-                    <span style={{
-                      fontSize: 11, fontWeight: 700,
-                      color: r.correct ? "#22c55e" : "#f87171",
-                      background: r.correct ? "rgba(34,197,94,0.12)" : "rgba(239,68,68,0.12)",
-                      border: `1px solid ${r.correct ? "rgba(34,197,94,0.3)" : "rgba(239,68,68,0.3)"}`,
-                      borderRadius: 3, padding: "2px 7px",
-                    }}>
-                      {r.correct ? "SOLVED" : "WRONG"}
-                    </span>
+                    {r.cheatFlagged ? (
+                      <span style={{
+                        fontSize: 11, fontWeight: 700, color: "#a78bfa",
+                        background: "rgba(167,139,250,0.12)", border: "1px solid rgba(167,139,250,0.3)",
+                        borderRadius: 3, padding: "2px 7px",
+                      }}><AlertTriangle size={11} style={{verticalAlign:"-1px",marginRight:3}} />CHEAT</span>
+                    ) : (
+                      <span style={{
+                        fontSize: 11, fontWeight: 700,
+                        color: r.correct ? "#22c55e" : "#f87171",
+                        background: r.correct ? "rgba(34,197,94,0.12)" : "rgba(239,68,68,0.10)",
+                        border: `1px solid ${r.correct ? "rgba(34,197,94,0.3)" : "rgba(239,68,68,0.25)"}`,
+                        borderRadius: 3, padding: "2px 7px",
+                      }}>
+                        {r.correct ? "CORRECT" : "WRONG"}
+                      </span>
+                    )}
                   </td>
                 </tr>
               ))}

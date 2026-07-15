@@ -15,23 +15,21 @@ interface Props {
 
 export default function ChallengeCard({ challenge: c, onOpen, isNew, solvedMeta }: Props) {
   const conf   = CAT_CONFIG[c.category];
-  const accent = conf?.accent ?? "#94a3b8";
+  const accent = conf?.accent ?? "var(--ink-2)";
   const solved = c.solvedByMe;
 
-  // Static points-bar approximation — falls off as more teams solve, capped at 5%.
+  const displayPts = c.currentPoints ?? c.basePoints;
   const maxPts = c.basePoints || 1;
-  const barPct = Math.max(5, Math.round(
-    (c.solveCount > 0 ? Math.max(1, maxPts - c.solveCount * 10) : maxPts) / maxPts * 100,
-  ));
+  const barPct = Math.max(5, Math.round((displayPts / maxPts) * 100));
 
   return (
     <button
       type="button"
       onClick={() => onOpen(c.id)}
       style={{
-        background: solved ? "rgba(34,197,94,0.05)" : "#0f172a",
-        border: `1px solid ${solved ? "rgba(34,197,94,0.3)" : "#1e293b"}`,
-        borderLeft: solved ? "3px solid #22c55e" : "1px solid #1e293b",
+        background: solved ? "rgba(34,197,94,0.05)" : "var(--bg-2)",
+        border: `1px solid ${solved ? "rgba(34,197,94,0.3)" : "var(--line)"}`,
+        borderLeft: solved ? "3px solid var(--success)" : "1px solid var(--line)",
         borderRadius: 8,
         padding: "14px 16px",
         display: "flex", flexDirection: "column", gap: 10,
@@ -42,7 +40,7 @@ export default function ChallengeCard({ challenge: c, onOpen, isNew, solvedMeta 
         if (!solved) (e.currentTarget as HTMLButtonElement).style.borderColor = `${accent}80`;
       }}
       onMouseLeave={e => {
-        if (!solved) (e.currentTarget as HTMLButtonElement).style.borderColor = "#1e293b";
+        if (!solved) (e.currentTarget as HTMLButtonElement).style.borderColor = "var(--line)";
       }}
     >
       {/* Header row: category icon + badges */}
@@ -68,7 +66,7 @@ export default function ChallengeCard({ challenge: c, onOpen, isNew, solvedMeta 
           {solved && (
             <span style={{
               display: "inline-flex", alignItems: "center", gap: 3,
-              fontSize: 10, fontWeight: 700, color: "#22c55e",
+              fontSize: 10, fontWeight: 700, color: "var(--success)",
               background: "rgba(34,197,94,0.1)", border: "1px solid rgba(34,197,94,0.3)",
               borderRadius: 4, padding: "1px 6px",
             }}>
@@ -77,9 +75,9 @@ export default function ChallengeCard({ challenge: c, onOpen, isNew, solvedMeta 
           )}
           <span style={{
             fontSize: 10, fontWeight: 700,
-            color: DIFF_COLORS[c.difficulty] ?? "#94a3b8",
-            background: `${DIFF_COLORS[c.difficulty] ?? "#94a3b8"}18`,
-            border: `1px solid ${DIFF_COLORS[c.difficulty] ?? "#94a3b8"}30`,
+            color: DIFF_COLORS[c.difficulty] ?? "var(--ink-2)",
+            background: `${DIFF_COLORS[c.difficulty] ?? "var(--ink-2)"}18`,
+            border: `1px solid ${DIFF_COLORS[c.difficulty] ?? "var(--ink-2)"}30`,
             borderRadius: 4, padding: "1px 6px",
           }}>
             {c.difficulty}
@@ -88,13 +86,13 @@ export default function ChallengeCard({ challenge: c, onOpen, isNew, solvedMeta 
       </div>
 
       {/* Title */}
-      <div style={{ fontSize: 15, fontWeight: 700, color: solved ? "#94a3b8" : "#f8fafc", lineHeight: 1.3 }}>
+      <div style={{ fontSize: 15, fontWeight: 700, color: solved ? "var(--ink-2)" : "var(--ink)", lineHeight: 1.3 }}>
         {c.title}
       </div>
 
       {/* Solved-by line OR points bar */}
       {solved && solvedMeta ? (
-        <div style={{ fontSize: 11, color: "#64748b" }}>
+        <div style={{ fontSize: 11, color: "var(--ink-2)" }}>
           Solved
           {solvedMeta.solverName ? ` by ${solvedMeta.solverName}` : ""}
           {solvedMeta.atIso ? ` · ${timeAgo(solvedMeta.atIso)}` : ""}
@@ -103,12 +101,12 @@ export default function ChallengeCard({ challenge: c, onOpen, isNew, solvedMeta 
       ) : (
         <div>
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 4 }}>
-            <span style={{ fontSize: 11, color: "#64748b", fontFamily: "ui-monospace, monospace" }}>
+            <span style={{ fontSize: 11, color: "var(--ink-2)", fontFamily: "ui-monospace, monospace" }}>
               {c.solveCount} solve{c.solveCount !== 1 ? "s" : ""}
             </span>
-            <span style={{ fontSize: 14, fontWeight: 700, color: accent }}>{c.basePoints} pts</span>
+            <span style={{ fontSize: 14, fontWeight: 700, color: accent }}>{displayPts} pts</span>
           </div>
-          <div style={{ height: 3, background: "#1e293b", borderRadius: 2 }}>
+          <div style={{ height: 3, background: "var(--line)", borderRadius: 2 }}>
             <div style={{
               height: "100%", borderRadius: 2,
               background: accent, opacity: 0.65,
@@ -120,10 +118,10 @@ export default function ChallengeCard({ challenge: c, onOpen, isNew, solvedMeta 
 
       <div style={{
         display: "flex", justifyContent: "space-between", alignItems: "center",
-        fontSize: 11, color: "#475569",
+        fontSize: 11, color: "var(--ink-3)",
       }}>
         <span style={{ display: "inline-flex", alignItems: "center", gap: 4 }}>
-          <Star size={11} color="#64748b" /> {c.solveCount} teams solved
+          <Star size={11} color="var(--ink-2)" /> {c.solveCount} teams solved
         </span>
         {!solved && (
           <span style={{ color: accent, fontWeight: 600 }}>Open →</span>

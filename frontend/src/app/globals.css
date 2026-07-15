@@ -2,6 +2,15 @@
 @tailwind components;
 @tailwind utilities;
 
+::selection {
+  background: #00ff66;
+  color: #030708;
+}
+::-moz-selection {
+  background: #00ff66;
+  color: #030708;
+}
+
 /* ── LIGHT THEME (default) ───────────────────────────────── */
 :root,
 [data-theme="light"] {
@@ -17,16 +26,16 @@
   --text-secondary: #344563;
   --text-muted:     #5e6c84;
   --text-subtle:    #97a0af;
-  --blue:           #0052cc;
-  --blue-hover:     #0065ff;
-  --blue-light:     #deebff;
-  --green:          #00875a;
+  --blue:           var(--brand);
+  --blue-hover:     var(--brand-2);
+  --blue-light:     var(--accent-soft);
+  --green:          var(--success);
   --green-light:    #e3fcef;
-  --red:            #de350b;
+  --red:            var(--danger);
   --red-light:      #ffebe6;
-  --orange:         #ff8b00;
+  --orange:         var(--warn);
   --orange-light:   #fff7e6;
-  --navbar-bg:           #0052cc;
+  --navbar-bg:           var(--brand);
   --navbar-border:       rgba(0,0,0,0.15);
   --navbar-text:         rgba(255,255,255,0.85);
   --navbar-text-active:  #ffffff;
@@ -36,59 +45,105 @@
   --card-shadow:         0 1px 3px rgba(9,30,66,0.08);
 }
 
-/* ── DARK THEME ──────────────────────────────────────────── */
+/* ── DARK THEME — "Algora" lifted-charcoal palette ────────────────────
+   This is the platform's one and only theme. Every legacy PSP token below
+   is remapped onto an Algora token so the whole app recolors from here.
+   ──────────────────────────────────────────────────────────────────── */
 [data-theme="dark"] {
 
-  /* ── Backgrounds (slate palette) ────────────────────── */
-  --bg-primary:     #0F172A;
-  --bg-secondary:   #1E293B;
-  --bg-tertiary:    #1E293B;
-  --bg-hover:       #334155;
-  --bg-elevated:    #1E293B;
-  --bg-navbar:      #0F172A;
+  /* ── Algora source tokens (the single source of truth) ─────────────
+     Dark-green palette. Every legacy alias below repoints to these, so
+     recoloring the platform happens entirely from this block. ──────── */
+  --bg:          #0a0a0a;   /* app background */
+  --bg-2:        #111111;   /* inputs, recessed areas, table headers */
+  --surface:     #161616;   /* cards, panels — clearly elevated */
+  --surface-2:   #1e1e1e;   /* hover states, active rows */
+  --surface-3:   #252525;   /* pressed / selected */
+  --line:        #1e1e1e;   /* borders — felt, not seen */
+  --line-2:      #2a2a2a;   /* stronger borders, dividers */
+  --line-strong: var(--line-2);  /* legacy alias → line-2 */
 
-  /* ── Borders ─────────────────────────────────────────── */
-  --border:         #334155;
-  --border-subtle:  #1E293B;
-  --border-strong:  #475569;
+  --ink:   #eef2ee;         /* primary text (green-tinted off-white) */
+  --ink-2: #7a8f7a;         /* secondary text */
+  --ink-3: #3d4d3d;         /* tertiary / muted */
 
-  /* ── Text ────────────────────────────────────────────── */
-  --text-primary:   #F8FAFC;
-  --text-secondary: #94A3B8;
-  --text-muted:     #64748B;
-  --text-subtle:    #475569;
+  /* Green accent — the single platform accent. --brand aliases it so the
+     entire existing app (which references --brand) recolors to green. */
+  --accent:     #00FF00;
+  --accent-2:   #66FF66;
+  --accent-dim: rgba(0,255,0,.10);
+  --accent-ring:rgba(0,255,0,.25);
+  --accent-glow:rgba(0,255,0,.15);
 
-  /* ── Blue accent ─────────────────────────────────────── */
-  --blue:           #3B82F6;
-  --blue-hover:     #60A5FA;
-  --blue-light:     rgba(59,130,246,0.15);
-  --blue-border:    rgba(59,130,246,0.3);
+  --brand:       var(--accent);    /* platform-wide accent → green */
+  --brand-2:     var(--accent-2);  /* accent hover / active text */
+  --accent-soft: var(--accent-dim);
 
-  /* ── Status colors ───────────────────────────────────── */
-  --green:          #22C55E;
-  --green-light:    rgba(34,197,94,0.12);
-  --red:            #EF4444;
-  --red-light:      rgba(239,68,68,0.1);
-  --orange:         #F59E0B;
-  --orange-light:   rgba(245,158,11,0.12);
-  --purple:         #A855F7;
-  --purple-light:   rgba(168,85,247,0.12);
+  /* success shares the green accent hue */
+  --success:#00FF00;  --success-soft:rgba(0,255,0,.12);   --success-ink:#66FF66;
+  --warn:   #e8a030;  --warn-soft:rgba(232,160,48,.12);     --warn-ink:#ffc069;
+  --danger: #f0637a;  --danger-soft:rgba(240,99,122,.12);   --danger-ink:#ff8fa3;
+  --violet: #9b8cf6;  --violet-soft:rgba(155,140,246,.12);
 
-  /* ── Badge backgrounds ───────────────────────────────── */
-  --badge-bg:       #374151;
-  --badge-text:     #E2E8F0;
+  /* difficulty text — Easy=accent, Medium=amber, Hard=rose */
+  --easy:var(--accent); --medium:#ffc069; --hard:#ff8fa3;
 
-  /* ── Shadows ─────────────────────────────────────────── */
-  --card-shadow:    0 1px 3px rgba(0,0,0,0.5), 0 0 0 1px rgba(51,65,85,0.5);
+  --r: 12px; --r-sm: 8px;
+  --radius: 12px;   /* shadcn primitives consume this */
+  --nav-h: 62px;    /* top navbar height (layout offsets reference this) */
 
-  /* ── Navbar ──────────────────────────────────────────── */
-  --navbar-bg:           #0F172A;
-  --navbar-border:       #334155;
-  --navbar-text:         rgba(248,250,252,0.7);
-  --navbar-text-active:  #F8FAFC;
+  --card-hover: 0 0 0 1px var(--accent), 0 0 20px rgba(0,255,0,.12);
+
+  /* ── Legacy PSP aliases → Algora (do not hardcode hex in components) ── */
+  --bg-primary:     var(--bg);         /* page background */
+  --bg-secondary:   var(--surface);    /* cards / panels */
+  --bg-tertiary:    var(--bg-2);        /* recessed / table headers / inputs */
+  --bg-hover:       var(--surface-2);   /* hover / raised rows */
+  --bg-elevated:    var(--surface);     /* dropdowns / popovers */
+  --bg-navbar:      var(--bg-2);
+
+  --border:         var(--line);
+  --border-subtle:  #161d2f;
+  --border-strong:  var(--line-strong);
+
+  --text-primary:   var(--ink);
+  --text-secondary: var(--ink-2);
+  --text-muted:     var(--ink-3);
+  --text-subtle:    #4a5269;
+
+  --blue:           var(--brand);
+  --blue-hover:     var(--brand-2);
+  --blue-light:     var(--accent-soft);
+  --blue-border:    var(--accent-ring);
+
+  --green:          var(--success-ink);
+  --green-light:    var(--success-soft);
+  --red:            var(--danger-ink);
+  --red-light:      var(--danger-soft);
+  --orange:         var(--warn-ink);
+  --orange-light:   var(--warn-soft);
+  --purple:         var(--brand);       /* single accent — no stray purple */
+  --purple-light:   var(--accent-soft);
+
+  --badge-bg:       var(--surface-2);
+  --badge-text:     var(--ink-2);
+
+  --card-shadow:    0 1px 3px rgba(0,0,0,.4), 0 0 0 1px rgba(255,255,255,.03);
+
+  --navbar-bg:           var(--bg-2);
+  --navbar-border:       var(--line);
+  --navbar-text:         var(--ink-2);
+  --navbar-text-active:  var(--ink);
+}
+
+/* ── Global micro-transitions on interactive elements (120ms = native feel) ── */
+.btn, .nav-item, .nlink, .na, .prow, .erow, .ftab, .tab, .act,
+.psp-btn, .psp-ftab, .psp-tab, .psp-nav-item {
+  transition: background 120ms ease, color 120ms ease, box-shadow 120ms ease, border-color 120ms ease;
 }
 
 @keyframes spin { to { transform: rotate(360deg); } }
+@keyframes arenaBlink { 0%,100% { opacity: 1; } 50% { opacity: 0.45; } }
 @keyframes tcReveal {
   from { opacity: 0; transform: translateY(-4px); }
   to   { opacity: 1; transform: translateY(0); }
@@ -109,22 +164,22 @@
 }
 
 /* ================================================================
-   PSP Platform — Design System (Jira-inspired, White + #0052cc)
+   PSP Platform — Design System (Jira-inspired, White + var(--brand))
    ================================================================ */
 
 @layer base {
   :root {
-    --blue:       #0052cc;
-    --blue-hover: #0065ff;
-    --blue-light: #deebff;
+    --blue:       var(--brand);
+    --blue-hover: var(--brand-2);
+    --blue-light: var(--accent-soft);
     --text:       #172b4d;
     --muted:      #5e6c84;
     --border:     #dfe1e6;
     --surface:    #ffffff;
     --bg:         #f4f5f7;
-    --green:      #00875a;
-    --red:        #de350b;
-    --orange:     #ff8b00;
+    --green:      var(--success);
+    --red:        var(--danger);
+    --orange:     var(--warn);
     --purple:     #6554c0;
 
     /* shadcn/radix compat */
@@ -141,6 +196,7 @@
     --muted: 216 14% 95%;
     --muted-foreground: 215 16% 47%;
     --accent: 216 14% 93%;
+    --sh-accent: 216 14% 93%;
     --accent-foreground: 215 41% 20%;
     --destructive: 12 95% 47%;
     --destructive-foreground: 0 0% 100%;
@@ -167,17 +223,25 @@
   }
 
   body {
-    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    font-family: var(--font-sans), system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
     background: var(--bg);
     color: var(--text);
     font-size: 13px;
+    letter-spacing: -0.01em;
+  }
+
+  /* Mono for numbers, timers, IDs, code, scores */
+  .mono,
+  .font-mono,
+  code, pre, kbd, samp {
+    font-family: var(--font-mono), ui-monospace, 'SF Mono', Menlo, Consolas, monospace;
   }
 }
 
 /* ── NAVBAR ── */
 @layer components {
   .psp-navbar {
-    background: #0052cc;
+    background: var(--brand);
     height: 48px;
     display: flex;
     align-items: center;
@@ -208,8 +272,8 @@
     background: white;
     border-radius: 4px;
     display: flex; align-items: center; justify-content: center;
-    color: #0052cc;
-    font-weight: 900;
+    color: var(--brand);
+    font-weight: 700;
     font-size: 13px;
   }
 
@@ -247,7 +311,7 @@
   .psp-nav-btn:hover { background: rgba(255,255,255,0.22); }
 
   .psp-nav-badge {
-    background: #de350b;
+    background: var(--danger);
     color: white;
     font-size: 9px;
     font-weight: 700;
@@ -277,11 +341,11 @@
     display: flex;
     align-items: center;
     gap: 6px;
-    margin-top: 48px;
+    margin-top: var(--nav-h, 62px);
     font-size: 12px;
     color: var(--text-muted);
   }
-  .psp-breadcrumb a { color: #0052cc; cursor: pointer; text-decoration: none; }
+  .psp-breadcrumb a { color: var(--brand); cursor: pointer; text-decoration: none; }
   .psp-breadcrumb a:hover { text-decoration: underline; }
 
   /* ── LAYOUT ── */
@@ -298,15 +362,15 @@
   }
   .psp-btn:active:not(:disabled) { transform: scale(0.96); }
   .psp-btn:disabled { opacity: 0.5; cursor: not-allowed; }
-  .psp-btn-primary { background: #0052cc; color: white; }
-  .psp-btn-primary:hover:not(:disabled) { background: #0065ff; }
-  .psp-btn-primary:active:not(:disabled) { background: #003d99; }
+  .psp-btn-primary { background: var(--brand); color: white; }
+  .psp-btn-primary:hover:not(:disabled) { background: var(--brand-2); }
+  .psp-btn-primary:active:not(:disabled) { background: var(--brand); }
   .psp-btn-secondary { background: var(--bg-primary); color: var(--text-primary); border: 1px solid var(--border); }
   .psp-btn-secondary:hover:not(:disabled) { background: var(--bg-secondary); border-color: #c1c7d0; }
-  .psp-btn-danger { background: var(--bg-primary); color: #de350b; border: 1px solid #de350b; }
+  .psp-btn-danger { background: var(--bg-primary); color: var(--danger); border: 1px solid var(--danger); }
   .psp-btn-danger:hover:not(:disabled) { background: var(--red-light); }
-  .psp-btn-success { background: var(--green-light); color: #006644; border: none; }
-  .psp-btn-success:hover:not(:disabled) { background: #abf5d1; }
+  .psp-btn-success { background: var(--green-light); color: var(--success-ink); border: none; }
+  .psp-btn-success:hover:not(:disabled) { background: var(--success-soft); }
   .psp-btn-sm { height: 26px; font-size: 11px; padding: 0 10px; }
   .psp-btn-lg { height: 40px; font-size: 14px; padding: 0 20px; }
 
@@ -319,15 +383,15 @@
   }
   .req-btn:active:not(:disabled) { transform: scale(0.95); }
   .req-btn:disabled { opacity: 0.5; cursor: not-allowed; }
-  .req-btn-approve { background: var(--green-light); color: #006644; }
-  .req-btn-approve:hover:not(:disabled) { background: #abf5d1; }
-  .req-btn-reject  { background: var(--red-light); color: #bf2600; }
-  .req-btn-reject:hover:not(:disabled)  { background: #ffd2cc; }
+  .req-btn-approve { background: var(--green-light); color: var(--success-ink); }
+  .req-btn-approve:hover:not(:disabled) { background: var(--success-soft); }
+  .req-btn-reject  { background: var(--red-light); color: var(--danger-ink); }
+  .req-btn-reject:hover:not(:disabled)  { background: var(--danger-soft); }
 
   /* ── STUDENT AVATAR ── */
   .req-avatar {
     width: 32px; height: 32px; border-radius: 50%;
-    background: #0052cc; color: white;
+    background: var(--brand); color: white;
     display: flex; align-items: center; justify-content: center;
     font-size: 11px; font-weight: 700; flex-shrink: 0;
     user-select: none;
@@ -337,7 +401,7 @@
   .psp-card {
     background: var(--bg-primary);
     border: 1px solid var(--border);
-    border-radius: 3px;
+    border-radius: var(--r);
     margin-bottom: 14px;
     overflow: hidden;
   }
@@ -374,11 +438,11 @@
     display: flex; align-items: center; justify-content: center;
     flex-shrink: 0;
   }
-  .ic-blue   { background: #deebff; color: #0052cc; }
-  .ic-green  { background: var(--green-light); color: #00875a; }
-  .ic-orange { background: var(--orange-light); color: #ff8b00; }
-  .ic-purple { background: #eae6ff; color: #6554c0; }
-  .ic-red    { background: var(--red-light); color: #de350b; }
+  .ic-blue   { background: var(--accent-soft); color: var(--brand); }
+  .ic-green  { background: var(--green-light); color: var(--success); }
+  .ic-orange { background: var(--orange-light); color: var(--warn); }
+  .ic-purple { background: var(--violet-soft); color: var(--violet); }
+  .ic-red    { background: var(--red-light); color: var(--danger); }
   .psp-stat-val { font-size: 24px; font-weight: 700; color: var(--text-primary); line-height: 1; }
   .psp-stat-lbl { font-size: 11px; color: var(--text-muted); margin-top: 3px; }
 
@@ -392,27 +456,27 @@
     letter-spacing: 0.3px;
     white-space: nowrap;
   }
-  .b-live    { background: var(--red-light); color: #bf2600; }
-  .b-tp      { background: var(--green-light); color: #006644; }
+  .b-live    { background: var(--red-light); color: var(--danger-ink); }
+  .b-tp      { background: var(--green-light); color: var(--success-ink); }
   .b-comp    { background: #eae6ff; color: #403294; }
-  .b-solo    { background: #deebff; color: #0052cc; }
-  .b-easy    { background: var(--green-light); color: #006644; }
-  .b-med     { background: var(--orange-light); color: #974f0c; }
-  .b-hard    { background: var(--red-light); color: #bf2600; }
-  .b-pub     { background: #deebff; color: #0747a6; }
+  .b-solo    { background: var(--accent-soft); color: var(--brand); }
+  .b-easy    { background: var(--green-light); color: var(--success-ink); }
+  .b-med     { background: var(--orange-light); color: var(--warn-ink); }
+  .b-hard    { background: var(--red-light); color: var(--danger-ink); }
+  .b-pub     { background: var(--accent-soft); color: var(--brand); }
   .b-priv    { background: var(--bg-secondary); color: var(--text-muted); }
-  .b-pass    { background: var(--green-light); color: #006644; }
-  .b-fail    { background: var(--red-light); color: #bf2600; }
-  .b-pending { background: var(--orange-light); color: #974f0c; }
+  .b-pass    { background: var(--green-light); color: var(--success-ink); }
+  .b-fail    { background: var(--red-light); color: var(--danger-ink); }
+  .b-pending { background: var(--orange-light); color: var(--warn-ink); }
 
   /* ── STATUS DOT ── */
   .psp-status { display: inline-flex; align-items: center; gap: 5px; font-size: 12px; }
   .psp-dot { width: 7px; height: 7px; border-radius: 50%; display: inline-block; flex-shrink: 0; }
-  .d-green  { background: #00875a; }
-  .d-orange { background: #ff8b00; }
+  .d-green  { background: var(--success); }
+  .d-orange { background: var(--warn); }
   .d-gray   { background: #97a0af; }
-  .d-blue   { background: #0052cc; }
-  .d-red    { background: #de350b; }
+  .d-blue   { background: var(--brand); }
+  .d-red    { background: var(--danger); }
 
   /* ── TABS ── */
   .psp-tabs { display: flex; border-bottom: 2px solid var(--border); margin-bottom: 20px; }
@@ -426,7 +490,7 @@
     transition: color 0.12s;
   }
   .psp-tab:hover { color: var(--text-primary); }
-  .psp-tab.active { color: #0052cc; border-bottom-color: #0052cc; }
+  .psp-tab.active { color: var(--brand); border-bottom-color: var(--brand); }
 
   /* ── FILTER BAR ── */
   .psp-filter-bar {
@@ -443,14 +507,14 @@
     transition: background 0.1s;
   }
   .psp-ftab:hover { background: var(--border); }
-  .psp-ftab.on { background: #0052cc; color: white; }
+  .psp-ftab.on { background: var(--brand); color: white; }
   .psp-search {
     border: 1px solid var(--border); border-radius: 3px;
     padding: 0 10px; height: 28px; font-size: 12px;
     color: var(--text-primary); outline: none; width: 200px;
     transition: border-color 0.12s;
   }
-  .psp-search:focus { border-color: #4c9aff; box-shadow: 0 0 0 2px #4c9aff33; }
+  .psp-search:focus { border-color: var(--brand-2); box-shadow: 0 0 0 2px var(--brand-2)33; }
 
   /* ── TABLE ── */
   .psp-table { width: 100%; border-collapse: collapse; }
@@ -469,57 +533,73 @@
   .psp-table tbody tr:last-child { border-bottom: none; }
   .psp-table tbody tr:hover { background: var(--bg-secondary); }
   .psp-table td { padding: 10px 16px; vertical-align: middle; font-size: 13px; }
-  .lb-me { background: #deebff !important; border-left: 3px solid #0052cc; }
-  .td-link { font-weight: 500; color: #0052cc; }
+  .lb-me { background: var(--accent-soft) !important; border-left: 3px solid var(--brand); }
+  .td-link { font-weight: 500; color: var(--brand); }
   .td-link:hover { text-decoration: underline; }
   .td-muted { color: var(--text-muted); font-size: 12px; }
 
   /* ── ALERTS ── */
   .psp-alert { border-radius: 3px; padding: 10px 16px; display: flex; align-items: center; gap: 10px; margin-bottom: 16px; font-size: 12px; }
   .psp-alert-warn    { background: var(--orange-light); border: 1px solid #ffe380; color: var(--text-primary); }
-  .psp-alert-info    { background: #deebff; border: 1px solid #4c9aff; color: #0747a6; }
-  .psp-alert-success { background: var(--green-light); border: 1px solid #57d9a3; color: #006644; }
-  .psp-alert-error   { background: var(--red-light); border: 1px solid #ff8f73; color: #bf2600; }
+  .psp-alert-info    { background: var(--accent-soft); border: 1px solid var(--brand-2); color: var(--brand); }
+  .psp-alert-success { background: var(--green-light); border: 1px solid var(--success); color: var(--success-ink); }
+  .psp-alert-error   { background: var(--red-light); border: 1px solid var(--danger); color: var(--danger-ink); }
 
   /* ── PROGRESS ── */
   .psp-prog-wrap { background: var(--border); border-radius: 2px; height: 4px; }
-  .psp-prog-fill { background: #0052cc; height: 4px; border-radius: 2px; }
+  .psp-prog-fill { background: var(--brand); height: 4px; border-radius: 2px; }
 
-  /* ── FORM ELEMENTS ── */
+  /* ── FORM ELEMENTS ──
+     Inputs use a white-tinted border (rgba white .12) on the recessed --bg-2
+     surface. A white-tinted border stays perceptible on any dark background
+     regardless of exact value, which fixes the "invisible field" problem the
+     old #2a2a2a-on-#0a0a0a borders had. */
   .psp-form-label {
-    display: block; font-size: 12px; font-weight: 600; color: var(--text-primary); margin-bottom: 4px;
+    display: block; font-size: 13px; font-weight: 600; color: var(--text-primary);
+    margin-bottom: 7px;
   }
+  .psp-form-label .req { color: var(--accent); }
   .psp-form-input {
-    width: 100%; border: 1px solid var(--border); border-radius: 3px;
-    padding: 0 10px; height: 36px; font-size: 13px; color: var(--text-primary);
-    outline: none; background: var(--bg-primary); transition: border-color 0.12s;
+    width: 100%; border: 1px solid rgba(255,255,255,.12); border-radius: 8px;
+    padding: 0 12px; height: 38px; font-size: 13.5px; color: var(--ink);
+    outline: none; background: var(--bg-2); font-family: var(--font-sans);
+    transition: border-color 140ms ease, box-shadow 140ms ease;
   }
-  .psp-form-input:focus { border-color: #4c9aff; box-shadow: 0 0 0 2px #4c9aff33; }
-  .psp-form-input::placeholder { color: var(--text-subtle); }
+  .psp-form-input:focus { border-color: var(--accent); box-shadow: 0 0 0 3px rgba(0,255,0,.12); }
+  .psp-form-input::placeholder { color: var(--ink-3); opacity: 1; }
   .psp-form-select {
-    width: 100%; border: 1px solid var(--border); border-radius: 3px;
-    padding: 0 10px; height: 36px; font-size: 13px; color: var(--text-primary);
-    outline: none; background: var(--bg-primary); cursor: pointer;
+    width: 100%; border: 1px solid rgba(255,255,255,.12); border-radius: 8px;
+    padding: 0 34px 0 12px; height: 38px; font-size: 13.5px; color: var(--ink);
+    outline: none; background: var(--bg-2); cursor: pointer;
+    font-family: var(--font-sans); appearance: none;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%237a8f7a' stroke-width='2'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
+    background-repeat: no-repeat; background-position: right 12px center;
+    transition: border-color 140ms ease, box-shadow 140ms ease;
   }
+  .psp-form-select:focus { border-color: var(--accent); box-shadow: 0 0 0 3px rgba(0,255,0,.12); }
   .psp-form-textarea {
-    width: 100%; border: 1px solid var(--border); border-radius: 3px;
-    padding: 8px 10px; font-size: 13px; color: var(--text-primary);
-    outline: none; background: var(--bg-primary); resize: vertical; min-height: 100px;
-    font-family: inherit; transition: border-color 0.12s;
+    width: 100%; border: 1px solid rgba(255,255,255,.12); border-radius: 8px;
+    padding: 10px 12px; font-size: 13.5px; color: var(--ink);
+    outline: none; background: var(--bg-2); resize: vertical; min-height: 100px;
+    font-family: var(--font-sans); line-height: 1.6;
+    transition: border-color 140ms ease, box-shadow 140ms ease;
   }
-  .psp-form-textarea:focus { border-color: #4c9aff; box-shadow: 0 0 0 2px #4c9aff33; }
+  .psp-form-textarea:focus { border-color: var(--accent); box-shadow: 0 0 0 3px rgba(0,255,0,.12); }
+  .psp-form-textarea::placeholder { color: var(--ink-3); opacity: 1; }
 
   /* ── MODAL ── */
   .psp-modal-overlay {
     position: fixed; inset: 0;
-    background: rgba(9,30,66,0.54);
+    background: rgba(0,0,0,.75);
+    backdrop-filter: blur(4px);
+    -webkit-backdrop-filter: blur(4px);
     z-index: 300;
     display: flex; align-items: center; justify-content: center;
   }
   .psp-modal {
-    background: var(--bg-primary); border-radius: 3px;
+    background: var(--bg-primary); border-radius: 14px;
     width: 500px; max-width: 95vw;
-    box-shadow: 0 8px 32px rgba(9,30,66,0.25);
+    box-shadow: 0 24px 60px rgba(0,0,0,.6), 0 0 0 1px rgba(255,255,255,.05);
   }
   .psp-modal-header {
     padding: 16px 20px; border-bottom: 1px solid var(--border);
@@ -541,7 +621,7 @@
     background: var(--border); border-radius: 10px;
     position: relative; cursor: pointer; transition: background 0.2s;
   }
-  .psp-toggle.on { background: #0052cc; }
+  .psp-toggle.on { background: var(--brand); }
   .psp-toggle-knob {
     position: absolute; top: 2px; left: 2px;
     width: 16px; height: 16px;
@@ -560,7 +640,7 @@
     display: grid;
     grid-template-columns: 260px 1fr 300px;
     gap: 0;
-    height: calc(100vh - 88px); /* navbar 48px + breadcrumb 40px */
+    height: calc(100vh - var(--nav-h, 62px)); /* navbar only — breadcrumb removed */
     overflow: hidden;
   }
   @media (max-width: 1023px) {
@@ -585,7 +665,7 @@
     width: 100%; border: 1px solid var(--border); border-radius: 3px;
     padding: 0 8px; height: 28px; font-size: 12px; outline: none;
   }
-  .mgr-left-search input:focus { border-color: #4c9aff; }
+  .mgr-left-search input:focus { border-color: var(--brand-2); }
   .mgr-filter-row {
     padding: 6px 14px; border-bottom: 1px solid var(--border);
     display: flex; gap: 4px; flex-shrink: 0; flex-wrap: wrap;
@@ -600,7 +680,7 @@
     border-left: 3px solid transparent;
   }
   .mgr-list-item:hover { background: var(--bg-secondary); }
-  .mgr-list-item.active { background: var(--bg-secondary); border-left-color: #0052cc; }
+  .mgr-list-item.active { background: var(--bg-secondary); border-left-color: var(--brand); }
 
   .mgr-center {
     display: flex; flex-direction: column; overflow: hidden; background: var(--bg-tertiary);
@@ -678,8 +758,8 @@
   .mgr-section-body { padding: 16px; }
 
   /* Danger zone */
-  .mgr-danger { background: var(--bg-primary); border: 1px solid #de350b; border-radius: 3px; padding: 16px; }
-  .mgr-danger-title { font-size: 12px; font-weight: 600; color: #de350b; margin-bottom: 12px; }
+  .mgr-danger { background: var(--bg-primary); border: 1px solid var(--danger); border-radius: 3px; padding: 16px; }
+  .mgr-danger-title { font-size: 12px; font-weight: 600; color: var(--danger); margin-bottom: 12px; }
 }
 
 /* Toast slide-in animation */
@@ -715,15 +795,16 @@ button, a, input, select, textarea, [role="button"] {
 /* ── Focus rings ─────────────────────────────────────────── */
 *:focus { outline: none; }
 *:focus-visible {
-  outline: 2px solid #4c9aff;
+  outline: 2px solid var(--brand-2);
   outline-offset: 2px;
   border-radius: 3px;
 }
 
-/* ── Global selection color ──────────────────────────────── */
-::selection {
-  background: #deebff;
-  color: var(--text-primary);
+/* Custom selection style — inside @layer base so Tailwind's preflight
+   doesn't override the cascade ordering */
+@layer base {
+  ::selection      { background-color: #60a5ff; color: #000000; }
+  ::-moz-selection { background-color: #60a5ff; color: #000000; }
 }
 
 /* ── Custom scrollbar (webkit) ───────────────────────────── */
@@ -750,7 +831,7 @@ button, a, input, select, textarea, [role="button"] {
   from { opacity: 0; transform: translateY(12px); }
   to   { opacity: 1; transform: translateY(0); }
 }
-.slide-up { animation: slide-up 0.25s ease-out; }
+.slide-up { animation: slide-up 0.25s ease-out both; }
 
 /* ── Stagger children ────────────────────────────────────── */
 .stagger > *:nth-child(1) { animation-delay: 0ms;   }
@@ -759,6 +840,88 @@ button, a, input, select, textarea, [role="button"] {
 .stagger > *:nth-child(4) { animation-delay: 120ms; }
 .stagger > *:nth-child(5) { animation-delay: 160ms; }
 .stagger > *:nth-child(6) { animation-delay: 200ms; }
+
+/* ── Auth page entrance / accents ────────────────────────── */
+@keyframes logo-breathe {
+  0%, 100% { filter: drop-shadow(0 0 12px var(--accent-glow)); }
+  50%      { filter: drop-shadow(0 0 26px var(--accent-glow)) drop-shadow(0 0 44px var(--accent-dim)); }
+}
+.auth-logo-breathe { animation: logo-breathe 3s ease-in-out infinite; }
+
+@keyframes slide-in-right {
+  from { opacity: 0; transform: translateX(40px); }
+  to   { opacity: 1; transform: translateX(0); }
+}
+.auth-slide-in-right { animation: slide-in-right 0.5s ease-out both; }
+
+@keyframes grid-drift {
+  from { background-position: 0 0; }
+  to   { background-position: 28px 28px; }
+}
+.auth-grid-drift { animation: grid-drift 9s linear infinite; }
+
+@keyframes shake {
+  0%, 100% { transform: translateX(0); }
+  15%      { transform: translateX(-6px); }
+  30%      { transform: translateX(6px); }
+  45%      { transform: translateX(-4px); }
+  60%      { transform: translateX(4px); }
+  75%      { transform: translateX(-2px); }
+}
+.alert-shake { animation: shake 0.45s ease; }
+
+@keyframes btn-shimmer {
+  from { background-position: -200% center; }
+  to   { background-position: 200% center; }
+}
+.auth-submit .btn {
+  position: relative; overflow: hidden;
+}
+.auth-submit .btn::after {
+  content: '';
+  position: absolute; inset: 0;
+  background: linear-gradient(105deg, transparent 40%, rgba(255,255,255,.18) 50%, transparent 60%);
+  background-size: 200% 100%;
+  opacity: 0;
+  transition: opacity .2s;
+  pointer-events: none;
+}
+.auth-submit .btn:hover:not(:disabled)::after {
+  opacity: 1;
+  animation: btn-shimmer .6s ease forwards;
+}
+
+/* ── Unified dropdown (PSPDropdown.tsx) ──────────────────── */
+@keyframes psp-dd-in {
+  from { opacity: 0; transform: translateY(-8px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+.psp-dd-content[data-state="open"] { animation: psp-dd-in 0.15s ease-out; }
+.psp-dd-content[data-state="closed"] { animation: fade-in 0.1s ease-out reverse; }
+
+.psp-dd-item { color: var(--ink-2); background: transparent; transition: background .12s, color .12s; }
+.psp-dd-item[data-highlighted] { background: var(--surface-2); color: var(--ink); }
+.psp-dd-item-danger { color: var(--danger); }
+.psp-dd-item-danger[data-highlighted] { background: var(--danger-soft); color: var(--danger); }
+
+.psp-dd-icon {
+  width: 30px; height: 30px; border-radius: 8px; flex-shrink: 0;
+  display: flex; align-items: center; justify-content: center;
+  background: var(--surface-2); color: inherit;
+  transition: background .12s, color .12s;
+}
+.psp-dd-item[data-highlighted] .psp-dd-icon { background: var(--surface-3); }
+.psp-dd-item-danger[data-highlighted] .psp-dd-icon { background: rgba(240,99,122,.15); }
+
+/* ── Reduced motion ───────────────────────────────────────── */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
 
 /* ── Success check animation ─────────────────────────────── */
 @keyframes check-pop {
@@ -808,8 +971,8 @@ button, a, input, select, textarea, [role="button"] {
 
 .input:focus,
 .psp-form-input:focus {
-  border-color: #4c9aff;
-  box-shadow: 0 0 0 3px rgba(76, 154, 255, 0.15);
+  border-color: var(--brand-2);
+  box-shadow: 0 0 0 3px var(--accent-soft);
   background: #fafcff;
 }
 
@@ -821,8 +984,8 @@ button, a, input, select, textarea, [role="button"] {
   border-color: var(--border);
 }
 
-.input.error  { border-color: #de350b; box-shadow: 0 0 0 3px rgba(222, 53, 11, 0.1); }
-.input.success { border-color: #00875a; box-shadow: 0 0 0 3px rgba(0, 135, 90, 0.1); }
+.input.error  { border-color: var(--danger); box-shadow: 0 0 0 3px rgba(222, 53, 11, 0.1); }
+.input.success { border-color: var(--success); box-shadow: 0 0 0 3px rgba(0, 135, 90, 0.1); }
 
 .textarea,
 .psp-form-textarea {
@@ -843,8 +1006,8 @@ button, a, input, select, textarea, [role="button"] {
 
 .textarea:focus,
 .psp-form-textarea:focus {
-  border-color: #4c9aff;
-  box-shadow: 0 0 0 3px rgba(76, 154, 255, 0.15);
+  border-color: var(--brand-2);
+  box-shadow: 0 0 0 3px var(--accent-soft);
   background: #fafcff;
 }
 
@@ -874,8 +1037,8 @@ button, a, input, select, textarea, [role="button"] {
 
 .select:focus,
 .psp-form-select:focus {
-  border-color: #4c9aff;
-  box-shadow: 0 0 0 3px rgba(76, 154, 255, 0.15);
+  border-color: var(--brand-2);
+  box-shadow: 0 0 0 3px var(--accent-soft);
 }
 
 .label,
@@ -888,7 +1051,7 @@ button, a, input, select, textarea, [role="button"] {
   letter-spacing: 0.1px;
 }
 
-.label .required { color: #de350b; margin-left: 2px; }
+.label .required { color: var(--danger); margin-left: 2px; }
 
 .hint {
   font-size: 11px;
@@ -899,13 +1062,13 @@ button, a, input, select, textarea, [role="button"] {
 
 .field-error {
   font-size: 11px;
-  color: #de350b;
+  color: var(--danger);
   margin-top: 4px;
   display: flex;
   align-items: center;
   gap: 4px;
 }
-.field-error::before { content: '⚠'; font-size: 10px; }
+.field-error::before { content: '!'; font-weight: 700; font-size: 11px; }
 
 .form-field { margin-bottom: 18px; }
 
@@ -955,7 +1118,7 @@ button, a, input, select, textarea, [role="button"] {
   transform: none;
   font-size: 10px;
   font-weight: 600;
-  color: #4c9aff;
+  color: var(--brand-2);
   letter-spacing: 0.3px;
   text-transform: uppercase;
 }
@@ -969,7 +1132,7 @@ button, a, input, select, textarea, [role="button"] {
   position: relative; flex-shrink: 0;
   transition: all 0.12s;
 }
-.checkbox-wrap input[type="checkbox"]:checked { background: #0052cc; border-color: #0052cc; }
+.checkbox-wrap input[type="checkbox"]:checked { background: var(--brand); border-color: var(--brand); }
 .checkbox-wrap input[type="checkbox"]:checked::after {
   content: '';
   position: absolute;
@@ -990,13 +1153,13 @@ button, a, input, select, textarea, [role="button"] {
   position: relative; flex-shrink: 0;
   transition: all 0.12s;
 }
-.radio-wrap input[type="radio"]:checked { border-color: #0052cc; }
+.radio-wrap input[type="radio"]:checked { border-color: var(--brand); }
 .radio-wrap input[type="radio"]:checked::after {
   content: '';
   position: absolute;
   top: 3px; left: 3px;
   width: 8px; height: 8px;
-  background: #0052cc; border-radius: 50%;
+  background: var(--brand); border-radius: 50%;
 }
 
 /* Toggle switch */
@@ -1007,7 +1170,7 @@ button, a, input, select, textarea, [role="button"] {
   background: var(--border); border-radius: 11px;
   cursor: pointer; transition: background 0.2s;
 }
-.toggle-switch input:checked + .toggle-track { background: #0052cc; }
+.toggle-switch input:checked + .toggle-track { background: var(--brand); }
 .toggle-knob {
   position: absolute; top: 2px; left: 2px;
   width: 18px; height: 18px;
@@ -1060,12 +1223,12 @@ button, a, input, select, textarea, [role="button"] {
 .btn-xl  { height: 52px; padding: 0 28px; font-size: 15px; border-radius: 8px; }
 
 .btn-primary {
-  background: #0052cc; color: white;
-  box-shadow: 0 1px 3px rgba(0,82,204,0.3);
+  background: var(--brand); color: white;
+  box-shadow: 0 1px 3px var(--accent-ring);
 }
 .btn-primary:hover:not(:disabled) {
-  background: #0065ff;
-  box-shadow: 0 3px 10px rgba(0,82,204,0.35);
+  background: var(--brand-2);
+  box-shadow: 0 3px 10px var(--accent-ring);
   transform: translateY(-1px);
 }
 
@@ -1078,8 +1241,8 @@ button, a, input, select, textarea, [role="button"] {
 }
 
 .btn-danger {
-  background: var(--bg-primary); color: #de350b;
-  border: 1.5px solid #de350b;
+  background: var(--bg-primary); color: var(--danger);
+  border: 1.5px solid var(--danger);
 }
 .btn-danger:hover:not(:disabled) {
   background: var(--red-light);
@@ -1087,11 +1250,11 @@ button, a, input, select, textarea, [role="button"] {
 }
 
 .btn-success {
-  background: #00875a; color: white;
+  background: var(--success); color: white;
   box-shadow: 0 1px 3px rgba(0,135,90,0.3);
 }
 .btn-success:hover:not(:disabled) {
-  background: #006644; transform: translateY(-1px);
+  background: var(--success-ink); transform: translateY(-1px);
 }
 
 .btn-ghost {
@@ -1102,12 +1265,12 @@ button, a, input, select, textarea, [role="button"] {
 }
 
 .btn-urgent {
-  background: #de350b; color: white;
+  background: var(--danger); color: white;
   box-shadow: 0 1px 3px rgba(222,53,11,0.4);
   animation: urgent-pulse 2s ease-in-out infinite;
 }
 .btn-urgent:hover:not(:disabled) {
-  background: #bf2600; transform: translateY(-1px);
+  background: var(--danger-ink); transform: translateY(-1px);
 }
 @keyframes urgent-pulse {
   0%, 100% { box-shadow: 0 0 0 0   rgba(222,53,11,0.4); }
@@ -1127,7 +1290,7 @@ button, a, input, select, textarea, [role="button"] {
 .card {
   background: var(--bg-primary);
   border: 1px solid var(--border);
-  border-radius: 8px;
+  border-radius: var(--r);
   overflow: hidden;
   transition: box-shadow 0.2s ease, border-color 0.2s ease, transform 0.15s ease;
 }
@@ -1162,12 +1325,14 @@ button, a, input, select, textarea, [role="button"] {
   display: flex; align-items: center; justify-content: center;
   font-size: 20px; flex-shrink: 0;
 }
-.stat-value { font-size: 26px; font-weight: 800; color: var(--text-primary); line-height: 1; letter-spacing: -0.5px; }
+.stat-value { font-size: 26px; font-weight: 700; color: var(--text-primary); line-height: 1; letter-spacing: -0.5px; }
 .stat-label { font-size: 12px; color: #7a869a; margin-top: 3px; font-weight: 500; }
 
 .section-title {
   font-size: 11px; font-weight: 700; color: var(--text-subtle);
-  text-transform: uppercase; letter-spacing: 0.8px; margin-bottom: 12px;
+  text-transform: uppercase; letter-spacing: 0.8px;
+  margin-bottom: 16px; padding-bottom: 12px;
+  border-bottom: 1px solid rgba(255,255,255,.06);
 }
 
 .empty-state { text-align: center; padding: 52px 24px; }
@@ -1185,20 +1350,20 @@ button, a, input, select, textarea, [role="button"] {
   font-size: 11px; font-weight: 700;
   letter-spacing: 0.2px; white-space: nowrap; line-height: 1.6;
 }
-.badge-blue   { background: #deebff; color: #0747a6; }
-.badge-red    { background: var(--red-light); color: #bf2600; }
-.badge-green  { background: var(--green-light); color: #006644; }
-.badge-orange { background: #fff7e6; color: #974f0c; }
+.badge-blue   { background: var(--accent-soft); color: var(--brand); }
+.badge-red    { background: var(--red-light); color: var(--danger-ink); }
+.badge-green  { background: var(--green-light); color: var(--success-ink); }
+.badge-orange { background: #fff7e6; color: var(--warn-ink); }
 .badge-purple { background: #eae6ff; color: #403294; }
 .badge-gray   { background: #f1f2f4; color: var(--text-muted); }
 .badge-teal   { background: #e6fcff; color: #006884; }
 .badge-live {
-  background: var(--red-light); color: #bf2600;
+  background: var(--red-light); color: var(--danger-ink);
 }
 .badge-live::before {
   content: '';
   width: 6px; height: 6px;
-  background: #de350b; border-radius: 50%;
+  background: var(--danger); border-radius: 50%;
   animation: badge-pulse 1s ease-in-out infinite;
 }
 @keyframes badge-pulse {
@@ -1259,7 +1424,7 @@ button, a, input, select, textarea, [role="button"] {
   border-bottom: 1px solid var(--border-subtle); white-space: nowrap;
 }
 
-.col-sorted { color: #0052cc !important; }
+.col-sorted { color: var(--brand) !important; }
 
 /* ================================================================
    MODAL & SLIDE-OVER ANIMATIONS
@@ -1312,7 +1477,7 @@ button, a, input, select, textarea, [role="button"] {
    TYPOGRAPHY
    ================================================================ */
 
-.h1 { font-size: 24px; font-weight: 800; color: var(--text-primary); letter-spacing: -0.5px; line-height: 1.25; }
+.h1 { font-size: 24px; font-weight: 700; color: var(--text-primary); letter-spacing: -0.5px; line-height: 1.25; }
 .h2 { font-size: 20px; font-weight: 700; color: var(--text-primary); letter-spacing: -0.3px; line-height: 1.3; }
 .h3 { font-size: 16px; font-weight: 700; color: var(--text-primary); letter-spacing: -0.2px; }
 .h4 { font-size: 14px; font-weight: 700; color: var(--text-primary); }
@@ -1325,7 +1490,7 @@ button, a, input, select, textarea, [role="button"] {
 
 .page-header { margin-bottom: 24px; }
 .page-header-title {
-  font-size: 22px; font-weight: 800; color: var(--text-primary);
+  font-size: 22px; font-weight: 700; color: var(--text-primary);
   letter-spacing: -0.4px;
   display: flex; align-items: center; gap: 10px;
 }
@@ -1341,40 +1506,40 @@ button, a, input, select, textarea, [role="button"] {
 .inline-code-entry input {
   width: 130px;
   height: 32px;
-  border: 1.5px solid #0052cc;
+  border: 1.5px solid var(--brand);
   border-radius: 6px;
   padding: 0 10px;
   font-size: 13px;
   font-family: ui-monospace, monospace;
   text-transform: uppercase;
   letter-spacing: 3px;
-  color: #0052cc;
+  color: var(--brand);
   font-weight: 700;
   text-align: center;
   outline: none;
-  box-shadow: 0 0 0 3px rgba(0,82,204,0.1);
+  box-shadow: 0 0 0 3px var(--accent-soft);
   transition: border-color 0.15s, box-shadow 0.15s;
   background: var(--bg-primary);
 }
 .inline-code-entry input:focus {
-  border-color: #4c9aff;
-  box-shadow: 0 0 0 3px rgba(76,154,255,0.2);
+  border-color: var(--brand-2);
+  box-shadow: 0 0 0 3px var(--accent-ring);
 }
 
 /* ── DRAG HANDLE (Resizable Panels) ─────────────────────────── */
 .drag-handle:hover .drag-handle-bar,
 .drag-handle:active .drag-handle-bar {
-  background: #0052cc;
+  background: var(--brand);
 }
 .drag-handle[data-dir="horizontal"]:hover .drag-handle-bar,
 .drag-handle[data-dir="horizontal"]:active .drag-handle-bar {
   transform: scaleY(1.3);
-  background: #0052cc;
+  background: var(--brand);
 }
 .drag-handle[data-dir="vertical"]:hover .drag-handle-bar,
 .drag-handle[data-dir="vertical"]:active .drag-handle-bar {
   transform: scaleX(1.3);
-  background: #0052cc;
+  background: var(--brand);
 }
 
 /* ================================================================
@@ -1396,9 +1561,46 @@ body,
 }
 
 /* ── Page body ───────────────────────────────────────────────────── */
+/* Two-scale green grid (40px fine + 200px coarse) at near-invisible opacity,
+   fixed to the viewport so every page gains subtle depth automatically. */
 [data-theme="dark"] body {
-  background: var(--bg-primary);
+  background-color: #0a0a0a;
+  background-image:
+    linear-gradient(rgba(0,255,0,.025) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(0,255,0,.025) 1px, transparent 1px),
+    linear-gradient(rgba(0,255,0,.012) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(0,255,0,.012) 1px, transparent 1px);
+  background-size:
+    40px 40px,
+    40px 40px,
+    200px 200px,
+    200px 200px;
+  background-attachment: fixed;
   color: var(--text-primary);
+}
+
+/* Faint floating code fragments behind all content (decorative, inert). */
+[data-theme="dark"] body::before {
+  content: "if (solved) rank++;  for (int i=0; i<n; i++) dp[i]=max(dp[i-1],val[i]);  SELECT * FROM submissions WHERE verdict='ACCEPTED';  while (!queue.empty()) { auto [d,u]=queue.top(); queue.pop(); }  map<int,int> freq; for (auto x:arr) freq[x]++;  docker run --rm --network none judge:latest  { \"verdict\": \"ACCEPTED\", \"time\": 86 }";
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  font-family: var(--font-mono), 'JetBrains Mono', monospace;
+  font-size: 11px;
+  color: rgba(0,255,0,.035);
+  line-height: 2.2;
+  padding: 80px 40px;
+  pointer-events: none;
+  white-space: pre-wrap;
+  word-break: break-all;
+  overflow: hidden;
+}
+
+/* Keep real page content above the decorative body::before layer. */
+.page-content {
+  position: relative;
+  z-index: 1;
+  min-height: 100%;
 }
 
 /* ── Navbar ──────────────────────────────────────────────────────── */
@@ -1450,8 +1652,20 @@ body,
 
 /* ── Cards ───────────────────────────────────────────────────────── */
 [data-theme="dark"] .card {
-  background: var(--bg-secondary);
-  border-color: var(--border);
+  background: var(--surface);
+  border-color: var(--line-2);
+  border-radius: var(--r);
+  box-shadow: var(--card-shadow);
+  transition: border-color 140ms ease, box-shadow 140ms ease;
+}
+[data-theme="dark"] .card:hover,
+[data-theme="dark"] .card-hover:hover {
+  border-color: var(--accent-ring);
+  box-shadow: var(--card-hover);
+  transform: none;
+}
+[data-theme="dark"] .card.no-hover:hover {
+  border-color: var(--line-2);
   box-shadow: var(--card-shadow);
 }
 [data-theme="dark"] .card-header {
@@ -1501,7 +1715,7 @@ body,
 [data-theme="dark"] .select:focus,
 [data-theme="dark"] .textarea:focus {
   border-color: var(--blue);
-  box-shadow: 0 0 0 3px rgba(76,154,255,0.15);
+  box-shadow: 0 0 0 3px var(--accent-soft);
   background: var(--bg-secondary);
 }
 [data-theme="dark"] .label {
@@ -1509,6 +1723,25 @@ body,
 }
 
 /* ── Buttons ─────────────────────────────────────────────────────── */
+/* Section 2 — primary button = green on near-black, glowing on hover.
+   140ms interactions across shared interactive elements.               */
+[data-theme="dark"] .btn, [data-theme="dark"] .psp-btn,
+[data-theme="dark"] .nav-link, [data-theme="dark"] .anav-link,
+[data-theme="dark"] .prob-item, [data-theme="dark"] .ftab,
+[data-theme="dark"] .tab, [data-theme="dark"] .psp-ftab {
+  transition: background 140ms ease, color 140ms ease, border-color 140ms ease, box-shadow 140ms ease;
+}
+[data-theme="dark"] .btn-primary,
+[data-theme="dark"] .psp-btn-primary {
+  background: var(--accent); color: #0a0a0a; font-weight: 700;
+  border-radius: 10px; box-shadow: none;
+}
+[data-theme="dark"] .btn-primary:hover:not(:disabled),
+[data-theme="dark"] .psp-btn-primary:hover:not(:disabled) {
+  background: var(--accent-2); color: #0a0a0a;
+  box-shadow: 0 0 14px rgba(0,255,0,.3);
+  transform: none;
+}
 [data-theme="dark"] .psp-btn-secondary {
   background: var(--bg-elevated);
   color: var(--text-secondary);
@@ -1895,6 +2128,7 @@ body,
   background: var(--bg-secondary);
   border-color: var(--border);
   color: var(--text-primary);
+  box-shadow: var(--card-shadow);
 }
 [data-theme="dark"] .psp-card-header {
   background: var(--bg-secondary);
@@ -1953,9 +2187,11 @@ body,
 
 /* ── psp-modal ── */
 [data-theme="dark"] .psp-modal {
-  background: var(--bg-secondary);
-  border: 1px solid var(--border);
+  background: #1a1a1a;
+  border: 1px solid rgba(255,255,255,.1);
+  border-radius: 14px;
   color: var(--text-primary);
+  box-shadow: 0 24px 60px rgba(0,0,0,.6), 0 0 0 1px rgba(255,255,255,.05);
 }
 [data-theme="dark"] .psp-modal-header { border-bottom-color: var(--border); }
 [data-theme="dark"] .psp-modal-footer { border-top-color: var(--border); }
@@ -2030,25 +2266,222 @@ body,
 /* ── btn-secondary hover: drop hardcoded light border ── */
 [data-theme="dark"] .btn-secondary:hover:not(:disabled) { border-color: var(--border); }
 
-/* ── shadcn / radix-ui HSL tokens for dark mode ── */
+/* ── shadcn / radix-ui HSL tokens — Algora dark (matches the hex tokens above) ── */
 [data-theme="dark"] {
-  --background: 215 41% 9%;
-  --foreground: 210 40% 98%;
-  --card: 215 41% 11%;
-  --card-foreground: 210 40% 98%;
-  --popover: 215 41% 11%;
-  --popover-foreground: 210 40% 98%;
-  --primary: 216 92% 60%;
-  --primary-foreground: 0 0% 100%;
-  --secondary: 215 28% 17%;
-  --secondary-foreground: 210 40% 98%;
-  --muted: 215 28% 17%;
-  --muted-foreground: 217 20% 55%;
-  --accent: 215 28% 17%;
-  --accent-foreground: 210 40% 98%;
-  --destructive: 0 72% 51%;
+  --background: 225 43% 5%;       /* --bg     #080b14 */
+  --foreground: 223 47% 94%;      /* --ink    #e9edf7 */
+  --card: 223 38% 11%;            /* --surface #111726 */
+  --card-foreground: 223 47% 94%;
+  --popover: 223 38% 11%;
+  --popover-foreground: 223 47% 94%;
+  --primary: 165 100% 39%;        /* --accent #00FF00 */
+  --primary-foreground: 0 0% 4%;
+  --secondary: 0 0% 12%;          /* --surface-2 #1e1e1e */
+  --secondary-foreground: 120 8% 94%;
+  --muted: 0 0% 12%;
+  --muted-foreground: 120 9% 52%; /* --ink-2 #7a8f7a */
+  --sh-accent: 0 0% 12%;          /* shadcn hover surface (--surface-2) */
+  --accent-foreground: 120 8% 94%;
+  --destructive: 351 82% 68%;     /* --danger #f0637a */
   --destructive-foreground: 0 0% 100%;
-  --border: 215 28% 20%;
-  --input: 215 28% 20%;
-  --ring: 216 92% 60%;
+  --border: 0 0% 16%;             /* --line-2 #2a2a2a */
+  --input: 0 0% 16%;
+  --ring: 165 100% 39%;
+}
+
+/* ================================================================
+   ALGORA TOP NAVBAR — sticky, blurred, 62px, pill links
+   Self-contained (.anav*) so it doesn't inherit the legacy
+   .psp-nav underline-tab cascade. Consumes Algora tokens only.
+   ================================================================ */
+.anav {
+  position: sticky; top: 0; z-index: 100;
+  height: var(--nav-h, 62px);
+  display: flex; align-items: center; gap: 8px;
+  padding: 0 24px;
+  background: color-mix(in srgb, var(--bg-2) 82%, transparent);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border-bottom: 1px solid var(--line);
+}
+.anav-logo {
+  display: flex; align-items: center; gap: 10px;
+  font-weight: 700; font-size: 16px; color: var(--ink);
+  margin-right: 18px; white-space: nowrap;
+}
+.anav-mark-img {
+  width: 30px; height: 30px; object-fit: contain; flex-shrink: 0;
+  filter: drop-shadow(0 0 8px rgba(0,255,0,.35));
+}
+.anav-links { display: flex; align-items: center; gap: 2px; }
+.anav-link {
+  display: flex; align-items: center; gap: 8px;
+  padding: 8px 13px; border-radius: 9px;
+  color: var(--ink-2); font-weight: 500; font-size: 13.5px;
+  cursor: pointer; white-space: nowrap; position: relative;
+}
+.anav-link svg { width: 17px; height: 17px; color: var(--ink-3); }
+.anav-link:hover { background: var(--surface); color: var(--ink); }
+.anav-link:hover svg { color: var(--ink-2); }
+.anav-link.active { background: var(--accent-soft); color: var(--brand-2); }
+.anav-link.active svg { color: var(--brand); }
+.anav-spacer { flex: 1; }
+.anav-search {
+  display: flex; align-items: center; gap: 9px;
+  background: var(--bg-2); border: 1px solid var(--line);
+  border-radius: 10px; padding: 8px 12px; width: 230px; color: var(--ink-3);
+}
+.anav-search svg { width: 16px; height: 16px; flex-shrink: 0; }
+.anav-search input {
+  border: none; outline: none; background: none;
+  font-family: var(--font-sans); font-size: 13px; color: var(--ink); width: 100%;
+}
+.anav-search input::placeholder { color: var(--ink-3); }
+.anav-iconbtn {
+  width: 38px; height: 38px; border-radius: 10px;
+  border: 1px solid var(--line); background: var(--bg-2);
+  display: grid; place-items: center; color: var(--ink-2);
+  cursor: pointer; position: relative;
+}
+.anav-iconbtn:hover { background: var(--surface); color: var(--ink); }
+.anav-iconbtn svg { width: 18px; height: 18px; }
+.anav-iconbtn .dot {
+  position: absolute; top: 8px; right: 9px;
+  width: 7px; height: 7px; border-radius: 50%;
+  background: var(--brand); border: 2px solid var(--bg-2);
+}
+.anav-me {
+  display: flex; align-items: center; gap: 9px;
+  padding: 5px 6px 5px 5px; border-radius: 10px; cursor: pointer;
+}
+.anav-me:hover { background: var(--surface); }
+.anav-nm { font-weight: 600; font-size: 13px; line-height: 1.15; color: var(--ink); }
+.anav-rl { font-size: 11px; color: var(--ink-3); }
+@media (max-width: 860px) {
+  .anav-search, .anav-me .anav-meta { display: none; }
+  .anav-link span { display: none; }
+}
+
+/* ── Mobile responsiveness for browse/list/manage pages (Prompt 5e) ── */
+@media (max-width: 768px) {
+  /* Stat tiles: 2×2 grid instead of 4-in-a-row */
+  .psp-stats { grid-template-columns: 1fr 1fr; }
+  /* Tighter page gutters on small screens */
+  .psp-main { padding: 16px; }
+}
+
+/* ── Shared EventCard grid (section 1–5 redesign) ───────────────────────── */
+.card-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 16px;
+}
+@media (max-width: 1000px) {
+  .card-grid { grid-template-columns: repeat(2, 1fr); }
+}
+@media (max-width: 640px) {
+  .card-grid { grid-template-columns: 1fr; }
+}
+
+/* ════════════════════════════════════════════════════════════════════
+   GLOBAL INPUT VISIBILITY (Fix 3)
+   A white-tinted border (rgba white .15) stays perceptible on any dark
+   surface, fixing "invisible" fields (e.g. description textareas) before
+   the user even clicks. Scoped to text-like fields + textarea + select so
+   checkboxes, radios and range sliders keep their native rendering.
+   Unlayered → wins over @layer components; !important beats error/focus
+   border colors set elsewhere (focus re-asserts the accent below).
+   ════════════════════════════════════════════════════════════════════ */
+input[type="text"],
+input[type="number"],
+input[type="email"],
+input[type="password"],
+input[type="datetime-local"],
+input[type="search"],
+input[type="url"],
+textarea,
+select {
+  background: #0e0e0e;
+  border: 1px solid rgba(255,255,255,.15) !important;
+  border-radius: 10px;
+  padding: 11px 14px;
+  color: #eef2ee;
+  font-size: 13.5px;
+  outline: none;
+  width: 100%;
+  transition: border-color 140ms ease, box-shadow 140ms ease;
+}
+
+input[type="text"]:focus,
+input[type="number"]:focus,
+input[type="email"]:focus,
+input[type="password"]:focus,
+input[type="datetime-local"]:focus,
+input[type="search"]:focus,
+input[type="url"]:focus,
+textarea:focus,
+select:focus {
+  border-color: #00FF00 !important;
+  box-shadow: 0 0 0 3px rgba(0,255,0,.12) !important;
+}
+
+input[type="text"]::placeholder,
+input[type="number"]::placeholder,
+input[type="email"]::placeholder,
+input[type="password"]::placeholder,
+input[type="search"]::placeholder,
+input[type="url"]::placeholder,
+textarea::placeholder {
+  color: rgba(61,77,61,.9);
+  opacity: 1;
+}
+
+/* Range sliders — green track + glowing thumb (CTF form, etc.). */
+input[type="range"] { accent-color: #00FF00; }
+input[type="range"]::-webkit-slider-runnable-track {
+  background: rgba(255,255,255,.1);
+  border-radius: 4px;
+  height: 4px;
+}
+input[type="range"]::-webkit-slider-thumb {
+  background: #00FF00;
+  box-shadow: 0 0 8px rgba(0,255,0,.4);
+}
+
+/* ================================================================
+   Student Dashboard — responsive layout (sd- namespace)
+   Content only; the navbar is owned elsewhere and untouched.
+   ================================================================ */
+.sd-hero {
+  display: grid;
+  grid-template-columns: 1.25fr 0.75fr;
+  gap: 0;
+}
+.sd-stats {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 12px;
+}
+.sd-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1.9fr) minmax(300px, 0.85fr);
+  gap: 18px;
+  align-items: start;
+}
+.sd-col { display: grid; gap: 18px; align-content: start; }
+.sd-row-hover { transition: background 140ms ease; }
+.sd-row-hover:hover { background: var(--surface-2); }
+.sd-lift { transition: transform 140ms ease, border-color 140ms ease; }
+.sd-lift:hover { transform: translateY(-1px); border-color: var(--line-2); }
+
+@media (max-width: 1080px) {
+  .sd-stats { grid-template-columns: repeat(2, 1fr); }
+  .sd-grid  { grid-template-columns: 1fr; }
+}
+@media (max-width: 720px) {
+  .sd-hero  { grid-template-columns: 1fr; }
+  .sd-hero-art { display: none; }
+}
+@media (max-width: 520px) {
+  .sd-stats { grid-template-columns: 1fr; }
 }

@@ -36,9 +36,16 @@ public class CTFChallengeCreateRequest {
     private Integer dockerPidsLimit;
     private String  downloadableFileUrl;
     private String  downloadableFileName;
+    private String  mediaUrl;
     private Integer maxAttempts;
     private Boolean isActive;
 
     /** Hints provided at creation time — backend generates IDs. */
     private List<CTFHintRequest> hints;
+
+    // Blood bonus settings — optional; null = disabled / keep existing
+    private Boolean bloodBonusEnabled;
+    private Integer firstBloodBonus;
+    private Integer secondBloodBonus;
+    private Integer thirdBloodBonus;
 }

@@ -1,6 +1,7 @@
 package com.university.platform.ctf.controller;
 
 import com.university.platform.ctf.dto.CTFHint;
+import com.university.platform.ctf.service.CTFCompetitionService;
 import com.university.platform.ctf.service.CTFHintService;
 import com.university.platform.identity.service.JwtService;
 import lombok.RequiredArgsConstructor;
@@ -14,8 +15,9 @@ import java.util.UUID;
 @RequiredArgsConstructor
 public class CTFHintController {
 
-    private final CTFHintService hintService;
-    private final JwtService jwtService;
+    private final CTFHintService       hintService;
+    private final CTFCompetitionService competitionService;
+    private final JwtService           jwtService;
 
     @PostMapping("/{hintId}/unlock")
     public ResponseEntity<CTFHint> unlockHint(
@@ -26,6 +28,12 @@ public class CTFHintController {
             @RequestHeader("Authorization") String authHeader) {
 
         UUID userId = UUID.fromString(jwtService.parseToken(authHeader.substring(7)).getSubject());
-        return ResponseEntity.ok(hintService.unlockHint(challengeId, hintId, userId, teamId, competitionId));
+        CTFHint hint = hintService.unlockHint(challengeId, hintId, userId, teamId, competitionId);
+
+        // Push a live scoreboard update so every open browser sees the new team score.
+        if (competitionId != null) {
+            competitionService.broadcastScoreboardIfUnfrozen(competitionId);
+        }
+        return ResponseEntity.ok(hint);
     }
 }

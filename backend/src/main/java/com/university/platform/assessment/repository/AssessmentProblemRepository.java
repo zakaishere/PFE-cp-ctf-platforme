@@ -7,4 +7,6 @@ import java.util.UUID;
 public interface AssessmentProblemRepository extends JpaRepository<AssessmentProblem, UUID> {
     Integer countByAssessment_AssessmentId(UUID assessmentId);
     java.util.List<AssessmentProblem> findByAssessment_AssessmentIdOrderByOrderIndexAsc(UUID assessmentId);
+    java.util.Optional<AssessmentProblem> findByAssessment_AssessmentIdAndProblem_ProblemId(
+            UUID assessmentId, UUID problemId);
 }

@@ -12,6 +12,8 @@ import {
   getCompetitionScoreboard,
   getCompetitionTeamActivity,
   getApiBaseUrl,
+  reportCompetitionViolation,
+  pingAuditSession,
   type ArenaDTO,
   type ArenaProblem,
 } from "@/lib/api";
@@ -19,8 +21,14 @@ import { toast } from "@/components/ui/PSPToast";
 import { useCountdown } from "@/hooks/useCountdown";
 import { useFullscreen } from "@/hooks/useFullscreen";
 import { useAntiCheat, type ViolationEvent } from "@/hooks/useAntiCheat";
-import { FullscreenGate } from "@/components/arena/FullscreenGate";
 import { useAuth } from "@/features/auth/contexts/AuthContext";
+import ArenaShell, { type ArenaTab } from "@/features/arena/components/ArenaShell";
+import CPScoreboard from "@/features/competitions/components/CPScoreboard";
+import TaskRail, { type TaskRailItem } from "@/components/arena/TaskRail";
+import SubmissionsTab from "@/features/arena/tp/SubmissionsTab";
+import { Code, Play, ShieldAlert, Trophy, Medal, Flag, AlertTriangle, X, HardDrive, Clock, Check, Lock, Send } from "lucide-react";
+
+const MEDAL_COLORS = ["#f5c451", "#c7cdd9", "#cd8a52"]; // gold, silver, bronze
 
 const MonacoEditor = dynamic(() => import("@monaco-editor/react"), { ssr: false });
 
@@ -46,17 +54,6 @@ const DEFAULT_CODE: Record<string, string> = {
   javascript: `const lines = require('fs').readFileSync('/dev/stdin','utf8').trim().split('\\n');\n// TODO: solve here`,
 };
 
-const DIFF_STYLE: Record<string, { bg: string; text: string }> = {
-  EASY:   { bg: "#e3fcef", text: "#006644" },
-  MEDIUM: { bg: "#fffae6", text: "#974f0c" },
-  HARD:   { bg: "#ffebe6", text: "#bf2600" },
-};
-
-const SOLVE_DOT: Record<string, string> = {
-  SOLVED:    "#00875a",
-  ATTEMPTED: "#ff8b00",
-  UNSOLVED:  "#5e6c84",
-};
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -102,10 +99,10 @@ interface ActivityEntry {
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
 function verdictColor(v: string): string {
-  if (v === "AC")  return "#00875a";
-  if (v === "WA")  return "#bf2600";
-  if (v === "TLE" || v === "MLE") return "#974f0c";
-  return "#5e6c84";
+  if (v === "AC")  return "var(--success)";
+  if (v === "WA")  return "var(--danger-ink)";
+  if (v === "TLE" || v === "MLE") return "var(--warn-ink)";
+  return "var(--ink-3)";
 }
 
 function verdictLabel(v: string): string {
@@ -151,7 +148,7 @@ function EndOfCompetitionOverlay({
     >
       <div className="text-center max-w-lg px-8 py-10">
         <div className="text-7xl mb-4">
-          {myRank === 1 ? "🥇" : myRank === 2 ? "🥈" : myRank === 3 ? "🥉" : "🏁"}
+          {myRank >= 1 && myRank <= 3 ? <Medal size={64} color={MEDAL_COLORS[myRank-1]} className="mx-auto" /> : <Flag size={64} color="var(--ink-3)" className="mx-auto" />}
         </div>
 
         <h1 className="text-white text-3xl font-black mb-2">Competition Ended!</h1>
@@ -181,7 +178,7 @@ function EndOfCompetitionOverlay({
                 }`}
               >
                 <div className="text-2xl mb-1">
-                  {entry.rank === 1 ? "🥇" : entry.rank === 2 ? "🥈" : "🥉"}
+                  {entry.rank >= 1 && entry.rank <= 3 ? <Medal size={28} color={MEDAL_COLORS[entry.rank-1]} className="mx-auto" /> : null}
                 </div>
                 <div className="text-white text-sm font-bold truncate max-w-[100px]">
                   {mode === "TEAM" ? entry.teamName : `${entry.firstName} ${entry.lastName}`}
@@ -203,54 +200,9 @@ function EndOfCompetitionOverlay({
   );
 }
 
-// ─── Loading Skeleton ─────────────────────────────────────────────────────────
-
-function ArenaLoadingSkeleton() {
-  return (
-    <div className="h-screen flex flex-col bg-[#0d1117]">
-      <div className="h-11 bg-[#172b4d] flex items-center px-4 gap-4">
-        <div className="w-20 h-5 bg-blue-900 rounded animate-pulse" />
-        <div className="w-48 h-4 bg-blue-900 rounded animate-pulse" />
-        <div className="mx-auto w-24 h-6 bg-blue-900 rounded animate-pulse" />
-      </div>
-      <div className="flex flex-1 overflow-hidden">
-        <div className="w-56 bg-[#172b4d] border-r border-gray-800 p-3 flex flex-col gap-2">
-          {[1, 2, 3, 4].map(i => (
-            <div key={i} className="h-10 bg-gray-800 rounded animate-pulse" />
-          ))}
-        </div>
-        <div className="flex-1 bg-white p-6">
-          <div className="h-6 w-64 bg-gray-200 rounded mb-4 animate-pulse" />
-          <div className="h-4 w-full bg-gray-100 rounded mb-2 animate-pulse" />
-          <div className="h-4 w-3/4 bg-gray-100 rounded animate-pulse" />
-        </div>
-        <div className="w-[500px] bg-[#1e1e1e]" />
-      </div>
-    </div>
-  );
-}
-
-// ─── Error State ──────────────────────────────────────────────────────────────
-
-function ArenaErrorState({ message }: { message: string }) {
-  return (
-    <div className="h-screen bg-[#0d1117] flex items-center justify-center">
-      <div className="text-center">
-        <div className="text-5xl mb-4">⚠️</div>
-        <h2 className="text-white text-xl font-bold mb-2">Cannot enter arena</h2>
-        <p className="text-gray-400 text-sm mb-6">{message}</p>
-        <a
-          href="/competitions"
-          className="px-4 h-9 bg-blue-600 text-white text-sm font-semibold rounded hover:bg-blue-700 inline-flex items-center"
-        >
-          ← Back to Competitions
-        </a>
-      </div>
-    </div>
-  );
-}
-
 // ─── Page ─────────────────────────────────────────────────────────────────────
+
+type Phase = "briefing" | "active";
 
 export default function ArenaPage() {
   const params  = useParams();
@@ -265,7 +217,8 @@ export default function ArenaPage() {
 
   // ── UI state ────────────────────────────────────────────────────────────────
   const [activeProblemIdx, setActiveProblemIdx] = useState(0);
-  const [rightPanel, setRightPanel]             = useState<"editor" | "scoreboard">("editor");
+  const [rightPanel, setRightPanel]             = useState<"editor" | "submissions" | "scoreboard">("editor");
+  const [phase, setPhase]                       = useState<Phase>("briefing");
 
   // ── Editor state ────────────────────────────────────────────────────────────
   const [lang, setLang]   = useState("java");
@@ -316,8 +269,14 @@ export default function ArenaPage() {
     onViolation: useCallback((event: ViolationEvent) => {
       setViolationCount(c => c + 1);
       setViolationLog(prev => [...prev, event]);
-    }, []),
+      reportCompetitionViolation(competitionId, event).catch(() => {});
+    }, [competitionId]),
   });
+
+  // Audit session heartbeat — capture the participant's IP on entry (multi-IP detection).
+  useEffect(() => {
+    pingAuditSession("CP", competitionId).catch(() => {});
+  }, [competitionId]);
 
   // ─── Load arena data ────────────────────────────────────────────────────────
 
@@ -325,7 +284,7 @@ export default function ArenaPage() {
     getCompetitionArena(competitionId)
       .then(data => {
         setArena(data);
-        if (data.remainingSeconds <= 0) {
+        if (data.endTime && new Date(data.endTime).getTime() <= Date.now()) {
           setCompetitionEnded(true);
           setShowEndOverlay(true);
         }
@@ -340,7 +299,8 @@ export default function ArenaPage() {
 
   // Detect timer hitting 0
   useEffect(() => {
-    if (countdown.raw <= 0 && arena && !competitionEnded) {
+    if (!arena || competitionEnded) return;
+    if (arena.endTime && new Date(arena.endTime).getTime() <= Date.now()) {
       setCompetitionEnded(true);
       setTimeout(() => setShowEndOverlay(true), 3000);
     }
@@ -354,7 +314,7 @@ export default function ArenaPage() {
       try {
         const fresh = await getCompetitionArena(competitionId);
         setArena(prev => prev ? { ...prev, problems: fresh.problems } : fresh);
-        if (fresh.remainingSeconds <= 0 && !competitionEnded) {
+        if (fresh.endTime && new Date(fresh.endTime).getTime() <= Date.now() && !competitionEnded) {
           setCompetitionEnded(true);
           clearInterval(id);
           setTimeout(() => setShowEndOverlay(true), 3000);
@@ -419,19 +379,30 @@ export default function ArenaPage() {
 
     refreshActivity();
 
-    const sub = client.subscribe(
-      `/topic/competition/${competitionId}/team/${arena.myTeam.teamId}`,
-      msg => {
-        const event = JSON.parse(msg.body);
-        if (event.type === "TEAMMATE_SUBMITTED") {
-          getCompetitionArena(competitionId)
-            .then(fresh => setArena(prev => prev ? { ...prev, problems: fresh.problems } : fresh))
-            .catch(() => {});
-          refreshActivity();
+    let sub: { unsubscribe: () => void } | null = null;
+
+    const doSubscribe = () => {
+      sub = client.subscribe(
+        `/topic/competition/${competitionId}/team/${arena.myTeam!.teamId}`,
+        msg => {
+          const event = JSON.parse(msg.body);
+          if (event.type === "TEAMMATE_SUBMITTED") {
+            getCompetitionArena(competitionId)
+              .then(fresh => setArena(prev => prev ? { ...prev, problems: fresh.problems } : fresh))
+              .catch(() => {});
+            refreshActivity();
+          }
         }
-      }
-    );
-    return () => { sub.unsubscribe(); };
+      );
+    };
+
+    if (client.connected) {
+      doSubscribe();
+    } else {
+      client.onConnect = doSubscribe;
+    }
+
+    return () => { sub?.unsubscribe(); };
   }, [arena?.myTeam?.teamId, competitionId]);
 
   // ─── Keyboard shortcuts ──────────────────────────────────────────────────────
@@ -554,218 +525,341 @@ export default function ArenaPage() {
 
   // ─── Render ──────────────────────────────────────────────────────────────────
 
-  if (loading)     return <ArenaLoadingSkeleton />;
-  if (accessError) return <ArenaErrorState message={accessError} />;
-  if (!arena)      return null;
+  // Briefing gate: lets the user explicitly enter (satisfies browser
+  // user-gesture requirement for fullscreen) and shows the lockdown notice.
+  if (!loading && !accessError && arena && phase === "briefing" && !competitionEnded) {
+    return (
+      <BriefingScreen
+        title={arena.title}
+        problemCount={arena.problems.length}
+        durationSeconds={arena.remainingSeconds}
+        mode={arena.mode}
+        teamName={arena.myTeam?.teamName}
+        onEnter={() => setPhase("active")}
+        onCancel={() => router.push(`/competitions/${competitionId}/lobby`)}
+      />
+    );
+  }
 
-  const activeProblem = arena.problems[activeProblemIdx];
-  const solvedCount   = arena.problems.filter(p => p.solveStatus === "SOLVED").length;
-  const timerColor    = countdown.isCritical ? "#de350b" : countdown.isUrgent ? "#ff8b00" : "#ffffff";
+  const activeProblem = arena?.problems[activeProblemIdx];
+  const solvedCount   = arena?.problems.filter(p => p.solveStatus === "SOLVED").length ?? 0;
+
+  // ── Body factories (called per-tab so refs/keys stay stable) ──────────────
+  const buildBody = (mainRight: React.ReactNode) => (
+    <div ref={containerRef} className="arena-shell" style={{ display: "flex", flex: 1, overflow: "hidden" }}>
+      <style>{`
+        @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.6} }
+        @keyframes spin   { to{transform:rotate(360deg)} }
+        @media print { body { display: none !important; } }
+        .arena-shell { -webkit-user-select: none; -moz-user-select: none; user-select: none; }
+        .arena-shell .monaco-editor,
+        .arena-shell .monaco-editor * { -webkit-user-select: text; -moz-user-select: text; user-select: text; }
+        .arena-shell .test-block,
+        .arena-shell .problem-title { -webkit-user-select: text; -moz-user-select: text; user-select: text; }
+      `}</style>
+
+      {arena && (
+        <LeftPanel
+          problems={arena.problems}
+          activeProblemIdx={activeProblemIdx}
+          setActiveProblemIdx={setActiveProblemIdx}
+          solvedCount={solvedCount}
+          mode={arena.mode}
+          activity={activity}
+        />
+      )}
+
+      {activeProblem && <ProblemStatement problem={activeProblem} />}
+
+      {mainRight}
+    </div>
+  );
+
+  const tabs: ArenaTab[] = [
+    {
+      key: "workspace",
+      label: "Workspace",
+      icon: <Code size={14} />,
+      content: buildBody(
+        activeProblem && (
+          <RightEditorPanel
+            lang={lang}
+            setLang={setLang}
+            code={currentCode()}
+            setCode={setCurrentCode}
+            running={running}
+            judging={judging}
+            runResults={runResults}
+            judgeResult={judgeResult}
+            isFullscreen={isFullscreen}
+            onRun={handleRun}
+            onSubmit={handleSubmit}
+            problem={activeProblem}
+          />
+        )
+      ),
+    },
+    {
+      key: "submissions",
+      label: "My Submissions",
+      icon: <Send size={14} />,
+      content: buildBody(
+        activeProblem && (
+          <div style={{ flex: 1, overflowY: "auto", padding: "20px 24px", background: "var(--bg)" }}>
+            <SubmissionsTab problemId={activeProblem.problemId} competitionId={competitionId} />
+          </div>
+        )
+      ),
+    },
+    {
+      key: "scoreboard",
+      label: "Scoreboard",
+      icon: <Trophy size={14} />,
+      content: buildBody(
+        arena && (
+          <div style={{ flex: 1, display: "flex", minWidth: 0 }}>
+            <CPScoreboard
+              competitionId={competitionId}
+              myParticipantId={arena.mode === "TEAM" ? (arena.myTeam?.teamId ?? null) : userId}
+            />
+          </div>
+        )
+      ),
+    },
+  ];
 
   return (
-    <FullscreenGate enabled={!competitionEnded}>
-      <div
-        ref={containerRef}
-        className="arena-shell"
-        style={{ height: "100vh", display: "flex", flexDirection: "column", overflow: "hidden", fontFamily: "-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif" }}
-      >
-        <style>{`
-          @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.6} }
-          @keyframes spin   { to{transform:rotate(360deg)} }
-          @media print { body { display: none !important; } }
-          ::-webkit-scrollbar { width: 6px; }
-          ::-webkit-scrollbar-track { background: transparent; }
-          ::-webkit-scrollbar-thumb { background: #344563; border-radius: 3px; }
-          .arena-shell { -webkit-user-select: none; -moz-user-select: none; user-select: none; }
-          .arena-shell .monaco-editor,
-          .arena-shell .monaco-editor * { -webkit-user-select: text; -moz-user-select: text; user-select: text; }
-          .arena-shell .test-block,
-          .arena-shell .problem-title { -webkit-user-select: text; -moz-user-select: text; user-select: text; }
-        `}</style>
+    <>
+      <ArenaShell
+        title={arena?.title ?? "Competition"}
+        backHref={`/competitions/${competitionId}/lobby`}
+        backLabel="Leave"
+        remainingSeconds={countdown.raw}
+        isEnded={competitionEnded}
+        endedMessage="The competition has ended. Submissions are no longer accepted."
+        loading={loading}
+        loadingMessage="Loading competition…"
+        accessError={accessError}
+        lockdown={{
+          fullscreen: !competitionEnded,
+          // We wire useAntiCheat ourselves so we can surface the violation log.
+          antiCheat: false,
+        }}
+        tabs={tabs}
+        activeTabKey={rightPanel === "editor" ? "workspace" : rightPanel === "submissions" ? "submissions" : "scoreboard"}
+        onTabChange={(k) => setRightPanel(k === "scoreboard" ? "scoreboard" : k === "submissions" ? "submissions" : "editor")}
+        topBarExtras={
+          arena && (
+            <CPTopBarExtras
+              teamName={arena.myTeam?.teamName}
+              firstName={firstName}
+              violationCount={violationCount}
+              violationLog={violationLog}
+              showViolations={showViolations}
+              setShowViolations={setShowViolations}
+            />
+          )
+        }
+      />
 
-        {/* ── TOP BAR ── */}
-        <TopBar
+      {/* ── END OF COMPETITION OVERLAY ── */}
+      {showEndOverlay && arena && (
+        <EndOfCompetitionOverlay
           title={arena.title}
-          teamName={arena.myTeam?.teamName}
-          firstName={firstName}
-          hours={countdown.hours}
-          minutes={countdown.minutes}
-          seconds={countdown.seconds}
-          timerColor={timerColor}
-          isCritical={countdown.isCritical}
-          isEnded={competitionEnded}
-          rightPanel={rightPanel}
-          setRightPanel={setRightPanel}
-          violationCount={violationCount}
-          violationLog={violationLog}
-          showViolations={showViolations}
-          setShowViolations={setShowViolations}
-          onLeave={() => router.push(`/competitions/${competitionId}/lobby`)}
+          scoreboard={scoreboard}
+          myUserId={userId}
+          mode={arena.mode}
+          onViewResults={() => router.push(`/competitions/${competitionId}`)}
         />
-
-        {/* ── BODY ── */}
-        <div style={{ display: "flex", flex: 1, overflow: "hidden" }}>
-          <LeftPanel
-            problems={arena.problems}
-            activeProblemIdx={activeProblemIdx}
-            setActiveProblemIdx={setActiveProblemIdx}
-            solvedCount={solvedCount}
-            mode={arena.mode}
-            activity={activity}
-          />
-
-          <ProblemStatement problem={activeProblem} />
-
-          {rightPanel === "editor" ? (
-            <RightEditorPanel
-              lang={lang}
-              setLang={setLang}
-              code={currentCode()}
-              setCode={setCurrentCode}
-              running={running}
-              judging={judging}
-              runResults={runResults}
-              judgeResult={judgeResult}
-              isFullscreen={isFullscreen}
-              onRun={handleRun}
-              onSubmit={handleSubmit}
-              problem={activeProblem}
-            />
-          ) : (
-            <ScoreboardPanel
-              scoreboard={scoreboard}
-              loading={sbLoading}
-              mode={arena.mode}
-              problems={arena.problems}
-              myUserId={userId}
-            />
-          )}
-        </div>
-
-        {/* ── END OF COMPETITION OVERLAY ── */}
-        {showEndOverlay && (
-          <EndOfCompetitionOverlay
-            title={arena.title}
-            scoreboard={scoreboard}
-            myUserId={userId}
-            mode={arena.mode}
-            onViewResults={() => router.push(`/competitions/${competitionId}`)}
-          />
-        )}
-      </div>
-    </FullscreenGate>
+      )}
+    </>
   );
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// TopBar
+// Briefing screen (CP entry gate)
 // ─────────────────────────────────────────────────────────────────────────────
 
-function TopBar({
-  title, teamName, firstName, hours, minutes, seconds,
-  timerColor, isCritical, isEnded, rightPanel, setRightPanel,
-  violationCount, violationLog, showViolations, setShowViolations,
-  onLeave,
+function BriefingScreen({
+  title, problemCount, durationSeconds, mode, teamName, onEnter, onCancel,
 }: {
-  title: string; teamName?: string; firstName: string | null;
-  hours: string; minutes: string; seconds: string;
-  timerColor: string; isCritical: boolean; isEnded: boolean;
-  rightPanel: "editor" | "scoreboard";
-  setRightPanel: (v: "editor" | "scoreboard") => void;
-  violationCount: number;
-  violationLog: ViolationEvent[];
-  showViolations: boolean;
-  setShowViolations: (v: boolean) => void;
-  onLeave: () => void;
+  title:           string;
+  problemCount:    number;
+  durationSeconds: number;
+  mode:            "SOLO" | "TEAM";
+  teamName?:       string;
+  onEnter:         () => void;
+  onCancel:        () => void;
+}) {
+  const mins = Math.floor(Math.max(0, durationSeconds) / 60);
+  return (
+    <div style={{
+      height: "100vh", display: "flex", alignItems: "center", justifyContent: "center",
+      background: "var(--bg)", color: "var(--ink)",
+    }}>
+      <div style={{
+        background: "var(--surface)", border: "1px solid var(--line-2)", borderRadius: 12, padding: "32px 36px",
+        maxWidth: 520, width: "100%", boxShadow: "0 16px 40px rgba(0,0,0,0.5)",
+      }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 18 }}>
+          <img src="/algora-logo-icon.png" alt="" width={36} height={36} style={{ objectFit: "contain" }} />
+          <div>
+            <div style={{ fontSize: 11, color: "var(--ink-3)", textTransform: "uppercase", letterSpacing: 0.6 }}>
+              Entering competition
+            </div>
+            <div style={{ fontSize: 17, fontWeight: 700 }}>{title}</div>
+          </div>
+        </div>
+
+        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 10, marginBottom: 18 }}>
+          <BriefStat label="Problems" value={String(problemCount)} />
+          <BriefStat label="Duration" value={mins > 0 ? `${mins} min` : "—"} />
+          <BriefStat label={mode === "TEAM" ? "Team" : "Mode"} value={mode === "TEAM" ? (teamName ?? "—") : "Solo"} />
+        </div>
+
+        <div style={{
+          background: "var(--danger-soft)", border: "1px solid rgba(240,99,122,.3)",
+          borderRadius: 8, padding: "10px 12px", marginBottom: 18,
+          display: "flex", gap: 10, alignItems: "flex-start",
+        }}>
+          <ShieldAlert size={16} color="var(--danger)" style={{ flexShrink: 0, marginTop: 2 }} />
+          <div style={{ fontSize: 12, lineHeight: 1.55, color: "var(--danger-ink)" }}>
+            <strong style={{ color: "var(--danger-ink)" }}>Anti-cheat is active.</strong>{" "}
+            Fullscreen is required to submit. Tab switches, copy/paste outside
+            the editor, dev-tools shortcuts and right-click are logged.
+          </div>
+        </div>
+
+        <button
+          type="button"
+          onClick={onEnter}
+          style={{
+            width: "100%", height: 42, background: "var(--accent)",
+            color: "#0a0a0a", border: "none", borderRadius: 10,
+            fontSize: 14, fontWeight: 700, cursor: "pointer",
+            display: "flex", alignItems: "center", justifyContent: "center", gap: 8,
+            boxShadow: "0 0 14px rgba(0,255,0,.3)",
+          }}
+        >
+          <Play size={14} />
+          Enter Arena
+        </button>
+
+        <div style={{ textAlign: "center", marginTop: 12 }}>
+          <button
+            type="button"
+            onClick={onCancel}
+            style={{
+              background: "transparent", border: "none",
+              fontSize: 12, color: "var(--ink-2)", cursor: "pointer",
+            }}
+          >
+            ← Back to lobby
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function BriefStat({ label, value }: { label: string; value: string }) {
+  return (
+    <div style={{
+      background: "var(--surface-2)",
+      border: "1px solid var(--line-2)",
+      borderRadius: 8, padding: "10px 12px",
+    }}>
+      <div style={{ fontSize: 10, color: "var(--ink-3)", textTransform: "uppercase", letterSpacing: 0.6 }}>
+        {label}
+      </div>
+      <div style={{
+        fontSize: 14, fontWeight: 700, color: "var(--ink)", marginTop: 2,
+        overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
+      }}>
+        {value}
+      </div>
+    </div>
+  );
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Top-bar extras (team/user name + violation counter + slide-over)
+// ─────────────────────────────────────────────────────────────────────────────
+
+function CPTopBarExtras({
+  teamName, firstName, violationCount, violationLog,
+  showViolations, setShowViolations,
+}: {
+  teamName?: string; firstName: string | null;
+  violationCount: number; violationLog: ViolationEvent[];
+  showViolations: boolean; setShowViolations: (v: boolean) => void;
 }) {
   return (
     <>
-      <div style={{ background: "#172b4d", height: 44, display: "flex", alignItems: "center", padding: "0 16px", gap: 12, flexShrink: 0, borderBottom: "1px solid #253858", position: "relative", zIndex: 10 }}>
-        {/* Logo */}
-        <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-          <div style={{ width: 22, height: 22, background: "#0052cc", borderRadius: 3, display: "flex", alignItems: "center", justifyContent: "center", color: "white", fontWeight: 900, fontSize: 11 }}>P</div>
-          <span style={{ color: "white", fontWeight: 700, fontSize: 13 }}>PSP</span>
-        </div>
-        <span style={{ color: "rgba(255,255,255,0.25)" }}>|</span>
-        <span style={{ color: "rgba(255,255,255,0.85)", fontSize: 13, fontWeight: 500, maxWidth: 260, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-          {title}{teamName ? ` — ${teamName}` : ""}
-        </span>
-
-        {/* Timer */}
-        <div style={{
-          fontFamily: "monospace", fontSize: 15, fontWeight: 700,
-          color: isEnded ? "#de350b" : timerColor,
-          animation: isCritical || isEnded ? "pulse 1s infinite" : "none",
-          marginLeft: "auto",
-        }}>
-          {isEnded ? "ENDED" : `${hours}:${minutes}:${seconds}`}
-        </div>
-
-        {/* Panel toggle */}
-        <div style={{ display: "flex", gap: 4 }}>
-          {(["editor", "scoreboard"] as const).map(p => (
-            <button key={p} onClick={() => setRightPanel(p)} style={{
-              background: rightPanel === p ? "#0052cc" : "transparent",
-              color: rightPanel === p ? "white" : "rgba(255,255,255,0.6)",
-              border: "1px solid",
-              borderColor: rightPanel === p ? "#0052cc" : "rgba(255,255,255,0.2)",
-              borderRadius: 3, height: 28, padding: "0 12px", fontSize: 12, cursor: "pointer", fontWeight: 500,
-            }}>{p === "editor" ? "Editor" : "Scoreboard"}</button>
-          ))}
-        </div>
-
-        {/* Violations counter */}
-        {violationCount > 0 && (
-          <button
-            onClick={() => setShowViolations(!showViolations)}
-            style={{
-              display: "flex", alignItems: "center", gap: 6,
-              background: "rgba(222,53,11,0.2)", border: "1px solid rgba(222,53,11,0.4)",
-              borderRadius: 3, padding: "3px 10px", cursor: "pointer",
-            }}
-          >
-            <span style={{ color: "#ff8b8b", fontSize: 11 }}>⚠</span>
-            <span style={{ color: "#ffb8b8", fontSize: 11, fontWeight: 600 }}>
-              {violationCount} violation{violationCount !== 1 ? "s" : ""}
-            </span>
-          </button>
-        )}
-
-        {firstName && <span style={{ color: "rgba(255,255,255,0.55)", fontSize: 12 }}>{firstName}</span>}
-        <button onClick={onLeave} style={{ background: "#de350b", color: "white", border: "none", borderRadius: 3, padding: "0 12px", height: 28, fontSize: 12, fontWeight: 600, cursor: "pointer" }}>
-          Leave
+      {violationCount > 0 && (
+        <button
+          onClick={() => setShowViolations(!showViolations)}
+          style={{
+            display: "flex", alignItems: "center", gap: 6,
+            background: "var(--warn-soft)", border: "1px solid rgba(232,160,48,.2)",
+            borderRadius: 8, padding: "5px 10px", cursor: "pointer",
+          }}
+        >
+          <AlertTriangle size={14} color="var(--warn)" />
+          <span style={{ color: "var(--warn)", fontSize: 12, fontWeight: 600 }}>
+            {violationCount} violation{violationCount !== 1 ? "s" : ""}
+          </span>
         </button>
-      </div>
+      )}
 
-      {/* Violation slide-over */}
+      {teamName && (
+        <span style={{
+          display: "flex", alignItems: "center", gap: 8,
+          background: "var(--surface-2)", border: "1px solid var(--line-2)",
+          borderRadius: 8, padding: "5px 10px 5px 6px",
+        }}>
+          <span style={{ width: 24, height: 24, borderRadius: 6, background: "var(--accent)", display: "grid", placeItems: "center", color: "#0a0a0a", font: "700 10px var(--font-sans)" }}>
+            {teamName.slice(0, 2).toUpperCase()}
+          </span>
+          <span style={{
+            color: "var(--ink)", font: "600 12.5px var(--font-sans)",
+            maxWidth: 120, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
+          }}>{teamName}</span>
+        </span>
+      )}
+
+      {firstName && (
+        <span style={{ color: "var(--ink-2)", fontSize: 12 }}>{firstName}</span>
+      )}
+
       {showViolations && (
         <div style={{
           position: "fixed", top: 44, right: 0, width: 360, height: "calc(100vh - 44px)",
-          background: "#172b4d", borderLeft: "1px solid #253858", zIndex: 9000,
+          background: "var(--bg-2)", borderLeft: "1px solid var(--line)", zIndex: 9000,
           display: "flex", flexDirection: "column", overflowY: "hidden",
           boxShadow: "-4px 0 20px rgba(0,0,0,0.5)",
         }}>
-          <div style={{ padding: "14px 16px", borderBottom: "1px solid #253858", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+          <div style={{ padding: "14px 16px", borderBottom: "1px solid var(--line)", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
             <span style={{ color: "white", fontWeight: 700, fontSize: 13 }}>Your Violations</span>
-            <button onClick={() => setShowViolations(false)} style={{ background: "transparent", border: "none", color: "rgba(255,255,255,0.5)", cursor: "pointer", fontSize: 16 }}>✕</button>
+            <button onClick={() => setShowViolations(false)} style={{ background: "transparent", border: "none", color: "rgba(255,255,255,0.5)", cursor: "pointer", fontSize: 16 }} aria-label="Close"><X size={16} /></button>
           </div>
-          <div style={{ padding: "10px 16px", background: "rgba(222,53,11,0.12)", borderBottom: "1px solid #253858" }}>
-            <p style={{ fontSize: 12, color: "#ffb8b8" }}>⚠ These are logged and visible to the teacher</p>
+          <div style={{ padding: "10px 16px", background: "var(--danger-soft)", borderBottom: "1px solid var(--line)" }}>
+            <p style={{ fontSize: 12, color: "var(--danger-ink)", display: "flex", alignItems: "center", gap: 6 }}><AlertTriangle size={12} /> These are logged and visible to the teacher</p>
           </div>
           <div style={{ flex: 1, overflowY: "auto", padding: 16 }}>
             {violationLog.length === 0 ? (
               <p style={{ color: "rgba(255,255,255,0.3)", fontSize: 12 }}>No violations recorded</p>
             ) : violationLog.map((v, i) => (
-              <div key={i} style={{ marginBottom: 10, paddingBottom: 10, borderBottom: "1px solid #253858" }}>
+              <div key={i} style={{ marginBottom: 10, paddingBottom: 10, borderBottom: "1px solid var(--line)" }}>
                 <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 2 }}>
-                  <span style={{ color: "#ff8b8b", fontSize: 12, fontWeight: 600 }}>{v.type.replace(/_/g, " ")}</span>
+                  <span style={{ color: "var(--danger-ink)", fontSize: 12, fontWeight: 600 }}>{v.type.replace(/_/g, " ")}</span>
                   <span style={{ color: "rgba(255,255,255,0.4)", fontSize: 11 }}>{fmtTime(v.timestamp)}</span>
                 </div>
                 {v.details && <p style={{ color: "rgba(255,255,255,0.5)", fontSize: 11 }}>{v.details}</p>}
               </div>
             ))}
           </div>
-          <div style={{ padding: "12px 16px", borderTop: "1px solid #253858" }}>
+          <div style={{ padding: "12px 16px", borderTop: "1px solid var(--line)" }}>
             <p style={{ color: "rgba(255,255,255,0.35)", fontSize: 11, lineHeight: 1.5 }}>
               Violations are reviewed after the competition. Excessive violations may result in disqualification.
             </p>
@@ -790,67 +884,59 @@ function LeftPanel({
 }) {
   const progressPct = problems.length > 0 ? (solvedCount / problems.length) * 100 : 0;
 
+  const items: TaskRailItem[] = problems.map((p) => ({
+    id: p.problemId,
+    label: p.label,
+    title: p.title,
+    points: p.points,
+    status: p.solveStatus === "SOLVED" ? "solved" : p.solveStatus === "ATTEMPTED" ? "attempted" : "unsolved",
+    meta: p.solveStatus === "ATTEMPTED" ? `×${p.attempts}` : p.solveStatus === "UNSOLVED" ? "—" : undefined,
+  }));
+
   return (
-    <div style={{ width: 220, background: "#253858", display: "flex", flexDirection: "column", flexShrink: 0, borderRight: "1px solid #344563", overflowY: "auto" }}>
-      <div style={{ padding: 12, borderBottom: "1px solid #344563" }}>
-        <div style={{ fontSize: 10, fontWeight: 700, color: "rgba(255,255,255,0.4)", textTransform: "uppercase", letterSpacing: "0.5px", marginBottom: 8 }}>Problems</div>
-        {problems.map((p, i) => (
-          <button key={p.problemId} onClick={() => setActiveProblemIdx(i)} style={{
-            display: "flex", alignItems: "center", gap: 8, padding: "7px 10px",
-            borderRadius: 3, cursor: "pointer", marginBottom: 3, width: "100%", textAlign: "left",
-            background: activeProblemIdx === i ? "#0052cc" : "transparent", border: "none",
-          }}>
-            <div style={{ width: 8, height: 8, borderRadius: "50%", flexShrink: 0, background: SOLVE_DOT[p.solveStatus] ?? "#5e6c84" }} />
-            <span style={{ fontSize: 12, color: "rgba(255,255,255,0.85)", fontWeight: 500, flex: 1 }}>
-              {p.label}. {p.title}
-            </span>
-            <span style={{ fontSize: 10, color: "rgba(255,255,255,0.4)", flexShrink: 0 }}>{p.points}</span>
-          </button>
-        ))}
-      </div>
-
-      <div style={{ padding: 12, borderBottom: "1px solid #344563" }}>
-        <div style={{ fontSize: 10, fontWeight: 700, color: "rgba(255,255,255,0.4)", textTransform: "uppercase", letterSpacing: "0.5px", marginBottom: 6 }}>Progress</div>
-        <div style={{ fontSize: 12, color: "rgba(255,255,255,0.65)", marginBottom: 6 }}>{solvedCount} / {problems.length} solved</div>
-        <div style={{ background: "#344563", height: 4, borderRadius: 2 }}>
-          <div style={{ background: "#00875a", height: 4, borderRadius: 2, width: `${progressPct}%`, transition: "width 0.3s" }} />
-        </div>
-      </div>
-
-      <div style={{ padding: 12, borderBottom: "1px solid #344563" }}>
-        {[["SOLVED", "00875a"], ["ATTEMPTED", "ff8b00"], ["UNSOLVED", "5e6c84"]].map(([label, color]) => (
-          <div key={label} style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 4 }}>
-            <div style={{ width: 7, height: 7, borderRadius: "50%", background: `#${color}`, flexShrink: 0 }} />
-            <span style={{ fontSize: 10, color: "rgba(255,255,255,0.45)", textTransform: "capitalize" }}>{label.toLowerCase()}</span>
-          </div>
-        ))}
-      </div>
-
-      {mode === "TEAM" && (
-        <div style={{ padding: 12, flex: 1 }}>
-          <div style={{ fontSize: 10, fontWeight: 700, color: "rgba(255,255,255,0.4)", textTransform: "uppercase", letterSpacing: "0.5px", marginBottom: 8 }}>Team Activity</div>
-          {activity.length === 0 ? (
-            <div style={{ fontSize: 11, color: "rgba(255,255,255,0.3)", textAlign: "center", paddingTop: 8 }}>No submissions yet</div>
-          ) : activity.map((a, i) => (
-            <div key={i} style={{ marginBottom: 8, padding: "6px 8px", background: "rgba(255,255,255,0.05)", borderRadius: 3 }}>
-              <div style={{ fontSize: 11, color: "rgba(255,255,255,0.75)", fontWeight: 500 }}>{a.studentName}</div>
-              <div style={{ fontSize: 10, color: "rgba(255,255,255,0.45)", marginTop: 2 }}>
-                Prob {a.problemLabel} —{" "}
-                <span style={{ color: verdictColor(a.verdict), fontWeight: 600 }}>{a.verdict}</span>
-              </div>
+    <TaskRail
+      items={items}
+      activeIndex={activeProblemIdx}
+      onSelect={setActiveProblemIdx}
+      heading="PROBLEMS"
+      width={220}
+      footer={
+        <>
+          <div style={{ padding: 14, borderTop: "1px solid var(--line-2)" }}>
+            <div style={{ fontSize: 10, fontWeight: 700, color: "var(--ink-3)", textTransform: "uppercase", letterSpacing: "0.1em", marginBottom: 10 }}>Progress</div>
+            <div style={{ background: "var(--surface-3)", height: 4, borderRadius: 4, overflow: "hidden", marginBottom: 8 }}>
+              <div style={{ background: "var(--accent)", height: 4, borderRadius: 4, width: `${progressPct}%`, boxShadow: "0 0 8px rgba(0,255,0,.5)", transition: "width 0.3s" }} />
             </div>
-          ))}
-        </div>
-      )}
+            <div style={{ font: "600 12px var(--font-mono)", color: "var(--ink-2)", marginBottom: 12 }}>{solvedCount} / {problems.length} solved</div>
+            <div style={{ display: "flex", flexDirection: "column", gap: 5 }}>
+              {([["Solved", "var(--accent)"], ["Attempted", "var(--warn)"], ["Unsolved", "var(--ink-3)"]] as const).map(([label, color]) => (
+                <div key={label} style={{ display: "flex", alignItems: "center", gap: 7, fontSize: 12, color: "var(--ink-2)" }}>
+                  <div style={{ width: 7, height: 7, borderRadius: "50%", background: color, flexShrink: 0 }} />
+                  {label}
+                </div>
+              ))}
+            </div>
+          </div>
 
-      <div style={{ padding: 12, borderTop: "1px solid #344563", marginTop: "auto" }}>
-        <div style={{ fontSize: 10, color: "rgba(255,255,255,0.3)", lineHeight: 1.5 }}>
-          Alt+1–5: jump problem<br />
-          Ctrl+Enter: submit<br />
-          Ctrl+R: run
-        </div>
-      </div>
-    </div>
+          {mode === "TEAM" && (
+            <div style={{ padding: 14, borderTop: "1px solid var(--line-2)", flex: 1 }}>
+              <div style={{ fontSize: 10, fontWeight: 700, color: "var(--ink-3)", textTransform: "uppercase", letterSpacing: "0.1em", marginBottom: 10 }}>Team activity</div>
+              {activity.length === 0 ? (
+                <div style={{ fontSize: 11, color: "var(--ink-3)", textAlign: "center", paddingTop: 8 }}>No submissions yet</div>
+              ) : activity.map((a, i) => (
+                <div key={i} style={{ display: "flex", alignItems: "center", gap: 8, padding: "7px 0", borderBottom: "1px solid var(--line-2)" }}>
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div style={{ fontSize: 12, color: "var(--ink)", fontWeight: 600, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{a.studentName}</div>
+                    <div style={{ font: "500 11px var(--font-mono)", color: "var(--ink-3)", marginTop: 2 }}>Problem {a.problemLabel}</div>
+                  </div>
+                  <span style={{ font: "650 11px var(--font-mono)", color: verdictColor(a.verdict) }}>{a.verdict}</span>
+                </div>
+              ))}
+            </div>
+          )}
+        </>
+      }
+    />
   );
 }
 
@@ -859,25 +945,24 @@ function LeftPanel({
 // ─────────────────────────────────────────────────────────────────────────────
 
 function ProblemStatement({ problem }: { problem: ArenaProblem }) {
-  const diff = DIFF_STYLE[problem.difficultyLevel] ?? DIFF_STYLE.EASY;
-
   return (
-    <div style={{ flex: 1, background: "var(--bg-primary)", display: "flex", flexDirection: "column", overflow: "hidden", borderRight: "1px solid var(--border)" }}>
-      <div style={{ padding: "14px 20px", borderBottom: "1px solid var(--border)", flexShrink: 0 }}>
-        <div className="problem-title" style={{ fontSize: 16, fontWeight: 700, color: "var(--text-primary)", marginBottom: 8 }}>
-          {problem.label}. {problem.title}
+    <div style={{ flex: 1, background: "var(--bg)", display: "flex", flexDirection: "column", overflow: "hidden", borderRight: "1px solid var(--line-2)" }}>
+      <div style={{ padding: "16px 20px", borderBottom: "1px solid var(--line-2)", flexShrink: 0 }}>
+        <div className="problem-title" style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 10 }}>
+          <span style={{ font: "700 24px var(--font-mono)", color: "var(--accent)" }}>{problem.label}.</span>
+          <span style={{ fontSize: 20, fontWeight: 700, color: "var(--ink)", letterSpacing: "-0.02em" }}>{problem.title}</span>
         </div>
-        <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
-          <MetaChip>⏱ {problem.timeLimitMs} ms</MetaChip>
-          <MetaChip>💾 {problem.memoryLimitMb} MB</MetaChip>
-          <MetaChip style={{ background: diff.bg, color: diff.text }}>{problem.difficultyLevel}</MetaChip>
+        <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+          <MetaChip><Clock size={11} /> {problem.timeLimitMs} ms</MetaChip>
+          <MetaChip><HardDrive size={11} /> {problem.memoryLimitMb} MB</MetaChip>
+          <MetaChip style={{ background: "var(--accent-dim)", color: "var(--accent)", borderColor: "var(--accent-ring)" }}>{problem.difficultyLevel}</MetaChip>
           <MetaChip>{problem.points} pts</MetaChip>
           {problem.attempts > 0 && (
             <MetaChip style={{
-              background: problem.solveStatus === "SOLVED" ? "#e3fcef" : "#fffae6",
-              color: problem.solveStatus === "SOLVED" ? "#006644" : "#974f0c",
+              background: problem.solveStatus === "SOLVED" ? "var(--success-soft)" : "var(--warn-soft)",
+              color: problem.solveStatus === "SOLVED" ? "var(--success-ink)" : "var(--warn-ink)",
             }}>
-              {problem.solveStatus === "SOLVED" ? "✓ Solved" : `${problem.attempts} attempt${problem.attempts !== 1 ? "s" : ""}`}
+              {problem.solveStatus === "SOLVED" ? <span style={{display:"inline-flex",alignItems:"center",gap:4}}><Check size={11} /> Solved</span> : `${problem.attempts} attempt${problem.attempts !== 1 ? "s" : ""}`}
             </MetaChip>
           )}
         </div>
@@ -908,7 +993,7 @@ function ProblemStatement({ problem }: { problem: ArenaProblem }) {
             <SectionHeader>Hidden Test Cases</SectionHeader>
             {Array.from({ length: problem.hiddenTestCaseCount }).map((_, i) => (
               <div key={i} style={{ background: "var(--bg-secondary)", border: "1px solid var(--border)", borderRadius: 3, padding: "7px 12px", fontSize: 12, color: "var(--text-muted)", display: "flex", alignItems: "center", gap: 6, marginBottom: 5 }}>
-                🔒 Hidden test case {i + 1}
+                <Lock size={12} /> Hidden test case {i + 1}
               </div>
             ))}
           </>
@@ -939,45 +1024,46 @@ function RightEditorPanel({
   const submitDisabled = judging || running || problem.solveStatus === "SOLVED" || !isFullscreen;
 
   let submitLabel = "Submit";
-  if (problem.solveStatus === "SOLVED") submitLabel = "✓ Solved";
+  if (problem.solveStatus === "SOLVED") submitLabel = "Solved";
   else if (judging) submitLabel = "Judging…";
-  else if (!isFullscreen) submitLabel = "⛔ Fullscreen required";
+  else if (!isFullscreen) submitLabel = "Fullscreen required";
 
-  let submitBg = "#0052cc";
-  if (problem.solveStatus === "SOLVED") submitBg = "#00875a";
-  else if (submitDisabled) submitBg = "#97a0af";
+  let submitBg = "var(--accent)";
+  let submitColor = "#0a0a0a";
+  if (problem.solveStatus === "SOLVED") submitBg = "var(--success)";
+  else if (submitDisabled) { submitBg = "var(--surface-3)"; submitColor = "var(--ink-3)"; }
 
   return (
-    <div style={{ width: 500, display: "flex", flexDirection: "column", flexShrink: 0, background: "var(--bg-primary)" }}>
-      <div style={{ padding: "6px 12px", borderBottom: "1px solid var(--border)", display: "flex", alignItems: "center", gap: 8, background: "var(--bg-tertiary)", flexShrink: 0 }}>
-        <span style={{ fontSize: 12, fontWeight: 600, color: "var(--text-muted)" }}>Language</span>
+    <div style={{ width: 500, display: "flex", flexDirection: "column", flexShrink: 0, background: "var(--bg-2)", borderLeft: "1px solid var(--line-2)" }}>
+      <div style={{ padding: "8px 14px", borderBottom: "1px solid var(--line-2)", display: "flex", alignItems: "center", gap: 8, background: "var(--bg-2)", flexShrink: 0 }}>
+        <span style={{ fontSize: 10, fontWeight: 700, color: "var(--ink-3)", textTransform: "uppercase", letterSpacing: "0.1em" }}>Solution</span>
         <select
           value={lang}
           onChange={e => setLang(e.target.value)}
-          style={{ border: "1px solid var(--border)", borderRadius: 3, padding: "0 8px", height: 28, fontSize: 12, color: "var(--text-primary)", outline: "none", background: "var(--bg-primary)" }}
+          style={{ border: "1px solid var(--line-2)", borderRadius: 8, padding: "0 10px", height: 28, font: "500 12.5px var(--font-mono)", color: "var(--ink)", outline: "none", background: "var(--surface)", cursor: "pointer" }}
         >
           {LANG_OPTIONS.map(l => <option key={l.value} value={l.value}>{l.label}</option>)}
         </select>
         <button
           onClick={() => setCode(DEFAULT_CODE[lang] ?? "")}
-          style={{ background: "transparent", color: "var(--text-muted)", border: "none", fontSize: 12, cursor: "pointer", padding: "0 4px" }}
+          style={{ background: "transparent", color: "var(--ink-3)", border: "none", fontSize: 14, cursor: "pointer", padding: "0 4px" }}
           title="Reset to template"
         >↺</button>
         <div style={{ marginLeft: "auto", display: "flex", gap: 6 }}>
           <button
             onClick={onRun}
             disabled={running || judging}
-            style={{ background: "var(--bg-primary)", color: "var(--text-primary)", border: "1px solid var(--border)", borderRadius: 3, height: 28, padding: "0 14px", fontSize: 12, cursor: running || judging ? "not-allowed" : "pointer", fontWeight: 500 }}
+            style={{ display: "flex", alignItems: "center", gap: 6, background: "var(--surface)", color: "var(--ink)", border: "1px solid var(--line-2)", borderRadius: 8, height: 28, padding: "0 14px", fontSize: 12, fontWeight: 600, cursor: running || judging ? "not-allowed" : "pointer" }}
           >
-            {running ? "Running…" : "▷ Run"}
+            <Play size={12} /> {running ? "Running…" : "Run"}
           </button>
           <button
             onClick={onSubmit}
             disabled={submitDisabled}
             title={!isFullscreen ? "Enter fullscreen to submit" : undefined}
-            style={{ background: submitBg, color: "white", border: "none", borderRadius: 3, height: 28, padding: "0 16px", fontSize: 12, cursor: submitDisabled ? "not-allowed" : "pointer", fontWeight: 600 }}
+            style={{ display: "flex", alignItems: "center", gap: 6, background: submitBg, color: submitColor, border: "none", borderRadius: 8, height: 28, padding: "0 16px", fontSize: 12, cursor: submitDisabled ? "not-allowed" : "pointer", fontWeight: 700 }}
           >
-            {submitLabel}
+            {submitLabel} <Send size={12} />
           </button>
         </div>
       </div>
@@ -993,12 +1079,12 @@ function RightEditorPanel({
       </div>
 
       {hasResults && (
-        <div style={{ borderTop: "1px solid var(--border)", flexShrink: 0, maxHeight: "45%", display: "flex", flexDirection: "column", overflowY: "auto" }}>
+        <div style={{ borderTop: "1px solid var(--line-2)", background: "var(--surface)", flexShrink: 0, maxHeight: "45%", display: "flex", flexDirection: "column", overflowY: "auto" }}>
           {judgeResult && <JudgeResultBanner result={judgeResult} />}
           {runResults && (
             <>
-              <div style={{ padding: "7px 12px", background: "var(--bg-tertiary)", borderBottom: "1px solid var(--border)", flexShrink: 0, display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-                <span style={{ fontSize: 12, fontWeight: 600, color: "var(--text-primary)" }}>Run Results</span>
+              <div style={{ padding: "7px 12px", background: "var(--surface)", borderBottom: "1px solid var(--line-2)", flexShrink: 0, display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+                <span style={{ fontSize: 12, fontWeight: 600, color: "var(--ink)" }}>Run Results</span>
                 <span style={{ fontSize: 11, color: "var(--text-muted)" }}>
                   {runResults.filter(r => r.passed).length}/{runResults.length} passed
                 </span>
@@ -1008,6 +1094,16 @@ function RightEditorPanel({
           )}
         </div>
       )}
+
+      {/* Keyboard hints */}
+      <div style={{ padding: "8px 14px", borderTop: "1px solid var(--line-2)", display: "flex", gap: 16, background: "var(--bg-2)", flexShrink: 0 }}>
+        {([["Ctrl+Enter", "Submit"], ["Ctrl+R", "Run"], ["Alt+1–6", "Jump"]] as const).map(([key, label]) => (
+          <span key={key} style={{ font: "500 11px var(--font-mono)", color: "var(--ink-3)", display: "flex", alignItems: "center", gap: 5 }}>
+            <span style={{ background: "var(--surface-3)", border: "1px solid var(--line-2)", borderRadius: 4, padding: "1px 5px", font: "500 10px var(--font-mono)", color: "var(--ink-2)" }}>{key}</span>
+            {label}
+          </span>
+        ))}
+      </div>
     </div>
   );
 }
@@ -1030,7 +1126,7 @@ function ScoreboardPanel({
 
       {loading ? (
         <div style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center" }}>
-          <div style={{ width: 24, height: 24, border: "2px solid var(--border)", borderTopColor: "#0052cc", borderRadius: "50%", animation: "spin 0.8s linear infinite" }} />
+          <div style={{ width: 24, height: 24, border: "2px solid var(--border)", borderTopColor: "var(--brand)", borderRadius: "50%", animation: "spin 0.8s linear infinite" }} />
         </div>
       ) : (
         <div style={{ flex: 1, overflowY: "auto" }}>
@@ -1054,7 +1150,7 @@ function ScoreboardPanel({
                 {scoreboard.map(entry => {
                   const isMe = mode === "SOLO" && entry.studentId === myUserId;
                   return (
-                    <tr key={entry.teamId ?? entry.studentId} style={{ borderBottom: "1px solid #f4f5f7", background: isMe ? "#deebff" : "transparent" }}>
+                    <tr key={entry.teamId ?? entry.studentId} style={{ borderBottom: "1px solid var(--line)", background: isMe ? "var(--accent-soft)" : "transparent" }}>
                       <td style={{ padding: "8px 12px", color: "var(--text-muted)", fontWeight: 700 }}>{entry.rank}</td>
                       <td style={{ padding: "8px 12px", color: "var(--text-primary)", fontWeight: 500 }}>
                         {mode === "TEAM" ? entry.teamName : `${entry.firstName} ${entry.lastName}`}
@@ -1063,7 +1159,7 @@ function ScoreboardPanel({
                         <td key={p.label} style={{ padding: "8px 8px", textAlign: "center" }}>
                           {p.verdict ? (
                             <span style={{ color: verdictColor(p.verdict), fontWeight: 700 }}>
-                              {p.verdict === "AC" ? "✓" : "✗"}
+                              {p.verdict === "AC" ? <Check size={14} /> : <X size={14} />}
                             </span>
                           ) : (
                             <span style={{ color: "var(--border)" }}>—</span>
@@ -1090,8 +1186,8 @@ function ScoreboardPanel({
 function JudgeResultBanner({ result }: { result: JudgeResult }) {
   const isPending = result.verdict === "PENDING";
   const isAC      = result.verdict === "AC";
-  const bg    = isPending ? "#deebff" : isAC ? "#e3fcef" : "#ffebe6";
-  const color = isPending ? "#0747a6" : isAC ? "#006644"  : "#bf2600";
+  const bg    = isPending ? "var(--accent-soft)" : isAC ? "var(--success-soft)" : "var(--danger-soft)";
+  const color = isPending ? "var(--brand)" : isAC ? "var(--success-ink)"  : "var(--danger-ink)";
 
   return (
     <div style={{ padding: "10px 14px", background: bg, color, fontSize: 13, fontWeight: 600, display: "flex", alignItems: "center", gap: 10, flexShrink: 0 }}>
@@ -1102,7 +1198,7 @@ function JudgeResultBanner({ result }: { result: JudgeResult }) {
         </>
       ) : (
         <>
-          <span>{isAC ? "✓" : "✗"}</span>
+          <span style={{display:"inline-flex"}}>{isAC ? <Check size={15} /> : <X size={15} />}</span>
           <span>{verdictLabel(result.verdict)}</span>
           {result.score > 0 && <span style={{ marginLeft: "auto", fontSize: 12, fontWeight: 500 }}>{result.score} pts</span>}
           {result.executionTimeMs > 0 && <span style={{ fontSize: 11, opacity: 0.7 }}>{result.executionTimeMs} ms</span>}
@@ -1114,11 +1210,11 @@ function JudgeResultBanner({ result }: { result: JudgeResult }) {
 
 function RunResultRow({ result, idx }: { result: RunResult; idx: number }) {
   const [open, setOpen] = useState(false);
-  const icon  = result.passed ? "✓" : result.status === "TIME_OUT" ? "⏱" : "✗";
-  const color = result.passed ? "#006644" : result.status === "TIME_OUT" ? "#974f0c" : "#bf2600";
+  const icon  = result.passed ? <Check size={14} /> : result.status === "TIME_OUT" ? <Clock size={14} /> : <X size={14} />;
+  const color = result.passed ? "var(--success-ink)" : result.status === "TIME_OUT" ? "var(--warn-ink)" : "var(--danger-ink)";
 
   return (
-    <div style={{ borderBottom: "1px solid #f4f5f7" }}>
+    <div style={{ borderBottom: "1px solid var(--line)" }}>
       <div
         onClick={() => setOpen(o => !o)}
         style={{ display: "flex", alignItems: "center", padding: "7px 12px", gap: 8, fontSize: 12, cursor: "pointer" }}
@@ -1134,7 +1230,7 @@ function RunResultRow({ result, idx }: { result: RunResult; idx: number }) {
           <CodeBlock label="Input" selectable>{result.input}</CodeBlock>
           <CodeBlock label="Expected" selectable>{result.expected}</CodeBlock>
           {!result.passed && (
-            <CodeBlock label="Actual" selectable style={{ borderColor: "#ffebe6", background: "var(--red-light)" }}>
+            <CodeBlock label="Actual" selectable style={{ borderColor: "var(--danger-soft)", background: "var(--red-light)" }}>
               {result.actual}
             </CodeBlock>
           )}
@@ -1146,7 +1242,7 @@ function RunResultRow({ result, idx }: { result: RunResult; idx: number }) {
 
 function MetaChip({ children, style }: { children: React.ReactNode; style?: React.CSSProperties }) {
   return (
-    <span style={{ background: "var(--bg-secondary)", border: "1px solid var(--border)", borderRadius: 3, padding: "2px 8px", fontSize: 11, color: "var(--text-muted)", ...style }}>
+    <span style={{ display: "inline-flex", alignItems: "center", gap: 4, background: "var(--surface-2)", border: "1px solid var(--line-2)", borderRadius: 7, padding: "5px 9px", font: "500 11.5px var(--font-mono)", color: "var(--ink-2)", ...style }}>
       {children}
     </span>
   );

@@ -1,0 +1,1 @@
+ALTER TABLE ctf_challenges ADD COLUMN IF NOT EXISTS media_url VARCHAR(500);

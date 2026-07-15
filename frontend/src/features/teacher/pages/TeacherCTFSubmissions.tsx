@@ -36,15 +36,6 @@ const TeacherCTFSubmissions = ({ challengeId }: Props) => {
   return (
     <>
       <Navbar />
-      <div className="psp-breadcrumb">
-        <Link href="/teacher">PSP</Link> ›{" "}
-        <Link href="/teacher/ctf">CTF Challenges</Link> ›{" "}
-        {detail
-          ? <><Link href={`/teacher/ctf/${challengeId}/edit`}>{detail.title}</Link> › <span style={{ color: "var(--text-primary)" }}>Submissions</span></>
-          : <span style={{ color: "var(--text-primary)" }}>Submissions</span>
-        }
-      </div>
-
       <div className="psp-main">
 
         {loading ? (

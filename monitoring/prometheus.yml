@@ -1,0 +1,24 @@
+global:
+  scrape_interval: 15s
+  evaluation_interval: 15s
+
+scrape_configs:
+  # Spring Boot backend — Micrometer/Prometheus registry.
+  # base-path is /api/actuator (application.yml), so metrics are at /api/actuator/prometheus.
+  - job_name: 'algora-backend'
+    metrics_path: '/api/actuator/prometheus'
+    static_configs:
+      - targets: ['backend:8080']
+        labels:
+          instance: 'algora-backend'
+
+  # CTF worker agent (FastAPI) exposes Prometheus metrics at /api/v1/metrics.
+  # Runs as a separate compose stack; from this network it is reached via the
+  # host gateway. Commented out by default — enable once the agent is on a
+  # network Prometheus can resolve (or add it to this compose file).
+  # - job_name: 'ctf-worker-agent'
+  #   metrics_path: '/api/v1/metrics'
+  #   static_configs:
+  #     - targets: ['host.docker.internal:8000']
+  #       labels:
+  #         instance: 'ctf-worker-agent'

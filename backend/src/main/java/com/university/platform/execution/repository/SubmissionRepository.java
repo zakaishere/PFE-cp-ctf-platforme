@@ -4,6 +4,7 @@ import com.university.platform.execution.model.Submission;
 import com.university.platform.execution.model.Submission.ProgrammingLanguage;
 import com.university.platform.execution.model.Submission.SubmissionStatus;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
@@ -26,6 +27,8 @@ public interface SubmissionRepository extends JpaRepository<Submission, UUID> {
     long countByStudent_IdAndProblem_ProblemIdAndAssessmentIsNullAndPlanningModeFalse(UUID studentId, UUID problemId);
 
     Page<Submission> findByAssessment_AssessmentId(UUID assessmentId, Pageable pageable);
+
+    List<Submission> findByAssessment_AssessmentIdOrderByTimestampDesc(UUID assessmentId);
 
     List<Submission> findByAssessment_AssessmentIdAndStudent_IdOrderByTimestampDesc(UUID assessmentId, UUID studentId);
 
@@ -80,6 +83,9 @@ public interface SubmissionRepository extends JpaRepository<Submission, UUID> {
             @Param("assessmentId") UUID assessmentId
     );
 
+    /** Admin KPI: submissions created since the given instant (start of day). */
+    long countByTimestampAfter(java.time.LocalDateTime since);
+
     long countByProblem_ProblemId(UUID problemId);
 
     long countByProblem_ProblemIdAndIsAcceptedTrue(UUID problemId);
@@ -96,6 +102,48 @@ public interface SubmissionRepository extends JpaRepository<Submission, UUID> {
             @Param("problemId") UUID problemId,
             Pageable pageable
     );
+
+    /** Same as above but scoped to one assessment (TP/exam "My Submissions" tab). */
+    @Query("""
+        SELECT s FROM Submission s
+        WHERE s.student.id                 = :studentId
+          AND s.problem.problemId          = :problemId
+          AND s.assessment.assessmentId    = :assessmentId
+          AND s.planningMode               = false
+        ORDER BY s.timestamp DESC
+    """)
+    List<Submission> findMySubmissionsForProblemInAssessment(
+            @Param("studentId")    UUID studentId,
+            @Param("problemId")    UUID problemId,
+            @Param("assessmentId") UUID assessmentId,
+            Pageable pageable
+    );
+
+    /** Same as above but scoped to one CP competition (My Submissions tab). */
+    @Query("""
+        SELECT s FROM Submission s
+        WHERE s.student.id        = :studentId
+          AND s.problem.problemId = :problemId
+          AND s.competitionId     = :competitionId
+          AND s.planningMode      = false
+        ORDER BY s.timestamp DESC
+    """)
+    List<Submission> findMySubmissionsForProblemInCompetition(
+            @Param("studentId")     UUID studentId,
+            @Param("problemId")     UUID problemId,
+            @Param("competitionId") UUID competitionId,
+            Pageable pageable
+    );
+
+    /**
+     * Atomic idempotency claim: flips {@code scored} false→true in a single
+     * conditional UPDATE. Returns 1 the first time (caller owns scoring) and 0
+     * on any redelivery/concurrent attempt (caller must skip). Race-free and
+     * portable (no DB-specific upsert needed).
+     */
+    @Modifying
+    @Query("UPDATE Submission s SET s.scored = true WHERE s.submissionId = :id AND s.scored = false")
+    int markScoredIfUnscored(@Param("id") UUID submissionId);
 
 }
 

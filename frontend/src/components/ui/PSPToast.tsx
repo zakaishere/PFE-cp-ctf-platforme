@@ -1,5 +1,6 @@
 "use client";
 import { useEffect, useState } from "react";
+import { XCircle, AlertTriangle, CheckCircle2, Info } from "lucide-react";
 
 export type ToastType = "error" | "warning" | "success" | "info";
 
@@ -20,42 +21,42 @@ function _notify() {
 }
 
 export const toast = {
-  show(type: ToastType, title: string, message: string, duration = 5000): string {
+  show(type: ToastType, title: string, message = "", duration = 5000): string {
     const id = `t-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`;
     _items = [..._items, { id, type, title, message, duration }];
     _notify();
     if (duration > 0) setTimeout(() => toast.dismiss(id), duration);
     return id;
   },
-  error  (title: string, message: string) { return toast.show("error",   title, message, 6000); },
-  warning(title: string, message: string) { return toast.show("warning", title, message, 5000); },
-  success(title: string, message: string) { return toast.show("success", title, message, 4000); },
-  info   (title: string, message: string) { return toast.show("info",    title, message, 4000); },
+  error  (title: string, message = "") { return toast.show("error",   title, message, 6000); },
+  warning(title: string, message = "") { return toast.show("warning", title, message, 5000); },
+  success(title: string, message = "") { return toast.show("success", title, message, 4000); },
+  info   (title: string, message = "") { return toast.show("info",    title, message, 4000); },
   dismiss(id: string) {
     _items = _items.filter(t => t.id !== id);
     _notify();
   },
 };
 
-const ICONS: Record<ToastType, string> = {
-  error:   "❌",
-  warning: "⚠️",
-  success: "✅",
-  info:    "ℹ️",
+const ICONS: Record<ToastType, React.ReactNode> = {
+  error:   <XCircle size={16} />,
+  warning: <AlertTriangle size={16} />,
+  success: <CheckCircle2 size={16} />,
+  info:    <Info size={16} />,
 };
 
 const LEFT_BORDER: Record<ToastType, string> = {
-  error:   "#de350b",
-  warning: "#ff8b00",
-  success: "#00875a",
-  info:    "#0052cc",
+  error:   "var(--danger-ink)",
+  warning: "var(--warn)",
+  success: "var(--success-ink)",
+  info:    "var(--brand)",
 };
 
 const TITLE_COLOR: Record<ToastType, string> = {
-  error:   "#de350b",
-  warning: "#ff8b00",
-  success: "#00875a",
-  info:    "#0052cc",
+  error:   "var(--danger-ink)",
+  warning: "var(--warn)",
+  success: "var(--success-ink)",
+  info:    "var(--brand)",
 };
 
 export function ToastContainer() {
@@ -103,7 +104,7 @@ export function ToastContainer() {
             animation: "psp-slide-in 0.2s cubic-bezier(0.16,1,0.3,1)",
           }}
         >
-          <span style={{ fontSize: 15, flexShrink: 0, marginTop: 1 }}>{ICONS[item.type]}</span>
+          <span style={{ flexShrink: 0, marginTop: 1, color: TITLE_COLOR[item.type], display: "inline-flex" }}>{ICONS[item.type]}</span>
           <div style={{ flex: 1, minWidth: 0 }}>
             <p style={{ fontSize: 13, fontWeight: 700, color: TITLE_COLOR[item.type], margin: 0 }}>
               {item.title}

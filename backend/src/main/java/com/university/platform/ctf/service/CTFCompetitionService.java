@@ -1,5 +1,8 @@
 package com.university.platform.ctf.service;
 
+import com.university.platform.audit.AuditDomain;
+import com.university.platform.audit.AuditEventService;
+import com.university.platform.audit.Severity;
 import com.university.platform.ctf.dto.*;
 import com.university.platform.ctf.entity.*;
 import com.university.platform.ctf.exception.CTFPausedException;
@@ -8,10 +11,17 @@ import jakarta.persistence.EntityNotFoundException;
 import jakarta.transaction.Transactional;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import io.micrometer.core.instrument.Counter;
+import io.micrometer.core.instrument.MeterRegistry;
+import org.springframework.cache.annotation.CacheEvict;
+import org.springframework.cache.annotation.Cacheable;
+import org.springframework.cache.annotation.Caching;
 import org.springframework.http.HttpStatus;
 import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.web.server.ResponseStatusException;
+
+import org.springframework.data.domain.PageRequest;
 
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
@@ -41,10 +51,17 @@ public class CTFCompetitionService {
     private final CTFCompetitionSolveRepository solveRepo;
     private final CTFCheatEventRepository       cheatRepo;
     private final CTFSubmissionRepository       submissionRepo;
-    private final CTFAwardRepository            awardRepo;      // CHANGE 2
-    private final CTFScoringService             scoringService; // CHANGE 3
+    private final CTFAwardRepository            awardRepo;
+    private final CTFHintUnlockRepository       hintUnlockRepo;
+    private final CTFScoringEngine              scoringEngine;
     private final CTFTeamService                teamService;
+    private final CTFInstanceService            instanceService;
     private final SimpMessagingTemplate         ws;
+    private final AuditEventService             auditEventService;
+
+    private final Counter flagSubmitCorrect;
+    private final Counter flagSubmitWrong;
+    private final Counter flagSubmitRateLimited;
 
     public CTFCompetitionService(CTFCompetitionRepository competitionRepo,
                                  CTFChallengeRepository challengeRepo,
@@ -55,9 +72,13 @@ public class CTFCompetitionService {
                                  CTFCheatEventRepository cheatRepo,
                                  CTFSubmissionRepository submissionRepo,
                                  CTFAwardRepository awardRepo,
-                                 CTFScoringService scoringService,
+                                 CTFHintUnlockRepository hintUnlockRepo,
+                                 CTFScoringEngine scoringEngine,
                                  CTFTeamService teamService,
-                                 SimpMessagingTemplate ws) {
+                                 CTFInstanceService instanceService,
+                                 SimpMessagingTemplate ws,
+                                 AuditEventService auditEventService,
+                                 MeterRegistry meterRegistry) {
         this.competitionRepo = competitionRepo;
         this.challengeRepo   = challengeRepo;
         this.teamRepo        = teamRepo;
@@ -67,9 +88,15 @@ public class CTFCompetitionService {
         this.cheatRepo       = cheatRepo;
         this.submissionRepo  = submissionRepo;
         this.awardRepo       = awardRepo;
-        this.scoringService  = scoringService;
+        this.hintUnlockRepo  = hintUnlockRepo;
+        this.scoringEngine   = scoringEngine;
         this.teamService     = teamService;
+        this.instanceService = instanceService;
         this.ws              = ws;
+        this.auditEventService = auditEventService;
+        this.flagSubmitCorrect     = meterRegistry.counter("ctf.flag.submit", "result", "correct");
+        this.flagSubmitWrong       = meterRegistry.counter("ctf.flag.submit", "result", "wrong");
+        this.flagSubmitRateLimited = meterRegistry.counter("ctf.flag.submit", "result", "rate_limited");
     }
 
     // ── Score timeline ─────────────────────────────────────────────────────────
@@ -194,9 +221,11 @@ public class CTFCompetitionService {
 
         boolean canEnterArena = myTeamId != null
                 && (status == CTFCompetition.Status.ACTIVE || status == CTFCompetition.Status.FROZEN);
-        // endTime is null for MANUAL/REGISTRATION modes — if status is UPCOMING, registration is open.
-        boolean registrationOpen = status == CTFCompetition.Status.UPCOMING
-                && (comp.getEndTime() == null || LocalDateTime.now().isBefore(comp.getEndTime()));
+        // Mirrors CTFCompetitionDTO.from() logic: registrationOpen flag on the entity
+        // allows teams to join any time until ENDED; without it, only UPCOMING allows registration.
+        boolean registrationOpen = Boolean.TRUE.equals(comp.getRegistrationOpen())
+                ? status != CTFCompetition.Status.ENDED
+                : status == CTFCompetition.Status.UPCOMING;
 
         return CTFCompetitionStatusDTO.builder()
                 .id(comp.getId())
@@ -217,6 +246,7 @@ public class CTFCompetitionService {
 
     // ── Challenges ─────────────────────────────────────────────────────────────
 
+    @Cacheable(value = "challenges", key = "#competitionId + ':' + #userId")
     public CTFChallengeListResponse getCompetitionChallenges(UUID competitionId, UUID userId) {
         CTFCompetition comp = requireCompetition(competitionId);
         CTFCompetition.Status status = comp.computeStatus();
@@ -250,8 +280,20 @@ public class CTFCompetitionService {
                 ? challengeRepo.findByCompetitionIdAndDeletedFalse(competitionId)
                 : challengeRepo.findByCompetitionIdAndIsActiveTrueAndDeletedFalseAndIsHiddenFalse(competitionId);
 
+        // When frozen, show challenge values as they were at the freeze moment so players
+        // cannot infer score movement.  Solved/unsolved status always reflects reality.
+        LocalDateTime asOf = (status == CTFCompetition.Status.FROZEN && comp.getFrozenAt() != null)
+                ? comp.getFrozenAt() : null;
+
+        // Load the set of hint IDs this team has already unlocked (single bulk query).
+        // Empty when the user isn't in a team — all hints will appear locked.
+        List<UUID> visibleIds = visible.stream().map(CTFChallenge::getId).collect(Collectors.toList());
+        Set<String> unlockedHintIds = (teamId != null && !visibleIds.isEmpty())
+                ? hintUnlockRepo.findHintIdsByTeamIdAndChallengeIdIn(teamId, visibleIds)
+                : Collections.emptySet();
+
         List<CTFChallengeDTO> dtos = visible.stream()
-                .map(c -> buildChallengeDTO(c, solvedChallengeIds.contains(c.getId()), competitionId))
+                .map(c -> buildChallengeDTO(c, solvedChallengeIds.contains(c.getId()), comp, asOf, unlockedHintIds))
                 .collect(Collectors.toList());
 
         String message = switch (status) {
@@ -273,60 +315,132 @@ public class CTFCompetitionService {
         return getCompetitionChallenges(competitionId, userId).getChallenges();
     }
 
+    public List<CTFChallengeSolverDTO> getChallengeSolvers(UUID competitionId, UUID challengeId) {
+        List<CTFCompetitionSolve> solves = solveRepo
+                .findByCompetitionIdAndChallengeIdOrderBySolvedAtAsc(competitionId, challengeId);
+        Map<UUID, CTFTeam> teamMap = teamRepo.findByCompetitionId(competitionId).stream()
+                .collect(Collectors.toMap(CTFTeam::getId, t -> t));
+        CTFChallenge challenge = challengeRepo.findByIdAndDeletedFalse(challengeId).orElse(null);
+        boolean bloodEnabled = challenge != null && Boolean.TRUE.equals(challenge.getBloodBonusEnabled());
+
+        List<CTFChallengeSolverDTO> result = new ArrayList<>();
+        for (int i = 0; i < solves.size(); i++) {
+            CTFCompetitionSolve s = solves.get(i);
+            CTFTeam team = teamMap.get(s.getTeamId());
+            if (team == null) continue;
+            int pos = i + 1; // 1-indexed solve position (solves ordered ASC by solvedAt)
+            Integer bloodPosition = (bloodEnabled && pos <= 3) ? pos : null;
+            Integer bloodBonusPts = null;
+            if (bloodEnabled && challenge != null) {
+                if      (pos == 1) bloodBonusPts = challenge.getFirstBloodBonus();
+                else if (pos == 2) bloodBonusPts = challenge.getSecondBloodBonus();
+                else if (pos == 3) bloodBonusPts = challenge.getThirdBloodBonus();
+            }
+            result.add(CTFChallengeSolverDTO.builder()
+                    .teamId(s.getTeamId())
+                    .teamName(team.getName())
+                    .avatarColor(team.getAvatarColor())
+                    .solvedAt(s.getSolvedAt())
+                    .bloodPosition(bloodPosition)
+                    .bloodBonus(bloodBonusPts)
+                    .build());
+        }
+        return result;
+    }
+
     // ── Scoreboard ──────────────────────────────────────────────────────────────
 
     /**
-     * CHANGE 2 (Section 14): Score computed from SUM(ctf_awards.value) per team.
-     * Never reads a stored score column.  Solves insert positive awards; hint
-     * unlocks insert negative awards.  Cache invalidation happens on every solve
-     * (broadcastSolve evicts — future: add @CacheEvict when Spring Cache is wired).
+     * Player-facing scoreboard: respects the freeze timestamp when frozen.
+     * While frozen, returns scores/rankings as they were at {@code frozenAt},
+     * so players cannot infer which teams solved challenges after the freeze.
      */
+    @Cacheable(value = "scoreboard", key = "#competitionId")
     public List<CTFScoreboardEntryDTO> getScoreboard(UUID competitionId) {
         CTFCompetition comp = requireCompetition(competitionId);
         CTFCompetition.Status status = comp.computeStatus();
+        LocalDateTime freezeAt = (status == CTFCompetition.Status.FROZEN && comp.getFrozenAt() != null)
+                ? comp.getFrozenAt() : null;
+        return buildScoreboard(competitionId, comp, freezeAt);
+    }
 
-        // Apply freeze filter: only awards up to frozenAt count toward the scoreboard.
-        List<CTFAward> awards;
-        if (status == CTFCompetition.Status.FROZEN && comp.getFrozenAt() != null) {
-            awards = awardRepo.findByCompetitionIdAndAwardedAtLessThanEqual(
-                    competitionId, comp.getFrozenAt());
-        } else {
-            awards = awardRepo.findByCompetitionId(competitionId);
+    /**
+     * Admin/teacher live scoreboard: always computes from all solves regardless of
+     * freeze state.  Use this for the control-panel view so organizers can see
+     * what happened during the freeze.
+     */
+    public List<CTFScoreboardEntryDTO> getScoreboardLive(UUID competitionId) {
+        CTFCompetition comp = requireCompetition(competitionId);
+        return buildScoreboard(competitionId, comp, null);
+    }
+
+    private List<CTFScoreboardEntryDTO> buildScoreboard(UUID competitionId,
+                                                         CTFCompetition comp,
+                                                         LocalDateTime freezeAt) {
+        // 1. Load solves (capped at freezeAt when supplied)
+        List<CTFCompetitionSolve> allSolves = (freezeAt != null)
+                ? solveRepo.findByCompetitionIdAndSolvedAtLessThanEqualOrderBySolvedAtAsc(competitionId, freezeAt)
+                : solveRepo.findByCompetitionIdOrderBySolvedAtAsc(competitionId);
+
+        // 2. Aggregate per-challenge solve count and per-team data
+        Map<UUID, Integer>       challengeSolveCounts = new HashMap<>();
+        Map<UUID, Set<UUID>>     teamSolvedChallenges = new HashMap<>();
+        Map<UUID, LocalDateTime> teamLastSolveAt      = new HashMap<>();
+
+        for (CTFCompetitionSolve s : allSolves) {
+            challengeSolveCounts.merge(s.getChallengeId(), 1, Integer::sum);
+            teamSolvedChallenges.computeIfAbsent(s.getTeamId(), k -> new HashSet<>())
+                    .add(s.getChallengeId());
+            teamLastSolveAt.merge(s.getTeamId(), s.getSolvedAt(),
+                    (a, b) -> a.isAfter(b) ? a : b);
         }
 
-        // Aggregate per team from awards
-        Map<UUID, Integer>       points      = new HashMap<>();
-        Map<UUID, LocalDateTime> lastAwardAt = new HashMap<>();
+        // 3. Compute dynamic challenge values using the (possibly frozen) solve counts
+        List<CTFChallenge> challenges = challengeRepo.findByCompetitionIdAndDeletedFalse(competitionId);
+        Map<UUID, Integer> challengeCurrentValue = scoringEngine.challengeValues(comp, challenges, challengeSolveCounts);
 
-        for (CTFAward a : awards) {
-            points.merge(a.getTeamId(), a.getValue(), Integer::sum);
-            lastAwardAt.merge(a.getTeamId(), a.getAwardedAt(),
-                    (existing, next) -> existing.isAfter(next) ? existing : next);
+        // 4. Hint deductions — also capped at freezeAt when supplied
+        List<CTFAward> hintAwards = (freezeAt != null)
+                ? awardRepo.findByCompetitionIdAndAwardedAtLessThanEqualAndReasonStartingWith(
+                        competitionId, freezeAt, "hint:")
+                : awardRepo.findByCompetitionIdAndReasonStartingWith(competitionId, "hint:");
+        Map<UUID, Integer> hintDeductions = new HashMap<>();
+        for (CTFAward a : hintAwards) {
+            hintDeductions.merge(a.getTeamId(), a.getValue(), Integer::sum);
         }
 
-        // Solve counts still come from ctf_competition_solves (positive awards only)
-        Map<UUID, Integer> solveCounts = new HashMap<>();
-        for (CTFAward a : awards) {
-            if (a.getValue() > 0) {
-                solveCounts.merge(a.getTeamId(), 1, Integer::sum);
-            }
+        // 4b. Blood bonus: build ordered solve-position maps from the already-loaded solves.
+        //     allSolves is ordered ASC by solved_at, so insertion order = solve position.
+        Map<UUID, CTFChallenge> challengeById = challenges.stream()
+                .collect(Collectors.toMap(CTFChallenge::getId, c -> c));
+        Map<UUID, List<UUID>> challengeSolveOrder = new LinkedHashMap<>();
+        for (CTFCompetitionSolve s : allSolves) {
+            challengeSolveOrder.computeIfAbsent(s.getChallengeId(), k -> new ArrayList<>())
+                    .add(s.getTeamId());
         }
 
+        // 5. Build per-team entries
         List<CTFTeam> teams = teamRepo.findByCompetitionId(competitionId);
         List<CTFScoreboardEntryDTO> board = new ArrayList<>();
         for (CTFTeam team : teams) {
+            Set<UUID> solved = teamSolvedChallenges.getOrDefault(team.getId(), Set.of());
+            int score = solved.stream()
+                    .mapToInt(cid -> challengeCurrentValue.getOrDefault(cid, 0))
+                    .sum();
+            score += hintDeductions.getOrDefault(team.getId(), 0);
+            score += scoringEngine.bloodBonus(challengeById, challengeSolveOrder, team.getId());
+
             board.add(CTFScoreboardEntryDTO.builder()
                     .teamId(team.getId())
                     .teamName(team.getName())
                     .avatarColor(team.getAvatarColor())
-                    .totalPoints(points.getOrDefault(team.getId(), 0))
-                    .solveCount(solveCounts.getOrDefault(team.getId(), 0))
+                    .totalPoints(score)
+                    .solveCount(solved.size())
                     .membersCount(memberRepo.countByIdTeamId(team.getId()))
-                    .lastSolveAt(lastAwardAt.get(team.getId()))
+                    .lastSolveAt(teamLastSolveAt.get(team.getId()))
                     .build());
         }
 
-        // CHANGE 4 tiebreaker: points DESC, lastAwardAt ASC (earlier = better)
         board.sort(Comparator
                 .comparingInt(CTFScoreboardEntryDTO::getTotalPoints).reversed()
                 .thenComparing(e -> e.getLastSolveAt() != null ? e.getLastSolveAt() : LocalDateTime.MAX));
@@ -339,6 +453,10 @@ public class CTFCompetitionService {
 
     // ── Flag submission ────────────────────────────────────────────────────────
 
+    @Caching(evict = {
+        @CacheEvict(value = "scoreboard", key = "#competitionId"),
+        @CacheEvict(value = "challenges", key = "#competitionId + ':' + #userId")
+    })
     public CTFCompetitionSubmitResponse submitFlag(UUID competitionId, UUID challengeId,
                                                     UUID userId, CTFCompetitionSubmitRequest req,
                                                     String ipAddress) {
@@ -369,14 +487,31 @@ public class CTFCompetitionService {
         }
 
         if (solveRepo.existsByCompetitionIdAndChallengeIdAndTeamId(competitionId, challengeId, teamId)) {
+            long used = submissionRepo.countByChallengeIdAndTeamId(challengeId, teamId);
             return CTFCompetitionSubmitResponse.builder()
                     .correct(false)
                     .message("Your team has already solved this challenge.")
+                    .attemptsUsed((int) used)
+                    .attemptsRemaining(remainingFor(challenge, used))
+                    .build();
+        }
+
+        // Server-side attempt limit enforcement — counted per team, per challenge
+        long userAttempts = submissionRepo.countByChallengeIdAndTeamId(challengeId, teamId);
+        Integer maxAttempts = challenge.getMaxAttempts();
+        if (maxAttempts != null && maxAttempts > 0 && userAttempts >= maxAttempts) {
+            return CTFCompetitionSubmitResponse.builder()
+                    .correct(false)
+                    .message("Your team has no attempts remaining for this challenge.")
+                    .attemptsUsed((int) userAttempts)
+                    .attemptsRemaining(0)
+                    .lockedOut(true)
                     .build();
         }
 
         String rateKey = teamId + ":" + challengeId;
         if (isRateLimited(rateKey)) {
+            flagSubmitRateLimited.increment();
             throw new ResponseStatusException(HttpStatus.TOO_MANY_REQUESTS,
                     "Too many incorrect attempts. Please wait before trying again.");
         }
@@ -430,11 +565,21 @@ public class CTFCompetitionService {
                         .sourceTeam(sourceFlag.get().getTeamId())
                         .submittedValue(req.getFlag().trim())
                         .build());
+                auditEventService.record(
+                        AuditDomain.CTF,
+                        "STOLEN_FLAG",
+                        competitionId,
+                        challengeId,
+                        userId,
+                        teamId,
+                        sourceFlag.get().getTeamId(),
+                        Map.of("submittedValue", req.getFlag().trim()),
+                        Severity.CHEAT);
             }
         }
 
         // Persist every submission — correct, wrong, and cheat — for the audit trail.
-        int attemptNumber = (int) submissionRepo.countByChallengeIdAndUserId(challengeId, userId) + 1;
+        int attemptNumber = (int) userAttempts + 1;
         submissionRepo.save(CTFSubmission.builder()
                 .competitionId(competitionId)
                 .challengeId(challengeId)
@@ -448,16 +593,22 @@ public class CTFCompetitionService {
                 .build());
 
         if (!correct) {
+            flagSubmitWrong.increment();
             recordWrongAttempt(rateKey);
+            long usedNow = userAttempts + 1;
+            Integer remaining = remainingFor(challenge, usedNow);
             return CTFCompetitionSubmitResponse.builder()
                     .correct(false)
                     .message("Incorrect flag.")
+                    .attemptsUsed((int) usedNow)
+                    .attemptsRemaining(remaining)
+                    .lockedOut(remaining != null && remaining == 0)
                     .build();
         }
+        flagSubmitCorrect.increment();
 
-        // CHANGE 3: compute points using CTFScoringService (logarithmic/linear/static)
         int solveCount = solveRepo.countByCompetitionIdAndChallengeId(competitionId, challengeId);
-        int points     = computePoints(comp, challenge, solveCount + 1);
+        int points     = scoringEngine.challengeValue(comp, challenge, solveCount + 1);
 
         // Persist solve record (used for already-solved check and solve counts)
         CTFCompetitionSolve solve = CTFCompetitionSolve.builder()
@@ -469,13 +620,49 @@ public class CTFCompetitionService {
                 .build();
         solveRepo.save(solve);
 
-        // CHANGE 2: insert positive award — scoreboard reads from ctf_awards, not a stored column.
+        // Stop the team's running Docker instance for this challenge (if any).
+        // Teardown runs after the solve is committed; failure never blocks the solve.
+        boolean instanceStopped = instanceService.stopInstanceOnSolve(challengeId, teamId);
+
+        // Insert positive award for the solving team.
+        // Scoreboard reads from ctf_awards SUM — never a stored score column.
+        String solveReason = "solve:" + challengeId;
         awardRepo.save(CTFAward.builder()
                 .competitionId(competitionId)
                 .teamId(teamId)
                 .value(points)
-                .reason("solve:" + challengeId)
+                .reason(solveReason)
                 .build());
+
+        // ── Retroactive decay corrections ────────────────────────────────────────
+        // For LINEAR / LOGARITHMIC scoring, every team that solved this challenge
+        // must always hold the SAME current point value.  After this (solveCount+1)th
+        // solve the challenge is worth `points`; previously it was worth
+        // computePoints(..., solveCount).  Issue a correction award (negative delta)
+        // to every team that already held a solve award so that their net contribution
+        // from this challenge equals the new decayed value.
+        CTFCompetition.ScoringFunction fn = comp.getScoringFunction();
+        if (fn == null) fn = CTFCompetition.ScoringFunction.LOGARITHMIC;
+        if (fn != CTFCompetition.ScoringFunction.STATIC && solveCount > 0) {
+            int previousPoints = scoringEngine.challengeValue(comp, challenge, solveCount);
+            int delta = points - previousPoints;
+            if (delta != 0) {
+                List<CTFAward> priorSolveAwards = awardRepo.findByCompetitionIdAndReason(competitionId, solveReason);
+                Set<UUID> correctedTeams = new HashSet<>();
+                for (CTFAward prior : priorSolveAwards) {
+                    // Skip the team that just solved — they already receive the decayed value directly.
+                    if (prior.getTeamId().equals(teamId)) continue;
+                    if (correctedTeams.add(prior.getTeamId())) {
+                        awardRepo.save(CTFAward.builder()
+                                .competitionId(competitionId)
+                                .teamId(prior.getTeamId())
+                                .value(delta)
+                                .reason("decay-correction:" + challengeId)
+                                .build());
+                    }
+                }
+            }
+        }
 
         CTFTeam team = teamRepo.findById(teamId).orElseThrow();
         broadcastSolve(comp, team, challenge, points, now);
@@ -487,33 +674,52 @@ public class CTFCompetitionService {
                 .map(CTFScoreboardEntryDTO::getRank)
                 .orElse(0);
 
+        long usedNow = userAttempts + 1;
         return CTFCompetitionSubmitResponse.builder()
                 .correct(true)
                 .message("Correct! +" + points + " points awarded to your team.")
                 .pointsAwarded(points)
                 .newRank(newRank)
+                .attemptsUsed((int) usedNow)
+                .attemptsRemaining(remainingFor(challenge, usedNow))
+                .lockedOut(false)
+                .instanceStopped(instanceStopped)
                 .build();
     }
 
-    // ── CHANGE 3: Dynamic scoring via CTFScoringService ───────────────────────
+    // ── Attempt history ────────────────────────────────────────────────────────
 
-    private int computePoints(CTFCompetition comp, CTFChallenge challenge, int currentSolveCount) {
-        CTFCompetition.ScoringFunction fn = comp.getScoringFunction();
-        if (fn == null) fn = CTFCompetition.ScoringFunction.LOGARITHMIC;
+    public List<CTFAttemptDTO> getMyAttempts(UUID competitionId, UUID challengeId, UUID userId) {
+        CTFTeamMember membership = memberRepo.findByCompetitionIdAndUserId(competitionId, userId)
+                .orElse(null);
+        UUID teamId = membership != null ? membership.getId().getTeamId() : null;
 
-        // Per-challenge overrides win when set; fall back to competition-level defaults.
-        int initial  = challenge.getInitialValue() != null ? challenge.getInitialValue() : challenge.getBasePoints();
-        int minimum  = challenge.getMinimumValue() != null ? challenge.getMinimumValue() :
-                       (comp.getDynamicMinPoints() != null ? comp.getDynamicMinPoints() : 50);
-        // decay_value on the challenge is the CTFd decay parameter (integer).
-        // Fall back to 10 (hits minimum at 11th solve with logarithmic) when not set.
-        int decay    = challenge.getDecayValue()   != null ? challenge.getDecayValue() : 10;
+        List<CTFSubmission> subs = teamId != null
+                ? submissionRepo.findByChallengeIdAndTeamIdOrderBySubmittedAtDesc(
+                        challengeId, teamId, PageRequest.of(0, 20))
+                : List.of();
 
-        return switch (fn) {
-            case STATIC        -> initial;
-            case LINEAR        -> scoringService.calculateLinear(initial, minimum, decay, currentSolveCount);
-            case LOGARITHMIC   -> scoringService.calculateLogarithmic(initial, minimum, decay, currentSolveCount);
-        };
+        return subs.stream().map(s -> CTFAttemptDTO.builder()
+                .id(s.getId())
+                .submittedAt(s.getSubmittedAt())
+                .correct(Boolean.TRUE.equals(s.getIsCorrect()))
+                .flagMasked(maskFlag(s.getSubmittedValue()))
+                .attemptNumber(s.getAttemptNumber())
+                .build()
+        ).collect(Collectors.toList());
+    }
+
+    private static String maskFlag(String flag) {
+        if (flag == null) return "";
+        if (flag.length() <= 6) return "***";
+        int keep = 3;
+        return flag.substring(0, keep) + "***" + flag.substring(flag.length() - keep);
+    }
+
+    private static Integer remainingFor(CTFChallenge challenge, long usedNow) {
+        Integer max = challenge.getMaxAttempts();
+        if (max == null || max <= 0) return null; // unlimited
+        return Math.max(0, max - (int) usedNow);
     }
 
     // ── WebSocket broadcast ────────────────────────────────────────────────────
@@ -542,6 +748,16 @@ public class CTFCompetitionService {
         if (!Boolean.TRUE.equals(comp.getIsFrozen())) {
             ws.convertAndSend("/topic/ctf/competitions/" + comp.getId() + "/scoreboard",
                     getScoreboard(comp.getId()));
+        }
+    }
+
+    /** Pushes a live scoreboard update to all connected clients, unless the board is frozen. */
+    public void broadcastScoreboardIfUnfrozen(UUID competitionId) {
+        CTFCompetition comp = requireCompetition(competitionId);
+        if (!Boolean.TRUE.equals(comp.getIsFrozen())) {
+            ws.convertAndSend(
+                    "/topic/ctf/competitions/" + competitionId + "/scoreboard",
+                    getScoreboard(competitionId));
         }
     }
 
@@ -587,7 +803,35 @@ public class CTFCompetitionService {
 
     // ── Challenge DTO builder ──────────────────────────────────────────────────
 
-    private CTFChallengeDTO buildChallengeDTO(CTFChallenge c, boolean solved, UUID competitionId) {
+    /**
+     * @param asOf            when non-null (frozen), use solve count up to that timestamp.
+     * @param unlockedHintIds hint IDs this team has already unlocked — content is
+     *                        withheld for all other hints so the answer never leaks.
+     */
+    private CTFChallengeDTO buildChallengeDTO(CTFChallenge c, boolean solved,
+                                               CTFCompetition comp, LocalDateTime asOf,
+                                               Set<String> unlockedHintIds) {
+        int solveCount = (asOf != null)
+                ? solveRepo.countByCompetitionIdAndChallengeIdAndSolvedAtLessThanEqual(comp.getId(), c.getId(), asOf)
+                : solveRepo.countByCompetitionIdAndChallengeId(comp.getId(), c.getId());
+        int currentPoints = scoringEngine.challengeValue(comp, c, solveCount);
+
+        List<CTFHintDTO> hints = null;
+        int myHintPenalty = 0;
+        if (c.getHints() != null) {
+            hints = c.getHints().stream()
+                    .map(h -> {
+                        boolean unlocked = unlockedHintIds.contains(h.id());
+                        // Send text only if the team has unlocked this hint.
+                        return new CTFHintDTO(h.id(), h.cost(), unlocked ? h.text() : null);
+                    })
+                    .collect(Collectors.toList());
+            myHintPenalty = c.getHints().stream()
+                    .filter(h -> unlockedHintIds.contains(h.id()))
+                    .mapToInt(com.university.platform.ctf.dto.CTFHint::cost)
+                    .sum();
+        }
+
         return CTFChallengeDTO.builder()
                 .id(c.getId())
                 .title(c.getTitle())
@@ -595,19 +839,20 @@ public class CTFCompetitionService {
                 .category(c.getCategory().name())
                 .difficulty(c.getDifficulty().name())
                 .basePoints(c.getBasePoints())
+                .currentPoints(currentPoints)
                 .flagFormat(c.getFlagFormat())
                 .flagType(c.getFlagType() != null ? c.getFlagType().name() : "STATIC")
                 .requiresInstance(Boolean.TRUE.equals(c.getRequiresInstance()))
                 .connectionType(c.getConnectionType())
                 .downloadableFileUrl(c.getDownloadableFileUrl())
                 .downloadableFileName(c.getDownloadableFileName())
-                .hints(c.getHints() == null ? null : c.getHints().stream()
-                        .map(h -> new CTFHintDTO(h.id(), h.cost(), h.text()))
-                        .collect(Collectors.toList()))
+                .mediaUrl(c.getMediaUrl())
+                .hints(hints)
                 .maxAttempts(c.getMaxAttempts())
                 .isActive(Boolean.TRUE.equals(c.getIsActive()))
-                .solveCount(solveRepo.countByCompetitionIdAndChallengeId(competitionId, c.getId()))
+                .solveCount(solveCount)
                 .solvedByMe(solved)
+                .myHintPenalty(myHintPenalty)
                 .build();
     }
 

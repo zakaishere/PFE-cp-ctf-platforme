@@ -1,7 +1,6 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
-import Link from "next/link";
 import Navbar from "@/components/Navbar";
 import {
   Users, BookOpen, Search, CheckCircle2, Clock,
@@ -14,7 +13,7 @@ import {
   approveJoinRequest,
   rejectJoinRequest,
 } from "@/lib/api";
-import { useToast } from "@/hooks/use-toast";
+import { toast } from "@/components/ui/PSPToast";
 
 // ── helpers ───────────────────────────────────────────────────────────────────
 
@@ -56,8 +55,6 @@ function buildStudentMap(allRequests: { assessmentTitle: string; requests: any[]
 type ViewMode = "enrolled" | "requests";
 
 export default function TeacherStudents() {
-  const { toast } = useToast();
-
   const [assessments, setAssessments] = useState<any[]>([]);
   const [listLoading, setListLoading] = useState(true);
   const [selected, setSelected] = useState<any | null>(null);
@@ -86,7 +83,7 @@ export default function TeacherStudents() {
         setAssessments(data);
         if (data.length > 0) setSelected(data[0]);
       })
-      .catch(() => toast({ title: "Failed to load assessments", variant: "destructive" }))
+      .catch(() => toast.error("Failed to load assessments"))
       .finally(() => setListLoading(false));
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -141,9 +138,9 @@ export default function TeacherStudents() {
       const req = pendingReqs.find(r => r.requestId === requestId);
       setPendingReqs(prev => prev.filter(r => r.requestId !== requestId));
       if (req) setApprovedReqs(prev => [...prev, { ...req, status: "APPROVED" }]);
-      toast({ title: "Request approved" });
-    } catch (e: any) {
-      toast({ title: "Failed", description: e.message, variant: "destructive" });
+      toast.success("Request approved");
+    } catch (e) {
+      toast.error("Failed", e instanceof Error ? e.message : undefined);
     }
     setActing(null);
   };
@@ -153,9 +150,9 @@ export default function TeacherStudents() {
     try {
       await rejectJoinRequest(requestId);
       setPendingReqs(prev => prev.filter(r => r.requestId !== requestId));
-      toast({ title: "Request rejected" });
-    } catch (e: any) {
-      toast({ title: "Failed", description: e.message, variant: "destructive" });
+      toast.success("Request rejected");
+    } catch (e) {
+      toast.error("Failed", e instanceof Error ? e.message : undefined);
     }
     setActing(null);
   };
@@ -185,10 +182,6 @@ export default function TeacherStudents() {
   return (
     <>
       <Navbar />
-      <div className="psp-breadcrumb">
-        <Link href="/teacher">PSP</Link> › <span style={{ color: "var(--text-primary)" }}>Students</span>
-      </div>
-
       <div className="mgr-shell">
         {/* ── LEFT: assessment list ── */}
         <div className="mgr-left">
@@ -303,7 +296,7 @@ export default function TeacherStudents() {
                   <>
                     {reqLoading ? (
                       <div style={{ display: "flex", justifyContent: "center", padding: 60 }}>
-                        <Loader2 size={22} style={{ animation: "spin 1s linear infinite", color: "#0052cc" }} />
+                        <Loader2 size={22} style={{ animation: "spin 1s linear infinite", color: "var(--brand)" }} />
                       </div>
                     ) : (
                       <>
@@ -414,7 +407,7 @@ export default function TeacherStudents() {
                   <>
                     {reqLoading ? (
                       <div style={{ display: "flex", justifyContent: "center", padding: 60 }}>
-                        <Loader2 size={22} style={{ animation: "spin 1s linear infinite", color: "#0052cc" }} />
+                        <Loader2 size={22} style={{ animation: "spin 1s linear infinite", color: "var(--brand)" }} />
                       </div>
                     ) : approvedReqs.length === 0 ? (
                       <div className="psp-empty" style={{ border: "1px solid var(--border)", borderRadius: 3, background: "var(--bg-primary)" }}>
@@ -492,7 +485,7 @@ export default function TeacherStudents() {
           <div className="mgr-right-body" style={{ padding: 0 }}>
             {overviewLoading ? (
               <div style={{ display: "flex", justifyContent: "center", padding: 32 }}>
-                <Loader2 size={16} style={{ animation: "spin 1s linear infinite", color: "#0052cc" }} />
+                <Loader2 size={16} style={{ animation: "spin 1s linear infinite", color: "var(--brand)" }} />
               </div>
             ) : allStudentsList.length === 0 ? (
               <div style={{ padding: "24px 16px", textAlign: "center", color: "var(--text-subtle)", fontSize: 12 }}>

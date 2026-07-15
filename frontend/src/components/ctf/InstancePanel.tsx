@@ -33,25 +33,25 @@ export interface InstancePanelProps {
   /** Pass to scope the instance to a competition team */
   competitionId?: string;
   teamId?: string;
-  /** true = arena dark theme (#0f172a base), false = main theme CSS vars */
+  /** true = arena dark theme (var(--bg-2) base), false = main theme CSS vars */
   dark?: boolean;
 }
 
 // ── Colour palettes ───────────────────────────────────────────────────────────
 
 const DARK = {
-  card:        "#0f172a",
-  cardBorder:  "#1e293b",
-  text:        "#f8fafc",
-  muted:       "#64748b",
-  secondary:   "#94a3b8",
-  green:       "#22c55e",
+  card:        "var(--bg-2)",
+  cardBorder:  "var(--line)",
+  text:        "var(--ink)",
+  muted:       "var(--ink-2)",
+  secondary:   "var(--ink-2)",
+  green:       "var(--success)",
   red:         "#ef4444",
   yellow:      "#eab308",
-  blue:        "#6366f1",
+  blue:        "var(--brand)",
   purple:      "#a78bfa",
-  bg:          "#020617",
-  codeBg:      "#020617",
+  bg:          "var(--bg)",
+  codeBg:      "var(--bg)",
 };
 
 const LIGHT = {
@@ -163,6 +163,8 @@ export default function InstancePanel({
   const [instance, setInstance] = useState<CTFInstanceResponse | null>(null);
   const [busy, setBusy]       = useState(false);
   const [msgIdx, setMsgIdx]   = useState(0);
+  const [copied, setCopied]   = useState(false);
+  const copyTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const stompRef   = useRef<StompClient | null>(null);
   const instanceId = useRef<string | null>(null);
@@ -313,7 +315,10 @@ export default function InstancePanel({
     if (!connString) return;
     const toCopy = connType === "TCP" ? ncCommand : connString;
     navigator.clipboard.writeText(toCopy);
+    setCopied(true);
     toast.success("Copied", toCopy);
+    if (copyTimerRef.current) clearTimeout(copyTimerRef.current);
+    copyTimerRef.current = setTimeout(() => setCopied(false), 2000);
   };
 
   // ── Render ────────────────────────────────────────────────────────────────
@@ -329,42 +334,44 @@ export default function InstancePanel({
 
   if (state === "IDLE") return (
     <div style={cardStyle}>
-      <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 10 }}>
-        <Monitor size={15} color={c.blue} />
-        <span style={{ fontSize: 13, fontWeight: 700, color: c.text }}>
-          Live Environment Required
-        </span>
+      <div style={{
+        display: "flex", alignItems: "center", justifyContent: "space-between",
+        marginBottom: 10,
+      }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 7 }}>
+          <Monitor size={12} color={c.muted} />
+          <span style={{
+            fontSize: 10, fontWeight: 700, color: c.muted,
+            textTransform: "uppercase", letterSpacing: "0.1em",
+          }}>
+            Instance
+          </span>
+        </div>
         <span style={{
-          fontSize: 10, fontWeight: 600, padding: "2px 6px", borderRadius: 4,
-          background: connType === "TCP" ? "rgba(167,139,250,0.15)" : "rgba(96,165,250,0.12)",
+          fontSize: 9, fontWeight: 700, padding: "1px 6px", borderRadius: 3,
+          background: connType === "TCP" ? "rgba(167,139,250,0.12)" : "rgba(96,165,250,0.1)",
           color: connType === "TCP" ? c.purple : c.blue,
+          letterSpacing: "0.06em",
         }}>{connType}</span>
-      </div>
-      <div style={{ fontSize: 12, color: c.muted, marginBottom: 10, lineHeight: 1.6 }}>
-        This challenge runs in an isolated Docker container.
-        {connType === "TCP" && " Connect with netcat when ready."}
-      </div>
-      <div style={{ display: "flex", gap: 16, fontSize: 11, color: c.secondary, marginBottom: 14 }}>
-        <span>⏱ Duration: 30 min</span>
-        <span>🧠 RAM: 128 MB</span>
       </div>
       <button
         onClick={handleStart}
         disabled={busy}
         style={{
-          display: "flex", alignItems: "center", gap: 6,
+          width: "100%",
+          display: "flex", alignItems: "center", justifyContent: "center", gap: 7,
           background: c.blue, color: "#fff",
           border: "none", borderRadius: 6,
-          padding: "8px 16px", fontSize: 13, fontWeight: 600,
+          padding: "9px 14px", fontSize: 12.5, fontWeight: 700,
           cursor: "pointer", opacity: busy ? 0.6 : 1,
+          letterSpacing: "0.02em",
+          transition: "all 0.15s ease-in-out",
         }}
       >
-        {busy ? <Loader2 size={13} style={{ animation: "spin 1s linear infinite" }} /> : null}
-        ▶ Start Instance
+        {busy
+          ? <Loader2 size={13} style={{ animation: "spin 1s linear infinite" }} />
+          : <>▶ Start Instance</>}
       </button>
-      <div style={{ marginTop: 8, fontSize: 11, color: c.muted, display: "flex", alignItems: "center", gap: 4 }}>
-        <AlertCircle size={10} /> Uses shared server resources
-      </div>
     </div>
   );
 
@@ -377,10 +384,20 @@ export default function InstancePanel({
         </span>
       </div>
       <IndeterminateBar c={c} />
-      <div style={{ fontSize: 12, color: c.secondary, marginBottom: 6 }}>
-        {STARTING_MESSAGES[msgIdx]}
+      {/* URL skeleton shimmer */}
+      <div style={{
+        height: 32, borderRadius: 5, marginBottom: 10,
+        background: `linear-gradient(90deg, ${c.cardBorder} 25%, rgba(255,255,255,0.06) 50%, ${c.cardBorder} 75%)`,
+        backgroundSize: "800px 100%",
+        animation: "ctf-shimmer 1.6s ease-in-out infinite",
+      }} />
+      <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+        <div style={{ width: 6, height: 6, borderRadius: "50%", background: c.blue, animation: "ctf-pulse-dot 1.2s ease infinite" }} />
+        <div style={{ fontSize: 12, color: c.secondary }}>
+          {STARTING_MESSAGES[msgIdx]}
+        </div>
       </div>
-      <div style={{ fontSize: 11, color: c.muted }}>
+      <div style={{ fontSize: 11, color: c.muted, marginTop: 4 }}>
         Usually ready in 5–10 seconds
       </div>
     </div>
@@ -397,7 +414,7 @@ export default function InstancePanel({
         ...cardStyle,
         border: `1px solid ${urgentBorder ? c.red : c.cardBorder}`,
         boxShadow: urgentBorder ? `0 0 0 1px ${c.red}40` : undefined,
-        animation: urgentBorder ? "ctf-timer-blink 2s infinite" : undefined,
+        animation: urgentBorder ? "ctf-timer-blink 2s infinite" : "ctf-running-in 0.3s cubic-bezier(0.16,1,0.3,1)",
       }}>
         <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 12 }}>
           <div style={{
@@ -431,9 +448,15 @@ export default function InstancePanel({
               <button
                 onClick={copyConn}
                 title="Copy command"
-                style={{ background: "none", border: "none", cursor: "pointer", color: c.muted, flexShrink: 0, display: "flex", alignItems: "center" }}
+                style={{
+                  background: "none", border: "none", cursor: "pointer",
+                  color: copied ? c.green : c.muted, flexShrink: 0,
+                  display: "flex", alignItems: "center", gap: 4,
+                  fontSize: 11, fontWeight: copied ? 700 : 400,
+                  transition: "color 150ms",
+                }}
               >
-                <Copy size={13} />
+                {copied ? "Copied!" : <Copy size={13} />}
               </button>
             </div>
           </div>
@@ -458,9 +481,15 @@ export default function InstancePanel({
             <button
               onClick={copyConn}
               title="Copy URL"
-              style={{ background: "none", border: "none", cursor: "pointer", color: c.muted, flexShrink: 0, display: "flex", alignItems: "center" }}
+              style={{
+                background: "none", border: "none", cursor: "pointer",
+                color: copied ? c.green : c.muted, flexShrink: 0,
+                display: "flex", alignItems: "center", gap: 4,
+                fontSize: 11, fontWeight: copied ? 700 : 400,
+                transition: "color 150ms",
+              }}
             >
-              <Copy size={13} />
+              {copied ? "Copied!" : <Copy size={13} />}
             </button>
           </div>
         )}

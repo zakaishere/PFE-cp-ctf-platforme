@@ -63,6 +63,15 @@ public class Submission {
     @Column(name = "is_accepted", nullable = false)
     private Boolean isAccepted = false;
 
+    /**
+     * Idempotency claim flag for scoring. Set exactly once via an atomic
+     * conditional UPDATE ({@code markScoredIfUnscored}) so a redelivered or
+     * concurrently-processed queue message scores a submission at most once.
+     */
+    @Builder.Default
+    @Column(name = "scored", nullable = false)
+    private boolean scored = false;
+
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
 
     @JoinColumn(

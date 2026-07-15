@@ -16,8 +16,34 @@ public interface CTFAwardRepository extends JpaRepository<CTFAward, UUID> {
     List<CTFAward> findByCompetitionIdAndAwardedAtLessThanEqual(
             UUID competitionId, LocalDateTime cutoff);
 
+    /** Returns all awards for a competition that match the given reason string (e.g. "solve:<challengeId>"). */
+    List<CTFAward> findByCompetitionIdAndReason(UUID competitionId, String reason);
+
+    List<CTFAward> findByCompetitionIdAndReasonStartingWith(UUID competitionId, String reasonPrefix);
+
+    List<CTFAward> findByCompetitionIdAndAwardedAtLessThanEqualAndReasonStartingWith(
+            UUID competitionId, LocalDateTime cutoff, String reasonPrefix);
+
     @Query("SELECT COALESCE(SUM(a.value), 0) FROM CTFAward a WHERE a.competitionId = :compId AND a.teamId = :teamId")
     int sumValueByCompetitionIdAndTeamId(@Param("compId") UUID compId, @Param("teamId") UUID teamId);
+
+    /**
+     * Sum of hint-deduction award values for one team (returns a negative number).
+     * Pass {@code asOf = null} to include all hint unlocks (unfreeze view).
+     * Negate the result to get the positive penalty amount used in teamScore.
+     */
+    @Query(value = """
+        SELECT COALESCE(SUM(value), 0)
+        FROM ctf_awards
+        WHERE competition_id = :compId
+          AND team_id        = :teamId
+          AND reason         LIKE 'hint:%'
+          AND (CAST(:asOf AS timestamp) IS NULL OR awarded_at <= CAST(:asOf AS timestamp))
+        """, nativeQuery = true)
+    int sumHintAwardsByTeamId(
+            @Param("compId")  UUID compId,
+            @Param("teamId")  UUID teamId,
+            @Param("asOf")    LocalDateTime asOf);
 
     /**
      * CHANGE 6 (Section 16 Query 6): Cumulative score timeline for the top N

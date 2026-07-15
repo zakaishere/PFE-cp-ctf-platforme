@@ -5,6 +5,8 @@ import jakarta.persistence.*;
 import lombok.*;
 import org.hibernate.annotations.UuidGenerator;
 
+import java.math.BigDecimal;
+import java.time.LocalDateTime;
 import java.util.UUID;
 
 @Entity
@@ -37,4 +39,29 @@ public class CompetitionProblem {
 
     @Column(name = "points", nullable = false)
     private int points;
+
+    // ── Per-problem scoring config (migration v22) ──────────────────────────
+
+    @Column(name = "max_points")
+    @Builder.Default
+    private int maxPoints = 100;
+
+    @Column(name = "min_points")
+    @Builder.Default
+    private int minPoints = 0;
+
+    @Column(name = "decay_per_min")
+    @Builder.Default
+    private BigDecimal decayPerMin = new BigDecimal("1.0");
+
+    @Column(name = "wrong_penalty")
+    @Builder.Default
+    private int wrongPenalty = 20;
+
+    /** First participant (team or solo student) to fully solve this problem. */
+    @Column(name = "first_blood_participant_id")
+    private UUID firstBloodParticipantId;
+
+    @Column(name = "first_blood_at")
+    private LocalDateTime firstBloodAt;
 }

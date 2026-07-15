@@ -43,7 +43,7 @@ public class CTFTeacherService {
                                                       String difficulty,
                                                       String status) {
         List<CTFChallenge> challenges = filterMyChallenges(authorId, category, difficulty, status);
-        return challenges.stream().map(c -> toResponse(c, false)).collect(Collectors.toList());
+        return challenges.stream().map(c -> toResponse(c, true)).collect(Collectors.toList());
     }
 
     public CTFChallengeDetailResponse getChallengeDetail(UUID id, UUID authorId) {
@@ -242,6 +242,8 @@ public class CTFTeacherService {
                 .hints(c.getHints())
                 .maxAttempts(c.getMaxAttempts())
                 .isActive(c.getIsActive())
+                .competitionId(c.getCompetitionId())
+                .isLibrary(c.getIsLibrary())
                 .authorId(c.getAuthorId())
                 .createdAt(c.getCreatedAt())
                 .updatedAt(c.getUpdatedAt())

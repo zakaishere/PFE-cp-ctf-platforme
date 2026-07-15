@@ -75,9 +75,13 @@ public class CTFLibraryService {
         c.setDifficulty(CTFChallenge.CTFDifficulty.valueOf(dto.getDifficulty().toUpperCase()));
         c.setBasePoints(dto.getBasePoints());
         c.setFlagType(flagType);
-        c.setFlagHash(flagType == CTFChallenge.FlagType.STATIC
-                ? sha256(dto.getPlainFlag().trim())
-                : "dynamic");
+        if (flagType == CTFChallenge.FlagType.STATIC) {
+            c.setFlagHash(sha256(dto.getPlainFlag().trim()));
+            c.setFlagValue(dto.getPlainFlag().trim());
+        } else {
+            c.setFlagHash("dynamic");
+            c.setFlagValue(null);
+        }
         c.setFlagFormat(dto.getFlagFormat() != null ? dto.getFlagFormat() : "FLAG{?}");
         c.setRequiresInstance(dto.getRequiresInstance() != null ? dto.getRequiresInstance() : false);
         c.setDockerImage(dto.getDockerImage());
@@ -91,7 +95,8 @@ public class CTFLibraryService {
         c.setDockerPidsLimit(dto.getDockerPidsLimit());
         c.setDownloadableFileUrl(dto.getDownloadableFileUrl());
         c.setDownloadableFileName(dto.getDownloadableFileName());
-        c.setMaxAttempts(dto.getMaxAttempts() != null ? dto.getMaxAttempts() : 10);
+        Integer maLib = dto.getMaxAttempts();
+        c.setMaxAttempts(maLib != null && maLib > 0 ? maLib : null);
         c.setIsActive(true);
         c.setIsHidden(false); // hidden concept doesn't apply to library challenges
         c.setHints(buildHints(dto.getHints()));
@@ -157,6 +162,7 @@ public class CTFLibraryService {
         copy.setBasePoints(src.getBasePoints());
         copy.setFlagType(src.getFlagType());
         copy.setFlagHash(src.getFlagHash());
+        copy.setFlagValue(src.getFlagValue()); // preserves plaintext for STATIC container injection
         copy.setFlagFormat(src.getFlagFormat());
         copy.setRequiresInstance(src.getRequiresInstance());
         copy.setDockerImage(src.getDockerImage());
@@ -169,7 +175,7 @@ public class CTFLibraryService {
         copy.setDockerPidsLimit(src.getDockerPidsLimit());
         copy.setDownloadableFileUrl(src.getDownloadableFileUrl());
         copy.setDownloadableFileName(src.getDownloadableFileName());
-        copy.setMaxAttempts(src.getMaxAttempts() != null ? src.getMaxAttempts() : 10);
+        copy.setMaxAttempts(src.getMaxAttempts()); // null = unlimited, preserves original
         copy.setIsActive(true);
         copy.setIsHidden(true); // hidden by default in competition — teacher reveals explicitly
         copy.setAuthorId(userId);
@@ -223,6 +229,8 @@ public class CTFLibraryService {
     }
 
     private void generateTeamFlagsForChallenge(UUID competitionId, UUID challengeId) {
+        CTFChallenge challenge = challengeRepo.findByIdAndDeletedFalse(challengeId).orElse(null);
+        if (challenge == null || challenge.getFlagType() != CTFChallenge.FlagType.DYNAMIC) return;
         for (CTFTeam team : teamRepo.findByCompetitionId(competitionId)) {
             String hash = teamService.computeTeamFlagHash(competitionId, challengeId, team.getId());
             flagRepo.save(CTFTeamFlag.builder()
@@ -268,7 +276,7 @@ public class CTFLibraryService {
                         c.getHints().stream()
                                 .map(h -> new CTFHintDTO(h.id(), h.cost(), h.text()))
                                 .collect(Collectors.toList()))
-                .maxAttempts(c.getMaxAttempts() != null ? c.getMaxAttempts() : 10)
+                .maxAttempts(c.getMaxAttempts()) // null = unlimited
                 .buildStatus(buildStatus)
                 .builtImageTag(builtImageTag)
                 .useCount(useCount)
