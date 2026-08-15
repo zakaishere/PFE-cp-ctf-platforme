@@ -2,29 +2,27 @@
 
 import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
-import { ChevronLeft, Clock, Loader2 } from "lucide-react";
+import { ChevronLeft, Clock } from "lucide-react";
 import { Client as StompClient } from "@stomp/stompjs";
 import SockJS from "sockjs-client";
-import {
-  submitCode, logCheatEvent, pingAuditSession, getApiBaseUrl,
-} from "@/lib/api";
+import { submitCode, getApiBaseUrl } from "@/lib/api";
 import { useAuth } from "@/features/auth/contexts/AuthContext";
 import { toast } from "@/components/ui/PSPToast";
-import { useAntiCheat, type ViolationEvent } from "@/hooks/useAntiCheat";
 import CodeWorkspace, {
   DEFAULT_WORKSPACE_CODE as DEFAULT_CODE,
   type WorkspaceTestResult, type WorkspaceVerdict,
 } from "@/features/arena/components/CodeWorkspace";
 import QuestionStatement from "@/components/arena/exam/QuestionStatement";
 import SubmissionsTab from "@/features/arena/tp/SubmissionsTab";
-import { useTPRoom, AccessCodeGate, formatDeadline } from "@/features/arena/tp/tpShared";
+import { formatDeadline } from "@/features/arena/tp/tpShared";
+import { useTPSession } from "@/features/arena/tp/TPSessionContext";
 
 const MONO = "var(--font-mono), ui-monospace, monospace";
 
 export default function TPTaskPage({ tpId, taskId }: { tpId: string; taskId: string }) {
   const router = useRouter();
   const { userId } = useAuth();
-  const { room, loading, error, needsCode, verifyCode, reload } = useTPRoom(tpId);
+  const { room, reload } = useTPSession();
 
   const [tab, setTab] = useState<"description" | "submissions">("description");
   const [lang, setLang] = useState("java");
@@ -34,32 +32,25 @@ export default function TPTaskPage({ tpId, taskId }: { tpId: string; taskId: str
   const [verdict, setVerdict] = useState<WorkspaceVerdict>(null);
   const stompRef = useRef<StompClient | null>(null);
 
-  const problem = room?.problems.find((p) => p.problemId === taskId) ?? null;
-  const problemIdx = room?.problems.findIndex((p) => p.problemId === taskId) ?? -1;
-  const isLocked = !!room?.finalSubmittedAt;
-  const isPastDeadline = !!room?.deadline && new Date() > new Date(room.deadline);
-  const maxAttempts = room?.maxAttempts ?? null;
+  const problem = room.problems.find((p) => p.problemId === taskId) ?? null;
+  const problemIdx = room.problems.findIndex((p) => p.problemId === taskId);
+  const isLocked = !!room.finalSubmittedAt;
+  const isPastDeadline = !!room.deadline && new Date() > new Date(room.deadline);
+  const maxAttempts = room.maxAttempts ?? null;
   const attemptsUsed = problem?.attemptsUsed ?? 0;
   const attemptsExhausted = maxAttempts != null && attemptsUsed >= maxAttempts;
   const submitDisabled = isLocked || isPastDeadline || attemptsExhausted;
-
-  // Audit session ping — captures IP for multi-IP detection, same as the exam/TP arena.
-  useEffect(() => {
-    if (!tpId) return;
-    pingAuditSession("TP", tpId).catch(() => {});
-  }, [tpId]);
-
-  const reportViolation = (event: ViolationEvent) => {
-    if (!userId || !tpId) return;
-    logCheatEvent({ studentId: userId, assessmentId: tpId, violationType: event.type }).catch(() => {});
-  };
-  useAntiCheat({ competitionId: tpId, enabled: !isLocked, onViolation: reportViolation });
 
   useEffect(() => {
     setCode(DEFAULT_CODE[lang] ?? "");
     setResults([]);
     setVerdict(null);
   }, [taskId]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  function goToTask(idx: number) {
+    const target = room.problems[idx];
+    if (target) router.push(`/arena/tp/${tpId}/task/${target.problemId}`);
+  }
 
   async function handleSubmit(runOnly = false) {
     if (!userId || !problem || submitDisabled) return;
@@ -137,22 +128,10 @@ export default function TPTaskPage({ tpId, taskId }: { tpId: string; taskId: str
     }
   }
 
-  if (needsCode) {
-    return <AccessCodeGate title={room?.title} onVerify={verifyCode} />;
-  }
-
-  if (loading) {
-    return (
-      <div style={{ height: "100vh", display: "flex", alignItems: "center", justifyContent: "center", background: "var(--bg)" }}>
-        <Loader2 size={26} style={{ animation: "spin 1s linear infinite", color: "var(--accent)" }} />
-      </div>
-    );
-  }
-
-  if (error || !room || !problem) {
+  if (!problem) {
     return (
       <div style={{ height: "100vh", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 12, background: "var(--bg)" }}>
-        <p style={{ color: "var(--ink-2)", fontSize: 14 }}>{error ?? "Task not found."}</p>
+        <p style={{ color: "var(--ink-2)", fontSize: 14 }}>Task not found.</p>
         <button onClick={() => router.push(`/arena/tp/${tpId}`)} className="psp-btn psp-btn-secondary psp-btn-sm">
           Back to tasks
         </button>
@@ -227,8 +206,8 @@ export default function TPTaskPage({ tpId, taskId }: { tpId: string; taskId: str
                 problem={problem}
                 currentIndex={problemIdx}
                 totalCount={room.problems.length}
-                onPrev={() => {}}
-                onNext={() => {}}
+                onPrev={() => goToTask(problemIdx - 1)}
+                onNext={() => goToTask(problemIdx + 1)}
                 noun="Task"
               />
             ) : (

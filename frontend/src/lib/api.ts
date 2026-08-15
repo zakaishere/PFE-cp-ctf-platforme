@@ -69,7 +69,8 @@ export class ApiException extends Error {
 async function apiClient<T>(
   endpoint: string,
   options: RequestInit = {},
-  config?: { silentErrors?: boolean }
+  config?: { silentErrors?: boolean },
+  attempt = 0,
 ): Promise<T> {
   const token  = getToken();
   const method = options.method ?? "GET";
@@ -96,6 +97,18 @@ async function apiClient<T>(
     const data = JSON.parse(text);
     logger.debug("API", `← ${method} ${endpoint} OK`);
     return data as T;
+  }
+
+  // ── Transient rate limit on an idempotent read: wait and retry once.
+  // Read-heavy pages (e.g. the CTF arena) mount several polling hooks at
+  // once, and a brief burst can trip the shared per-IP bucket even under
+  // normal use — retrying once turns that into a short delay instead of a
+  // permanently blank page.
+  if (res.status === 429 && method === "GET" && attempt === 0) {
+    const waitHeader = res.headers.get("X-Rate-Limit-Retry-After-Seconds");
+    const waitSeconds = Math.min(Number(waitHeader) || 2, 5);
+    await new Promise((r) => setTimeout(r, waitSeconds * 1000));
+    return apiClient<T>(endpoint, options, config, attempt + 1);
   }
 
   // ── Parse error body ───────────────────────────────────────────────────

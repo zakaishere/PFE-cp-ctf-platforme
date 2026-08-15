@@ -22,8 +22,14 @@ public class RateLimitConfig {
     }
 
     private Bucket newBucket() {
-        // 60 requests per minute with a burst of 20
-        Bandwidth limit = Bandwidth.classic(60, Refill.greedy(60, Duration.ofMinutes(1)));
+        // 240 requests per minute per IP. This bucket is shared by every
+        // non-strict endpoint behind one IP, including all read/poll traffic
+        // (status, notifications, teams/mine, challenge lists...). A live
+        // competition page mounts several polling hooks at once and campus
+        // WiFi puts many students behind one NAT IP, so 60/min was tripping
+        // on ordinary use, not abuse — 240/min keeps real flooding capped
+        // while giving normal polling headroom.
+        Bandwidth limit = Bandwidth.classic(240, Refill.greedy(240, Duration.ofMinutes(1)));
         return Bucket.builder().addLimit(limit).build();
     }
 

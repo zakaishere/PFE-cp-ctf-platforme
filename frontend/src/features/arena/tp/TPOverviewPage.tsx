@@ -3,34 +3,16 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { ArrowLeft, Clock, Loader2 } from "lucide-react";
+import { ArrowLeft, Clock } from "lucide-react";
 import { finalSubmitTP, type ExamProblemDTO, type ExamRoomDTO } from "@/lib/api";
 import { toast } from "@/components/ui/PSPToast";
-import { useTPRoom, AccessCodeGate, formatDeadline } from "@/features/arena/tp/tpShared";
+import { formatDeadline } from "@/features/arena/tp/tpShared";
+import { useTPSession } from "@/features/arena/tp/TPSessionContext";
 
 const MONO = "var(--font-mono), ui-monospace, monospace";
 
-export default function TPOverviewPage({ tpId }: { tpId: string }) {
-  const { room, loading, error, needsCode, verifyCode, reload } = useTPRoom(tpId);
-
-  if (needsCode) return <AccessCodeGate title={room?.title} onVerify={verifyCode} />;
-
-  if (loading) {
-    return (
-      <div style={{ height: "100vh", display: "flex", alignItems: "center", justifyContent: "center", background: "var(--bg)" }}>
-        <Loader2 size={26} style={{ animation: "spin 1s linear infinite", color: "var(--accent)" }} />
-      </div>
-    );
-  }
-
-  if (error || !room) {
-    return (
-      <div style={{ height: "100vh", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 12, background: "var(--bg)" }}>
-        <p style={{ color: "var(--ink-2)", fontSize: 14 }}>{error ?? "TP not found."}</p>
-        <Link href="/assessments" className="psp-btn psp-btn-secondary psp-btn-sm">Back</Link>
-      </div>
-    );
-  }
+export default function TPOverviewPage() {
+  const { room, reload } = useTPSession();
 
   if (room.finalSubmittedAt) {
     return <TPResultsView room={room} />;
